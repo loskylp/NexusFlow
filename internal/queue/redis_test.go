@@ -56,10 +56,13 @@ func flushTestDB(t *testing.T, client *redis.Client) {
 }
 
 // makeTask returns a minimal Task with a deterministic ID for test isolation.
+// PipelineID is stored as a pointer because the domain model allows nil after
+// a pipeline deletion (ON DELETE SET NULL).
 func makeTask(id, pipelineID, userID string) *models.Task {
+	pid := uuid.MustParse(pipelineID)
 	return &models.Task{
 		ID:          uuid.MustParse(id),
-		PipelineID:  uuid.MustParse(pipelineID),
+		PipelineID:  &pid,
 		UserID:      uuid.MustParse(userID),
 		ExecutionID: id + ":0",
 	}
