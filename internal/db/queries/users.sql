@@ -1,0 +1,11 @@
+-- sqlc query file: users table
+-- Generates Go code in internal/db/sqlc/ via `sqlc generate`
+-- See: ADR-008, TASK-002, TASK-017
+
+-- TODO: Write SQL queries in TASK-002 after migration is complete.
+-- Required named queries (sqlc format):
+--   -- name: CreateUser :one
+--   -- name: GetUserByID :one
+--   -- name: GetUserByUsername :one
+--   -- name: ListUsers :many
+--   -- name: DeactivateUser :exec

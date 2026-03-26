@@ -1,0 +1,12 @@
+-- sqlc query file: pipelines and pipeline_chains tables
+-- See: ADR-008, TASK-002, TASK-013, TASK-014
+
+-- TODO: Write SQL queries in TASK-002 after migration is complete.
+-- Required named queries (sqlc format):
+--   -- name: CreatePipeline :one
+--   -- name: GetPipelineByID :one
+--   -- name: ListPipelinesByUser :many
+--   -- name: ListAllPipelines :many
+--   -- name: UpdatePipeline :one
+--   -- name: DeletePipeline :exec
+--   -- name: PipelineHasActiveTasks :one

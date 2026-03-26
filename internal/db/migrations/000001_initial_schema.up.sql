@@ -1,0 +1,19 @@
+-- Migration 000001: Initial schema
+-- Creates the core data model tables for NexusFlow.
+-- See: ADR-008, TASK-002
+
+-- TODO: Implement in TASK-002
+-- Tables required:
+--   users (id, username, password_hash, role, active, created_at)
+--   workers (id, tags, status, last_heartbeat, registered_at)
+--   pipelines (id, name, user_id, data_source_config, process_config, sink_config, created_at, updated_at)
+--   pipeline_chains (id, name, user_id, pipeline_ids, created_at)
+--   tasks (id, pipeline_id, chain_id, user_id, status, retry_config, retry_count, execution_id, worker_id, input, created_at, updated_at)
+--   task_state_log (id, task_id, from_state, to_state, reason, timestamp)
+--   task_logs (id, task_id, line, level, timestamp) -- partitioned by week (ADR-008)
+-- Constraints:
+--   Task status transitions enforced by trigger on task_state_log INSERT
+--   Valid statuses: submitted, queued, assigned, running, completed, failed, cancelled
+--   Pipeline.user_id FK -> users.id
+--   Task.pipeline_id FK -> pipelines.id
+--   Task.user_id FK -> users.id

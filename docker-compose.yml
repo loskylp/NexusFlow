@@ -1,0 +1,179 @@
+# NexusFlow Docker Compose — development environment
+# Starts all core services for local development.
+# See: ADR-005, TASK-001
+#
+# Usage:
+#   docker compose up                        — start all services
+#   docker compose up --scale worker=3       — start with 3 workers
+#   docker compose --profile demo up         — include MinIO and demo-postgres
+#   docker compose down -v                   — stop and remove volumes
+#
+# Environment: copy .env.example to .env and populate before running.
+
+services:
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      - DATABASE_URL=${DATABASE_URL}
+      - REDIS_URL=${REDIS_URL:-redis://redis:6379}
+      - API_PORT=8080
+      - ENV=development
+    depends_on:
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    networks:
+      - internal
+    healthcheck:
+      # Sends an HTTP GET to /api/health and checks the response contains a JSON "status" field.
+      # This passes on both HTTP 200 (all healthy) and HTTP 503 (degraded but alive),
+      # which allows the healthcheck to pass in TASK-001 before postgres is connected.
+      # Uses printf + nc to make a raw HTTP request; nc is available in alpine:3.20.
+      # See: ADR-005, TASK-001
+      test: ["CMD-SHELL", "printf 'GET /api/health HTTP/1.0\\r\\nHost: localhost\\r\\n\\r\\n' | nc -w 3 localhost 8080 | grep -q status"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+    # TODO: Add Traefik labels in TASK-029 (staging/production only)
+
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.worker
+    restart: unless-stopped
+    environment:
+      - DATABASE_URL=${DATABASE_URL}
+      - REDIS_URL=${REDIS_URL:-redis://redis:6379}
+      - WORKER_TAGS=${WORKER_TAGS:-demo,etl}
+      - ENV=development
+    depends_on:
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    networks:
+      - internal
+
+  monitor:
+    build:
+      context: .
+      dockerfile: Dockerfile.monitor
+    restart: unless-stopped
+    environment:
+      - DATABASE_URL=${DATABASE_URL}
+      - REDIS_URL=${REDIS_URL:-redis://redis:6379}
+      - ENV=development
+    depends_on:
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    networks:
+      - internal
+
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile.web
+    restart: unless-stopped
+    ports:
+      - "3000:80"
+    depends_on:
+      - api
+    networks:
+      - internal
+    # TODO: Add Traefik labels in TASK-029
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    # AOF + RDB hybrid persistence (ADR-001)
+    command: >
+      redis-server
+      --appendonly yes
+      --appendfsync everysec
+      --save 900 1
+      --save 300 10
+      --save 60 10000
+    volumes:
+      - redis-data:/data
+    ports:
+      - "6379:6379"
+    networks:
+      - internal
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      - POSTGRES_DB=nexusflow
+      - POSTGRES_USER=nexusflow
+      - POSTGRES_PASSWORD=${DB_PASSWORD:-nexusflow_dev}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    networks:
+      - internal
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U nexusflow"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # Demo infrastructure — requires --profile demo flag
+  minio:
+    image: minio/minio:latest
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      - MINIO_ROOT_USER=${MINIO_ROOT_USER:-minioadmin}
+      - MINIO_ROOT_PASSWORD=${MINIO_ROOT_PASSWORD:-minioadmin}
+    volumes:
+      - minio-data:/data
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    networks:
+      - internal
+    profiles:
+      - demo
+
+  demo-postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      - POSTGRES_DB=demo
+      - POSTGRES_USER=demo
+      - POSTGRES_PASSWORD=demo
+    volumes:
+      - demo-pg-data:/var/lib/postgresql/data
+    ports:
+      - "5433:5432"
+    networks:
+      - internal
+    profiles:
+      - demo
+
+volumes:
+  redis-data:
+  postgres-data:
+  minio-data:
+  demo-pg-data:
+
+networks:
+  internal:
+    driver: bridge

@@ -1,0 +1,116 @@
+# NexusFlow CI pipeline.
+# Triggers on every push to main and on all pull requests.
+# See: ADR-005, TASK-001
+
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  go-build-and-test:
+    name: Go Build, Vet, and Test
+    runs-on: ubuntu-latest
+
+    services:
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 3
+
+      postgres:
+        image: postgres:16-alpine
+        ports:
+          - 5432:5432
+        env:
+          POSTGRES_DB: nexusflow_test
+          POSTGRES_USER: nexusflow
+          POSTGRES_PASSWORD: nexusflow_test
+        options: >-
+          --health-cmd "pg_isready -U nexusflow"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 3
+
+    env:
+      DATABASE_URL: postgresql://nexusflow:nexusflow_test@localhost:5432/nexusflow_test
+      REDIS_URL: redis://localhost:6379
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.23'
+          cache: true
+
+      - name: Download dependencies and generate go.sum
+        run: go mod download
+
+      - name: Verify module graph
+        run: go mod verify
+
+      - name: Build all Go packages
+        run: go build ./...
+
+      - name: Run go vet
+        run: go vet ./...
+
+      - name: Install staticcheck
+        run: go install honnef.co/go/tools/cmd/staticcheck@latest
+
+      - name: Run staticcheck
+        run: staticcheck ./...
+
+      - name: Run tests
+        run: go test ./... -v -count=1 -timeout 120s
+
+  frontend-build:
+    name: Frontend Build and Typecheck
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: web/package-lock.json
+
+      - name: Install dependencies
+        run: npm --prefix web ci
+
+      - name: TypeScript typecheck
+        run: npm --prefix web run typecheck
+
+      - name: Build frontend
+        run: npm --prefix web run build
+
+  docker-build:
+    name: Docker Build Smoke Test
+    runs-on: ubuntu-latest
+    needs: [go-build-and-test, frontend-build]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build API image
+        run: docker build -f Dockerfile.api -t nexusflow/api:ci .
+
+      - name: Build Worker image
+        run: docker build -f Dockerfile.worker -t nexusflow/worker:ci .
+
+      - name: Build Monitor image
+        run: docker build -f Dockerfile.monitor -t nexusflow/monitor:ci .
+
+      - name: Build Web image
+        run: docker build -f Dockerfile.web -t nexusflow/web:ci .

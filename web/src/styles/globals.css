@@ -1,0 +1,75 @@
+/**
+ * Global CSS — design system tokens and resets.
+ * Token values from DESIGN.md.
+ * See: TASK-019
+ */
+
+/* Google Fonts: Inter + IBM Plex Sans + JetBrains Mono */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=IBM+Plex+Sans:wght@400;500&family=JetBrains+Mono:wght@400;500&display=swap');
+
+/* === Design Token Custom Properties === */
+:root {
+  /* Colors */
+  --color-primary:        #4F46E5;  /* Indigo */
+  --color-surface-base:   #FAFAFA;
+  --color-surface-panel:  #FFFFFF;
+  --color-surface-subtle: #F1F5F9;
+  --color-border:         #E2E8F0;
+  --color-text-primary:   #0F172A;
+  --color-text-secondary: #64748B;
+  --color-text-tertiary:  #94A3B8;
+
+  /* Semantic colors */
+  --color-success:        #16A34A;  /* online, completed */
+  --color-warning:        #D97706;  /* queued, assigned */
+  --color-error:          #DC2626;  /* failed, down */
+  --color-info:           #2563EB;  /* running */
+  --color-cancelled:      #64748B;
+  --color-submitted:      #8B5CF6;
+
+  /* Typography */
+  --font-sans:  'Inter', system-ui, sans-serif;
+  --font-label: 'IBM Plex Sans', system-ui, sans-serif;
+  --font-mono:  'JetBrains Mono', 'Fira Code', monospace;
+
+  /* Spacing (4px base unit) */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-12: 48px;
+  --space-16: 64px;
+
+  /* Sidebar */
+  --sidebar-width: 240px;
+  --sidebar-collapsed-width: 64px;
+  --sidebar-bg: #0F172A;  /* slate-900 */
+}
+
+/* === Reset === */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+body {
+  font-family: var(--font-sans);
+  background-color: var(--color-surface-base);
+  color: var(--color-text-primary);
+  -webkit-font-smoothing: antialiased;
+}
+
+code, pre, .mono {
+  font-family: var(--font-mono);
+  font-size: 13px;
+}
+
+/* TODO: Add component-level CSS in TASK-019 as components are built */

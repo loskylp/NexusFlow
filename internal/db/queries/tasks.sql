@@ -1,0 +1,13 @@
+-- sqlc query file: tasks and task_state_log tables
+-- See: ADR-008, TASK-002, TASK-005, TASK-007
+
+-- TODO: Write SQL queries in TASK-002 after migration is complete.
+-- Required named queries (sqlc format):
+--   -- name: CreateTask :one
+--   -- name: GetTaskByID :one
+--   -- name: ListTasksByUser :many
+--   -- name: ListAllTasks :many
+--   -- name: UpdateTaskStatus :exec
+--   -- name: IncrementTaskRetryCount :one
+--   -- name: CancelTask :exec
+--   -- name: GetTaskStateLog :many

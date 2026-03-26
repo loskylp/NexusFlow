@@ -1,0 +1,36 @@
+# Go
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+/bin/
+
+# Go workspace
+go.work
+go.work.sum
+
+# Web
+web/node_modules/
+web/dist/
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# Docker volumes
+postgres-data/
+redis-data/
+
+# Editor
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db

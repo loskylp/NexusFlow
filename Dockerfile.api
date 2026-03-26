@@ -1,0 +1,36 @@
+# Dockerfile.api — Multi-stage build for the NexusFlow API server.
+# Stage 1: Build Go binary. Stage 2: Minimal runtime image.
+# See: ADR-004, ADR-005, TASK-001
+
+# --- Build stage ---
+FROM golang:1.23-alpine AS builder
+
+WORKDIR /app
+
+# Download dependencies first (better layer caching).
+# go.sum* uses a glob so the COPY succeeds even if go.sum has not yet been generated.
+# go mod download creates go.sum when absent.
+COPY go.mod go.sum* ./
+RUN go mod download
+
+# Copy source
+COPY . .
+
+# Build the API binary
+# CGO_ENABLED=0 produces a fully static binary for the scratch image
+RUN CGO_ENABLED=0 GOOS=linux go build -o /bin/api ./cmd/api
+
+# --- Runtime stage ---
+FROM alpine:3.20
+
+# Add ca-certificates for HTTPS calls (PostgreSQL TLS, external connectors)
+RUN apk --no-cache add ca-certificates
+
+COPY --from=builder /bin/api /bin/api
+
+EXPOSE 8080
+
+# Run as non-root
+USER nobody
+
+ENTRYPOINT ["/bin/api"]
