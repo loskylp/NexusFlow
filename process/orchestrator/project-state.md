@@ -8,14 +8,14 @@
 
 ## Where We Are
 
-Plan Gate v2.1 APPROVED (2026-03-26). Phase: EXECUTION. TASK-001 (DevOps Phase 1) COMPLETE -- Verifier PASS. TASK-002 (Database schema and migration foundation) BUILT -- dispatching Verifier for initial verification (Pre-staging mode). Builder reports all 5 acceptance criteria verified locally.
+Plan Gate v2.1 APPROVED (2026-03-26). Phase: EXECUTION. TASK-001 COMPLETE. TASK-002 COMPLETE -- Verifier PASS, CI green (run 23606734063), committed and pushed. Layer 1 complete. Dispatching Builder for TASK-004 (Redis Streams queue infrastructure) -- next task in execution sequence (Layer 1, second task).
 
 ## Active Work
 
-**Agent in control:** Verifier (dispatched 2026-03-26)
-**Current task:** TASK-002 -- Database schema and migration foundation (VERIFY)
-**Waiting for:** Verifier to verify TASK-002 against 5 acceptance criteria
-**Next after Verifier:** If PASS, dispatch Builder for TASK-004 (Redis Streams queue infrastructure). If FAIL, iterate Builder on TASK-002.
+**Agent in control:** Builder (dispatched 2026-03-26)
+**Current task:** TASK-004 -- Redis Streams queue infrastructure (BUILD)
+**Waiting for:** Builder to implement TASK-004 against 6 acceptance criteria
+**Next after Builder:** Dispatch Verifier for TASK-004 (Pre-staging mode, Initial verification). If PASS, next task is TASK-003 (Layer 2).
 
 ---
 
@@ -24,8 +24,8 @@ Plan Gate v2.1 APPROVED (2026-03-26). Phase: EXECUTION. TASK-001 (DevOps Phase 1
 | Task | Status | Iterations | Verifier |
 |---|---|---|---|
 | TASK-001: DevOps Phase 1 -- CI pipeline and dev environment | COMPLETE | 1 | PASS (52/52 acceptance, 16/16 integration) |
-| TASK-002: Database schema and migration foundation | BUILT -- PENDING VERIFICATION | 1 (build) | Verifier dispatched |
-| TASK-004: Redis Streams queue infrastructure | PENDING | -- | -- |
+| TASK-002: Database schema and migration foundation | COMPLETE | 1 | PASS (95/95 acceptance, 7/7 integration) |
+| TASK-004: Redis Streams queue infrastructure | IN PROGRESS (Builder) | -- | -- |
 | TASK-003: Authentication and session management | PENDING | -- | -- |
 | TASK-006: Worker self-registration and heartbeat | PENDING | -- | -- |
 | TASK-005: Task submission via REST API | PENDING | -- | -- |
@@ -39,12 +39,13 @@ Plan Gate v2.1 APPROVED (2026-03-26). Phase: EXECUTION. TASK-001 (DevOps Phase 1
 | TASK-029: DevOps Phase 2 -- staging environment and CD pipeline | PENDING | -- | -- |
 
 **Cycle summary:**
-- Tasks complete: 1 of 14
-- Requirements satisfied this cycle: 0 of target (TASK-001 was DevOps infrastructure, not a requirement task)
+- Tasks complete: 2 of 14
+- Requirements satisfied this cycle: 0 of target (TASK-001 and TASK-002 were infrastructure tasks, not direct requirement deliverables)
 - Sentinel: Not invoked
 - Scaffolder: COMPLETE (2026-03-26, 57 files, manifest at process/scaffolder/scaffold-manifest.md)
 - TASK-001: COMPLETE (2026-03-26) -- Verifier PASS, CI green. Note: staticcheck U1000 errors on 30 scaffold stubs required a fix commit (1687c64, added lint:ignore directives) before CI passed on second run.
-- TASK-002: Builder COMPLETE 2026-03-26; Verifier dispatched 2026-03-26 (Pre-staging mode, Initial verification)
+- TASK-002: COMPLETE (2026-03-26) -- Verifier PASS (95/95 acceptance, 7/7 integration), CI green (run 23606734063). OBS-003 resolved (health endpoint 200 with postgres). 4 non-blocking observations recorded.
+- TASK-004: Builder dispatched 2026-03-26
 
 ---
 
@@ -103,8 +104,8 @@ NONE -- not currently in an iterate loop.
 | Auditor passes -- requirements | 2 (audit v2: PASS WITH DEFERRALS; audit v4: PASS WITH DEFERRALS) |
 | Auditor passes -- architecture | 2 (architecture-audit-v1: PASS; architecture-audit-v2: PASS) |
 | Gate rejections this cycle | 0 |
-| Tasks completed | 1 of 14 planned |
-| Average iterations to PASS | 1.0 (1 task) |
+| Tasks completed | 2 of 14 planned |
+| Average iterations to PASS | 1.0 (2 tasks) |
 | Tasks that hit max iterations | 0 |
 | Escalations to Nexus | 0 |
 | Backward cascade triggered | No |
@@ -116,10 +117,14 @@ NONE -- not currently in an iterate loop.
 | ID | Source | Description | Status |
 |---|---|---|---|
 | OBS-001 | TASK-001 | Dockerfile go.sum generation strategy is fragile -- resolved by committing go.sum | Resolved (TASK-001 verification) |
-| OBS-002 | TASK-001 | golang-migrate removed from go.mod by go mod tidy -- TASK-002 Builder must re-add it | Open -- pending TASK-002 |
-| OBS-003 | TASK-001 | API health endpoint returns 503 until TASK-002 wires postgres pool | Open -- pending TASK-002 |
+| OBS-002 | TASK-001 | golang-migrate removed from go.mod by go mod tidy -- TASK-002 Builder must re-add it | Resolved (TASK-002 re-added golang-migrate) |
+| OBS-003 | TASK-001 | API health endpoint returns 503 until TASK-002 wires postgres pool | Resolved (TASK-002 verified: health returns 200 with postgres connected) |
 | OBS-004 | TASK-001 | golang.org/x/crypto moved to indirect in go.mod -- expected, no action needed | Resolved (no action) |
 | OBS-005 | TASK-001 | npm audit reports 2 moderate vulnerabilities in frontend deps | Open -- pending Sentinel review |
+| OBS-006 | TASK-002 | CREATE TRIGGER has no IF NOT EXISTS -- standard for PostgreSQL 16; golang-migrate handles idempotency | Resolved (no action -- by design) |
+| OBS-007 | TASK-002 | task_logs has no explicit PRIMARY KEY due to partitioned table constraint; id is NOT NULL with gen_random_uuid() | Open -- awareness for TASK-016 |
+| OBS-008 | TASK-002 | schema_migrations not dropped by down migration -- correct, golang-migrate owns that table | Resolved (no action -- by design) |
+| OBS-009 | TASK-002 | schemaMappings column absent from pipelines -- embedded in JSONB phase config columns; deliberate design decision | Resolved (no action -- by design) |
 
 ---
 
