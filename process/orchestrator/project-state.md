@@ -8,14 +8,14 @@
 
 ## Where We Are
 
-Plan Gate v2.1 APPROVED (2026-03-26). Phase: EXECUTION. Layer 1 COMPLETE (TASK-001, TASK-002, TASK-004). Layer 2 COMPLETE (TASK-003, TASK-006). Layer 3: TASK-005 COMPLETE (iteration 2 PASS), TASK-013 BUILT -- PENDING VERIFICATION. TASK-015 unblocked but waiting. Dispatching Verifier for TASK-013 (Pipeline CRUD via REST API) -- initial verification, Pre-staging mode.
+Plan Gate v2.1 APPROVED (2026-03-26). Phase: EXECUTION. Layer 1 COMPLETE (TASK-001, TASK-002, TASK-004). Layer 2 COMPLETE (TASK-003, TASK-006). Layer 3 COMPLETE (TASK-005, TASK-013, TASK-015 still pending). TASK-013 verified PASS (iteration 2), CI green. Layer 5: dispatching Builder for TASK-007 (Tag-based task assignment and pipeline execution) -- highest complexity task in Cycle 1, walking skeleton critical path. Unblocked tasks in queue: TASK-015, TASK-025, TASK-019 (all P2, will follow TASK-007).
 
 ## Active Work
 
-**Agent in control:** Verifier (dispatching 2026-03-26)
-**Current task:** TASK-013 -- Pipeline CRUD via REST API (initial verification)
-**Waiting for:** Verifier to verify TASK-013 against 7 acceptance criteria (Pre-staging mode)
-**Next after Verifier:** If PASS, dispatch Builder for TASK-015 (SSE event infrastructure). If FAIL, iterate loop (Builder iteration 2).
+**Agent in control:** Builder (dispatching 2026-03-26)
+**Current task:** TASK-007 -- Tag-based task assignment and pipeline execution (initial build)
+**Waiting for:** Builder to implement TASK-007 (9 acceptance criteria, P1 HH, high-risk)
+**Next after Builder:** Dispatch Verifier for TASK-007 (initial verification, Pre-staging mode). If PASS, dispatch Builder for TASK-042 (demo connectors). If FAIL, iterate loop.
 
 ---
 
@@ -29,8 +29,8 @@ Plan Gate v2.1 APPROVED (2026-03-26). Phase: EXECUTION. Layer 1 COMPLETE (TASK-0
 | TASK-003: Authentication and session management | COMPLETE | 1 | PASS (24/24 acceptance, 55 unit tests) |
 | TASK-006: Worker self-registration and heartbeat | COMPLETE | 1 | PASS (14/14 acceptance, 35 unit tests) |
 | TASK-005: Task submission via REST API | COMPLETE | 2 | PASS (iteration 2) |
-| TASK-013: Pipeline CRUD via REST API | BUILT -- PENDING VERIFICATION | 1 (build) | Verifier dispatched |
-| TASK-007: Tag-based task assignment and pipeline execution | PENDING | -- | -- |
+| TASK-013: Pipeline CRUD via REST API | COMPLETE | 2 | PASS (iteration 2) |
+| TASK-007: Tag-based task assignment and pipeline execution | BUILDING | 1 | -- |
 | TASK-042: Demo connectors -- demo source, simulated worker, demo sink | PENDING | -- | -- |
 | TASK-019: React app shell with sidebar navigation and auth flow | PENDING | -- | -- |
 | TASK-025: Worker fleet status API | PENDING | -- | -- |
@@ -39,8 +39,9 @@ Plan Gate v2.1 APPROVED (2026-03-26). Phase: EXECUTION. Layer 1 COMPLETE (TASK-0
 | TASK-029: DevOps Phase 2 -- staging environment and CD pipeline | PENDING | -- | -- |
 
 **Cycle summary:**
-- Tasks complete: 6 of 14
+- Tasks complete: 7 of 14
 - TASK-005: COMPLETE (2026-03-26) -- Verifier PASS (iteration 2), CI green. Wiring omission in `cmd/api/main.go` and plain text 401 fixed in iteration 1; verified PASS on iteration 2.
+- TASK-013: COMPLETE (2026-03-26) -- Verifier PASS (iteration 2), CI green. Pipeline CRUD via REST API with all 7 acceptance criteria met.
 - Requirements satisfied this cycle: REQ-019 (TASK-003 delivers auth -- first direct requirement deliverable)
 - Sentinel: Not invoked
 - Scaffolder: COMPLETE (2026-03-26, 57 files, manifest at process/scaffolder/scaffold-manifest.md)
@@ -96,7 +97,7 @@ Note: Sequential execution model (one Builder task at a time). The dependency la
 
 ## Iterate Loop State
 
-No active iterate loop. TASK-005 converged on iteration 2 (PASS). TASK-013 built, dispatching Verifier for initial verification.
+No active iterate loop. TASK-005 converged on iteration 2 (PASS). TASK-013 converged on iteration 2 (PASS). Dispatching Builder for TASK-007.
 
 ---
 
@@ -107,8 +108,8 @@ No active iterate loop. TASK-005 converged on iteration 2 (PASS). TASK-013 built
 | Auditor passes -- requirements | 2 (audit v2: PASS WITH DEFERRALS; audit v4: PASS WITH DEFERRALS) |
 | Auditor passes -- architecture | 2 (architecture-audit-v1: PASS; architecture-audit-v2: PASS) |
 | Gate rejections this cycle | 0 |
-| Tasks completed | 6 of 14 planned |
-| Average iterations to PASS | 1.17 (6 tasks: 5 at 1 iteration, 1 at 2 iterations) |
+| Tasks completed | 7 of 14 planned |
+| Average iterations to PASS | 1.29 (7 tasks: 5 at 1 iteration, 2 at 2 iterations) |
 | Tasks that hit max iterations | 0 |
 | Escalations to Nexus | 0 |
 | Backward cascade triggered | No |
