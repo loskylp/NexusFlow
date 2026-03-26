@@ -19,6 +19,7 @@ cd backend && npx eslint src/
 ```bash
 npm test
 git diff --staged
+git -C /Users/pablo/projects/MyApp log --oneline
 npx eslint backend/src/
 ```
 
@@ -26,5 +27,6 @@ npx eslint backend/src/
 
 - The working directory is always the project root unless the Orchestrator's routing instruction specifies otherwise.
 - For commands that target a subdirectory, pass the path as an argument or flag — do not `cd` into it.
+- For git commands targeting a different directory, use `git -C <path>` — never `cd <path> && git ...`.
 - If a tool requires being inside a specific directory, use the tool's built-in path option (e.g., `npm --prefix backend test`) rather than `cd`.
 - Apply this rule to every Bash tool call, without exception.

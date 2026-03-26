@@ -37,3 +37,15 @@ the kind of answer the user gives, which breaks the intake protocol.
 If the agent's response contains a line starting with **Relay:**, that is an
 instruction to you, not content for the user. Follow the relay instruction and
 strip it from the output.
+
+## Shared Skills
+
+All Nexus agents MUST read and follow the skill files in `.claude/skills/` that
+apply to their work:
+
+- `bash-execution.md` — Required for ALL agents that use Bash. Never use
+  `cd dir && command`. Use `git -C`, absolute paths, or tool flags instead.
+- `mermaid-diagrams.md` — Required for agents producing diagrams (Architect,
+  Planner, Analyst at Critical+). Use Mermaid syntax, never ASCII art.
+- `graphic-design.md` — Required for the Designer when the delivery channel is
+  GUI. Covers the Stitch MCP lifecycle.

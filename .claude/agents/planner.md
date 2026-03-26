@@ -90,6 +90,7 @@ Initial planning for each cycle is a three-pass sequence. Each pass receives the
 - Add inline checklist items (`- [ ] ...`) to task entries — task status is tracked via the Status field; unchecked checklists with no designated owner create false ambiguity about what is complete; the agent executing the task owns its status update
 - Plan a task with user-visible behaviour without a corresponding demo script — every such task must have a demo script declared in the Task Plan; if none exists, add a demo script sub-task immediately following the task that delivers the behaviour
 - Omit the rolling confidence assessment from Pass 3 of any plan version — it is required for every cycle, not only the initial plan
+- Produce dependency graphs or any structural diagrams in ASCII art — use Mermaid syntax; see [`skills/mermaid-diagrams.md`](../skills/mermaid-diagrams.md)
 
 ---
 

@@ -1,6 +1,6 @@
 # Project State
 **Manifest version:** v1 | **Profile:** Critical
-**Current phase:** DESIGN
+**Current phase:** PLANNING
 **Current cycle:** 0 (pre-execution)
 **Last updated:** 2026-03-26
 
@@ -8,14 +8,14 @@
 
 ## Where We Are
 
-Architecture Gate APPROVED by the Nexus (2026-03-26). Architecture v2 is the approved baseline. AUDIT-006 (pipeline template sharing) closed as NOT APPLICABLE -- the Nexus has decided there will be no templates at all. All other deferrals remain as tracked. Routing to the Designer for visual/interface design before the Planner.
+Designer complete (2026-03-26). Nexus approved all 7 screens. UX Specification, Design System, Design Proposal, and 7 high-fidelity screenshots produced. Stitch project 14608407312724823932 archived. AUDIT-006 (pipeline template sharing) remains CLOSED -- NOT APPLICABLE (no templates). Routing to the Planner for three-pass task decomposition (Critical profile).
 
 ## Active Work
 
-**Agent in control:** Designer
-**Current task:** Visual and interaction design for NexusFlow Web GUI (Pipeline Builder, Worker Fleet Dashboard, Task Feed and Monitor, Log Streamer, Sink Inspector, Chaos Controller)
-**Waiting for:** Designer completion
-**Next after completion:** Route to Planner (three-pass sequence: decomposition, scoring, release map)
+**Agent in control:** Planner
+**Current task:** Three-pass task decomposition -- Pass 1: atomic tasks with acceptance criteria (no scoring); Pass 2: scoring and ordering; Pass 3: release map with MVP boundary
+**Waiting for:** Planner completion (Pass 1 of 3)
+**Next after completion:** Plan Gate (Nexus approval of task plan and release map)
 
 ---
 
@@ -39,7 +39,7 @@ No tasks defined yet. Design and planning phases must complete first.
 
 ## Pending Decisions
 
-None. Architecture Gate approved. Designer dispatched. Next human gate: Plan Gate (after Designer and Planner complete).
+None. Design complete. Planner dispatched. Next human gate: Plan Gate (after Planner completes three-pass decomposition).
 
 ---
 
@@ -66,9 +66,26 @@ NONE -- not currently in an iterate loop.
 
 ## Standing Routing Rules (Cycle 0)
 
-- Designer dispatched for Web GUI design (2026-03-26).
-- After Designer completes -> route to Planner (three-pass sequence: decomposition, scoring, release map).
+- Designer COMPLETE (2026-03-26). Nexus approved all 7 screens.
+- Planner dispatched (2026-03-26) for three-pass decomposition.
+- After Planner completes -> Plan Gate (Nexus approval).
+- After Plan Gate approved -> if >= 3 Builder tasks, invoke Scaffolder before Builder tasks (Manifest rule).
+- DevOps Phase 1 (CI pipeline, dev environment, Environment Contract) must complete before any Builder task begins.
 - AUDIT-006 (pipeline template sharing) CLOSED -- NOT APPLICABLE (Nexus decision: no templates at all).
+
+## Designer Completion Record
+
+**Date:** 2026-03-26
+**Artifacts produced:**
+- `process/designer/ux-spec.md` -- UX Specification (7 screens, 5 user flows, interaction spec, visual spec, SSE architecture, role-based visibility rules, accessibility notes)
+- `process/designer/DESIGN.md` -- Design System (color tokens, typography, spacing, component patterns)
+- `process/designer/proposal.md` -- Design Proposal (7 screens with Stitch IDs, review checklist)
+- `process/designer/screenshots/` -- 7 PNG files (01-login through 07-chaos-controller)
+- Stitch project: 14608407312724823932 (7 screens, all approved by Nexus)
+
+**Nexus review:** All 7 screens approved. No revisions requested.
+**Screens:** Login, Worker Fleet Dashboard, Task Feed and Monitor, Pipeline Builder, Log Streamer, Sink Inspector, Chaos Controller
+**Design hypotheses:** 8 hypotheses documented for future validation (landing page choice, card feed vs table, dark log panel, schema validation timing, phase colors, chaos confirmation, worker sort order)
 
 ---
 
