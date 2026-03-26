@@ -8,14 +8,14 @@
 
 ## Where We Are
 
-Plan Gate v2.1 APPROVED (2026-03-26). Phase: EXECUTION. TASK-001 (DevOps Phase 1) COMPLETE -- Verifier PASS (52/52 acceptance tests, 16/16 integration tests), CI green (all 3 jobs passed). Now dispatching Builder for TASK-002 (Database schema and migration foundation), the first task in Layer 1.
+Plan Gate v2.1 APPROVED (2026-03-26). Phase: EXECUTION. TASK-001 (DevOps Phase 1) COMPLETE -- Verifier PASS. TASK-002 (Database schema and migration foundation) BUILT -- dispatching Verifier for initial verification (Pre-staging mode). Builder reports all 5 acceptance criteria verified locally.
 
 ## Active Work
 
-**Agent in control:** Builder (dispatched 2026-03-26)
-**Current task:** TASK-002 -- Database schema and migration foundation (BUILD)
-**Waiting for:** Builder to implement TASK-002 against 5 acceptance criteria
-**Next after Builder:** Verifier (Pre-staging mode, Initial verification) to verify TASK-002
+**Agent in control:** Verifier (dispatched 2026-03-26)
+**Current task:** TASK-002 -- Database schema and migration foundation (VERIFY)
+**Waiting for:** Verifier to verify TASK-002 against 5 acceptance criteria
+**Next after Verifier:** If PASS, dispatch Builder for TASK-004 (Redis Streams queue infrastructure). If FAIL, iterate Builder on TASK-002.
 
 ---
 
@@ -24,7 +24,7 @@ Plan Gate v2.1 APPROVED (2026-03-26). Phase: EXECUTION. TASK-001 (DevOps Phase 1
 | Task | Status | Iterations | Verifier |
 |---|---|---|---|
 | TASK-001: DevOps Phase 1 -- CI pipeline and dev environment | COMPLETE | 1 | PASS (52/52 acceptance, 16/16 integration) |
-| TASK-002: Database schema and migration foundation | IN PROGRESS (Builder dispatched) | -- | -- |
+| TASK-002: Database schema and migration foundation | BUILT -- PENDING VERIFICATION | 1 (build) | Verifier dispatched |
 | TASK-004: Redis Streams queue infrastructure | PENDING | -- | -- |
 | TASK-003: Authentication and session management | PENDING | -- | -- |
 | TASK-006: Worker self-registration and heartbeat | PENDING | -- | -- |
@@ -44,7 +44,7 @@ Plan Gate v2.1 APPROVED (2026-03-26). Phase: EXECUTION. TASK-001 (DevOps Phase 1
 - Sentinel: Not invoked
 - Scaffolder: COMPLETE (2026-03-26, 57 files, manifest at process/scaffolder/scaffold-manifest.md)
 - TASK-001: COMPLETE (2026-03-26) -- Verifier PASS, CI green. Note: staticcheck U1000 errors on 30 scaffold stubs required a fix commit (1687c64, added lint:ignore directives) before CI passed on second run.
-- TASK-002: Builder dispatched 2026-03-26
+- TASK-002: Builder COMPLETE 2026-03-26; Verifier dispatched 2026-03-26 (Pre-staging mode, Initial verification)
 
 ---
 
