@@ -8,13 +8,13 @@
 
 ## Where We Are
 
-Ingestion complete. Auditor re-validated Requirements v3 against all four blocking findings from audit v1 -- result: PASS WITH DEFERRALS. Zero blocking issues. Zero regressions. Three non-blocking deferrals carry forward (AUDIT-005: log retention, AUDIT-006: pipeline sharing, AUDIT-007: schema mapping validation timing). The Requirements Gate briefing has been presented to the Nexus for approval.
+Requirements Gate pending. Nexus requested four demo-infrastructure requirements (Fake-S3, Mock-Postgres, Sink-Inspector, Chaos Controller) be added before approving. These are not part of the core system but are needed to demonstrate NexusFlow to stakeholders without external cloud costs. Routing to Analyst for requirement drafting, then Auditor for validation, then back to Nexus for gate approval.
 
 ## Active Work
 
-**Agent in control:** Orchestrator (awaiting Nexus decision)
-**Current task:** Requirements Gate -- Nexus reviews and approves Requirements v3 (27 requirements: 23 functional, 4 non-functional).
-**Waiting for:** Nexus approval at the Requirements Gate to proceed to Architecture phase.
+**Agent in control:** Analyst (dispatched for demo requirement drafting)
+**Current task:** Add four demo-infrastructure requirements to Requirements v3, producing Requirements v4.
+**Waiting for:** Analyst to produce Requirements v4 with the new demo requirements in a separate "Demo Infrastructure" section.
 
 ---
 
@@ -38,7 +38,7 @@ No tasks defined yet. Ingestion and decomposition phases must complete first.
 
 ## Pending Decisions
 
-NONE -- all previously pending decisions have been resolved.
+PD-001: Requirements Gate approval -- blocked pending addition of four demo-infrastructure requirements requested by Nexus (Fake-S3, Mock-Postgres, Sink-Inspector, Chaos Controller). Analyst dispatched. After Analyst + Auditor complete, gate briefing will be re-presented.
 
 ---
 
@@ -67,6 +67,7 @@ NONE -- not currently in an iterate loop.
 
 - After Nexus approves Requirements Gate: route to Architect for system design.
 - After Nexus requests changes at Requirements Gate: route to Analyst for revision, then Auditor for re-validation.
+- ACTIVE: Analyst producing Requirements v4 (demo requirements). After Analyst completes, route to Auditor for audit v3. After Auditor PASS, re-present Requirements Gate briefing to Nexus.
 
 ---
 
