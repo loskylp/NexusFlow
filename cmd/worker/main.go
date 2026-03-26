@@ -2,23 +2,36 @@
 // Workers are stateless compute nodes; multiple instances can run simultaneously
 // and are scaled via `docker compose up --scale worker=N`.
 //
-// TASK-001 implementation: loads config, connects to Redis and Postgres (with
-// retry logging on failure), logs "worker starting", and blocks on SIGTERM/SIGINT.
-// Full worker execution loop is implemented in TASK-006 and TASK-007.
+// Startup sequence:
+//  1. Load config (DATABASE_URL, REDIS_URL, WORKER_TAGS, WORKER_ID required)
+//  2. Connect to PostgreSQL (run migrations)
+//  3. Connect to Redis (verify with PING)
+//  4. Build WorkerRepository, HeartbeatStore (RedisQueue), Consumer (RedisQueue)
+//  5. Construct Worker and call Run (blocks until SIGTERM/SIGINT)
+//  6. Graceful shutdown: Run marks worker as "down" before returning
+//
+// WORKER_ID defaults to a UUID generated on startup if not set via env.
+// WORKER_TAGS is a comma-separated list (e.g. "etl,report"). Defaults to "demo".
 //
 // See: ADR-001, ADR-002, ADR-004, ADR-005, TASK-006, TASK-007, TASK-042
 package main
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/nxlabs/nexusflow/internal/config"
+	"github.com/nxlabs/nexusflow/internal/db"
+	"github.com/nxlabs/nexusflow/internal/queue"
 	"github.com/redis/go-redis/v9"
+
+	workerPkg "github.com/nxlabs/nexusflow/worker"
 )
 
 func main() {
@@ -30,31 +43,94 @@ func main() {
 		log.Fatalf("worker: configuration error: %v", err)
 	}
 
+	// Assign a stable worker ID if not set via environment.
+	if cfg.WorkerID == "" {
+		cfg.WorkerID = generateWorkerID()
+	}
+
+	// Default tags to "demo" when no tags are configured.
+	if len(cfg.WorkerTags) == 0 {
+		cfg.WorkerTags = []string{"demo"}
+	}
+
 	log.Printf("worker: tags=%v id=%q env=%q", cfg.WorkerTags, cfg.WorkerID, cfg.Env)
 
-	// Connect Redis. Ping to verify connectivity; log and continue on failure.
+	// Connect to PostgreSQL. Migrations run automatically on successful connection.
+	startupCtx, startupCancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer startupCancel()
+
+	pool, err := db.New(startupCtx, cfg.DatabaseURL)
+	if err != nil {
+		log.Fatalf("worker: postgres: %v", err)
+	}
+	defer pool.Close()
+	log.Printf("worker: postgres connected")
+
+	// Connect Redis.
 	redisOpts, err := redis.ParseURL(cfg.RedisURL)
 	if err != nil {
 		log.Fatalf("worker: invalid REDIS_URL %q: %v", cfg.RedisURL, err)
 	}
 	redisClient := redis.NewClient(redisOpts)
-	defer redisClient.Close()
+	defer func() { _ = redisClient.Close() }()
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-	if err := redisClient.Ping(ctx).Err(); err != nil {
-		log.Printf("worker: Redis not reachable at startup: %v (will retry)", err)
-	} else {
-		log.Printf("worker: Redis connected at %s", cfg.RedisURL)
+	if err := redisClient.Ping(startupCtx, ).Err(); err != nil {
+		log.Fatalf("worker: redis not reachable: %v", err)
 	}
+	log.Printf("worker: redis connected at %s", cfg.RedisURL)
 
-	// PostgreSQL connection and Worker.Run are wired in TASK-002 and TASK-006.
-	// Block until signal so the container stays alive for health checks.
-	log.Printf("worker: ready — waiting for tasks (full implementation in TASK-006)")
+	// Build dependencies.
+	workerRepo := db.NewPgWorkerRepository(pool)
+	redisQueue := queue.NewRedisQueue(redisClient)
+
+	// Construct the worker. Task and SSE dependencies are wired in TASK-007 and TASK-015.
+	w := workerPkg.NewWorker(
+		cfg,
+		nil,         // TaskRepository — wired in TASK-007
+		workerRepo,
+		redisQueue,  // Consumer
+		redisQueue,  // HeartbeatStore
+		nil,         // Broker — wired in TASK-015
+		nil,         // ConnectorRegistry — wired in TASK-042
+	)
+
+	// Run blocks until SIGTERM/SIGINT.
+	runCtx, runCancel := context.WithCancel(context.Background())
 
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGTERM, syscall.SIGINT)
-	<-quit
+
+	errCh := make(chan error, 1)
+	go func() {
+		errCh <- w.Run(runCtx)
+	}()
+
+	select {
+	case sig := <-quit:
+		log.Printf("worker: received signal %s — shutting down", sig)
+		runCancel()
+		if err := <-errCh; err != nil {
+			log.Printf("worker: Run returned: %v", err)
+		}
+	case err := <-errCh:
+		runCancel()
+		if err != nil {
+			log.Fatalf("worker: Run failed: %v", err)
+		}
+	}
 
 	log.Printf("worker: stopped cleanly")
+}
+
+// generateWorkerID produces a unique worker identifier combining the hostname and a UUID suffix.
+// Falls back to a pure UUID when the hostname is unavailable.
+// The format "hostname-uuid[:8]" provides a human-readable prefix while still guaranteeing
+// uniqueness in environments where multiple workers run on the same host.
+func generateWorkerID() string {
+	hostname, err := os.Hostname()
+	if err != nil || hostname == "" {
+		return uuid.New().String()
+	}
+	suffix := uuid.New().String()[:8]
+	return fmt.Sprintf("%s-%s", hostname, suffix)
 }

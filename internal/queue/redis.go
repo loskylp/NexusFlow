@@ -251,11 +251,23 @@ func (q *RedisQueue) Claim(ctx context.Context, tag string, streamID string, new
 // --- HeartbeatStore ---
 
 // RecordHeartbeat implements HeartbeatStore.RecordHeartbeat.
-// Executes: ZADD workers:active <now_unix> <workerID>
+// Executes ZADD workers:active <now_unix> <workerID>, updating the score when the
+// member already exists. The Unix timestamp score allows the Monitor to find expired
+// workers via ZRANGEBYSCORE with a cutoff of (now - heartbeatTimeout).
+//
+// Postconditions:
+//   - On success: workers:active contains workerID with score = current Unix time.
+//
 // See: ADR-002, TASK-006
 func (q *RedisQueue) RecordHeartbeat(ctx context.Context, workerID string) error {
-	// TODO: Implement in TASK-006
-	panic("not implemented")
+	score := float64(time.Now().Unix())
+	if err := q.client.ZAdd(ctx, WorkersActiveKey, redis.Z{
+		Score:  score,
+		Member: workerID,
+	}).Err(); err != nil {
+		return fmt.Errorf("queue.RecordHeartbeat: ZADD %s %q: %w", WorkersActiveKey, workerID, err)
+	}
+	return nil
 }
 
 // ListExpired implements HeartbeatStore.ListExpired.
