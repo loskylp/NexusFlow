@@ -8,14 +8,14 @@
 
 ## Where We Are
 
-Designer complete (2026-03-26). Nexus approved all 7 screens. UX Specification, Design System, Design Proposal, and 7 high-fidelity screenshots produced. Stitch project 14608407312724823932 archived. AUDIT-006 (pipeline template sharing) remains CLOSED -- NOT APPLICABLE (no templates). Routing to the Planner for three-pass task decomposition (Critical profile).
+Planner complete (2026-03-26). Three-pass decomposition produced 41 tasks (38 active + 3 deferred). Task Plan v1, Release Map v1, and Dependency Graph v1 produced. Cycle 1 (MVP): 28 tasks covering 27 requirements + infrastructure. Cycle 2 (Demo + Production): 10 tasks covering DEMO-001 through DEMO-004 plus staging/production deployment. 3 tasks deferred below cut line (pipeline template sharing, rate limiting, priority queuing). No spikes required. Rolling confidence HIGH for both cycles. Awaiting Nexus approval at Plan Gate.
 
 ## Active Work
 
-**Agent in control:** Planner
-**Current task:** Three-pass task decomposition -- Pass 1: atomic tasks with acceptance criteria (no scoring); Pass 2: scoring and ordering; Pass 3: release map with MVP boundary
-**Waiting for:** Planner completion (Pass 1 of 3)
-**Next after completion:** Plan Gate (Nexus approval of task plan and release map)
+**Agent in control:** Orchestrator (presenting Plan Gate to Nexus)
+**Current task:** Plan Gate briefing
+**Waiting for:** Nexus decision (approve, amend, or reject task plan and release map)
+**Next after approval:** Invoke Scaffolder (28 Builder tasks in Cycle 1 >= 3, per Manifest rule), then DevOps Phase 1 (TASK-001) before any Builder task begins
 
 ---
 
@@ -39,7 +39,20 @@ No tasks defined yet. Design and planning phases must complete first.
 
 ## Pending Decisions
 
-None. Design complete. Planner dispatched. Next human gate: Plan Gate (after Planner completes three-pass decomposition).
+Plan Gate approval pending. Nexus must review task plan (41 tasks), release map (2 cycles + deferred), and dependency graph. Approval authorizes the full execution sequence: Scaffolder, DevOps Phase 1, then Builder tasks through Cycle 1.
+
+## Planner Completion Record
+
+**Date:** 2026-03-26
+**Artifacts produced:**
+- `process/planner/task-plan.md` -- Task Plan v1 (41 tasks: 28 Cycle 1, 10 Cycle 2, 3 deferred)
+- `process/planner/release-map.md` -- Release Map v1 (MVP v1.0.0 + Release 2 v1.1.0 + Tentative Release 3+)
+- `process/planner/dependency-graph.md` -- Dependency Graph v1 (Mermaid graphs for Cycle 1 and Cycle 2)
+
+**Three-pass execution:** Pass 1 (decomposition), Pass 2 (scoring/ordering), Pass 3 (release map) -- all completed in sequence.
+**No spikes required.** All architectural unknowns resolved in Architecture v2.
+**Walking skeleton critical path:** TASK-001 -> TASK-002/TASK-004 -> TASK-003/TASK-006 -> TASK-005 -> TASK-007 -> TASK-009
+**High-risk tasks (3):** TASK-007 (pipeline execution), TASK-009 (monitor/failover), TASK-015 (SSE infrastructure), TASK-018 (sink atomicity)
 
 ---
 
