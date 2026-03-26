@@ -8,14 +8,14 @@
 
 ## Where We Are
 
-Plan Gate v2.1 APPROVED (2026-03-26). Phase: EXECUTION. Layer 1 COMPLETE (TASK-001, TASK-002, TASK-004). Layer 2 in progress. TASK-003 BUILD complete, dispatching Verifier for initial verification.
+Plan Gate v2.1 APPROVED (2026-03-26). Phase: EXECUTION. Layer 1 COMPLETE (TASK-001, TASK-002, TASK-004). Layer 2 COMPLETE (TASK-003). Dispatching Builder for TASK-006 (Worker self-registration and heartbeat) -- last task in Layer 2.
 
 ## Active Work
 
-**Agent in control:** Verifier (dispatching 2026-03-26)
-**Current task:** TASK-003 -- Authentication and session management (VERIFY)
-**Waiting for:** Verifier to run acceptance criteria tests, integration tests, and produce verification report
-**Next after Verifier:** If PASS, dispatch Builder for TASK-006 (Worker self-registration and heartbeat). If FAIL, iterate Builder on TASK-003.
+**Agent in control:** Builder (dispatching 2026-03-26)
+**Current task:** TASK-006 -- Worker self-registration and heartbeat (BUILD)
+**Waiting for:** Builder to implement worker registration, heartbeat, and unit tests
+**Next after Builder:** Verifier (Pre-staging mode) for TASK-006 verification. Then Layer 3: TASK-005, TASK-013, TASK-015.
 
 ---
 
@@ -26,7 +26,7 @@ Plan Gate v2.1 APPROVED (2026-03-26). Phase: EXECUTION. Layer 1 COMPLETE (TASK-0
 | TASK-001: DevOps Phase 1 -- CI pipeline and dev environment | COMPLETE | 1 | PASS (52/52 acceptance, 16/16 integration) |
 | TASK-002: Database schema and migration foundation | COMPLETE | 1 | PASS (95/95 acceptance, 7/7 integration) |
 | TASK-004: Redis Streams queue infrastructure | COMPLETE | 1 | PASS (16/16 acceptance, p95=0.12ms) |
-| TASK-003: Authentication and session management | BUILT -- PENDING VERIFICATION | -- | -- |
+| TASK-003: Authentication and session management | COMPLETE | 1 | PASS (24/24 acceptance, 55 unit tests) |
 | TASK-006: Worker self-registration and heartbeat | PENDING | -- | -- |
 | TASK-005: Task submission via REST API | PENDING | -- | -- |
 | TASK-013: Pipeline CRUD via REST API | PENDING | -- | -- |
@@ -39,13 +39,14 @@ Plan Gate v2.1 APPROVED (2026-03-26). Phase: EXECUTION. Layer 1 COMPLETE (TASK-0
 | TASK-029: DevOps Phase 2 -- staging environment and CD pipeline | PENDING | -- | -- |
 
 **Cycle summary:**
-- Tasks complete: 3 of 14 (TASK-003 built, pending verification)
-- Requirements satisfied this cycle: 0 of target (TASK-001, TASK-002, and TASK-004 were infrastructure tasks, not direct requirement deliverables)
+- Tasks complete: 4 of 14
+- Requirements satisfied this cycle: REQ-019 (TASK-003 delivers auth -- first direct requirement deliverable)
 - Sentinel: Not invoked
 - Scaffolder: COMPLETE (2026-03-26, 57 files, manifest at process/scaffolder/scaffold-manifest.md)
 - TASK-001: COMPLETE (2026-03-26) -- Verifier PASS, CI green. Note: staticcheck U1000 errors on 30 scaffold stubs required a fix commit (1687c64, added lint:ignore directives) before CI passed on second run.
 - TASK-002: COMPLETE (2026-03-26) -- Verifier PASS (95/95 acceptance, 7/7 integration), CI green (run 23606734063). OBS-003 resolved (health endpoint 200 with postgres). 4 non-blocking observations recorded.
 - TASK-004: COMPLETE (2026-03-26) -- Verifier PASS (16/16 acceptance, p95=0.12ms), CI green (run 23613717030, commit 9661a5f). Deviations: EnqueueDeadLetter, ReadTasks, Acknowledge implemented here (scaffold had them in TASK-009/TASK-007); ReadTasks uses 200ms polling loop for context cancellation responsiveness. 3 non-blocking observations recorded (OBS-010 through OBS-012).
+- TASK-003: COMPLETE (2026-03-26) -- Verifier PASS (24/24 acceptance, 55 unit tests), CI green (commit d78ad65). Deviations: login uses `username` not `email` (consistent with DB schema); Session struct lacks Token field (token is Redis key per ADR-006); conditional auth middleware (nil-safe pattern, temporary). 4 non-blocking observations recorded (OBS-013 through OBS-016).
 
 ---
 
@@ -104,8 +105,8 @@ NONE -- not currently in an iterate loop.
 | Auditor passes -- requirements | 2 (audit v2: PASS WITH DEFERRALS; audit v4: PASS WITH DEFERRALS) |
 | Auditor passes -- architecture | 2 (architecture-audit-v1: PASS; architecture-audit-v2: PASS) |
 | Gate rejections this cycle | 0 |
-| Tasks completed | 3 of 14 planned |
-| Average iterations to PASS | 1.0 (3 tasks) |
+| Tasks completed | 4 of 14 planned |
+| Average iterations to PASS | 1.0 (4 tasks) |
 | Tasks that hit max iterations | 0 |
 | Escalations to Nexus | 0 |
 | Backward cascade triggered | No |
@@ -128,6 +129,10 @@ NONE -- not currently in an iterate loop.
 | OBS-010 | TASK-004 | RedisQueue.Close() not wired -- no graceful shutdown caller yet | Open -- pending TASK-003 or later wiring |
 | OBS-011 | TASK-004 | Malformed stream entries silently skipped; pending list may accumulate stale entries | Open -- awareness for future DLQ enhancement |
 | OBS-012 | TASK-004 | ReadTasks batch size fixed at 10 -- configurable batch size deferred | Open -- awareness for future refactor |
+| OBS-013 | TASK-003 | Conditional auth middleware (`if s.sessions != nil`) -- protected routes accessible without auth when sessions is nil; temporary pattern, remove at end of Cycle 1 | Open -- hardening at cycle end |
+| OBS-014 | TASK-003 | `seedAdminIfEmpty` uses `List()` instead of `COUNT(*)` -- acceptable at single-org scale | Open -- awareness for future cleanup |
+| OBS-015 | TASK-003 | AC-5 system-level 403 test gap -- RequireRole 403 path exercised only at unit level; first admin-only route (TASK-013 or TASK-020) must include system-level 403 test | Open -- pending TASK-013 or TASK-020 |
+| OBS-016 | TASK-003 | Stale Docker container caused initial test failures -- Builder handoff should include rebuild note | Open -- process improvement |
 
 ---
 
