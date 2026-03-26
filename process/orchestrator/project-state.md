@@ -8,14 +8,14 @@
 
 ## Where We Are
 
-Plan Gate v2.1 APPROVED (2026-03-26). Phase: EXECUTION. Layer 1 COMPLETE (TASK-001, TASK-002, TASK-004). Layer 2 COMPLETE (TASK-003, TASK-006). Layer 3 in progress: TASK-005 BUILT, now PENDING VERIFICATION. TASK-013 and TASK-015 have dependencies satisfied but await TASK-005 verification before dispatch. Routing Verifier for TASK-005 initial verification (Pre-staging mode).
+Plan Gate v2.1 APPROVED (2026-03-26). Phase: EXECUTION. Layer 1 COMPLETE (TASK-001, TASK-002, TASK-004). Layer 2 COMPLETE (TASK-003, TASK-006). Layer 3 in progress: TASK-005 FAILED VERIFICATION (iteration 1) -- root cause identified as a wiring omission in `cmd/api/main.go` (three nil arguments to `api.NewServer`) plus auth middleware returning plain text 401 instead of JSON. Routing Builder for iteration 1 fix. TASK-013 and TASK-015 await TASK-005 completion.
 
 ## Active Work
 
-**Agent in control:** Verifier (dispatching 2026-03-26)
-**Current task:** TASK-005 -- Task submission via REST API (VERIFICATION)
-**Waiting for:** Verifier to run initial verification against 6 acceptance criteria
-**Next after Verifier:** If PASS, dispatch Builder for TASK-013 (Pipeline CRUD via REST API). If FAIL, iterate loop with Builder.
+**Agent in control:** Builder (dispatching 2026-03-26)
+**Current task:** TASK-005 -- Task submission via REST API (ITERATION 1 FIX)
+**Waiting for:** Builder to fix wiring in `cmd/api/main.go` and auth middleware JSON response
+**Next after Builder:** Route to Verifier for iterate-loop re-verification. If PASS, dispatch Builder for TASK-013. If FAIL, iterate loop again (max per Manifest).
 
 ---
 
@@ -28,7 +28,7 @@ Plan Gate v2.1 APPROVED (2026-03-26). Phase: EXECUTION. Layer 1 COMPLETE (TASK-0
 | TASK-004: Redis Streams queue infrastructure | COMPLETE | 1 | PASS (16/16 acceptance, p95=0.12ms) |
 | TASK-003: Authentication and session management | COMPLETE | 1 | PASS (24/24 acceptance, 55 unit tests) |
 | TASK-006: Worker self-registration and heartbeat | COMPLETE | 1 | PASS (14/14 acceptance, 35 unit tests) |
-| TASK-005: Task submission via REST API | BUILT -- PENDING VERIFICATION | 0 | -- |
+| TASK-005: Task submission via REST API | BUILT -- FAILED VERIFICATION (iteration 1) | 1 | FAIL (wiring omission + plain text 401) |
 | TASK-013: Pipeline CRUD via REST API | PENDING | -- | -- |
 | TASK-007: Tag-based task assignment and pipeline execution | PENDING | -- | -- |
 | TASK-042: Demo connectors -- demo source, simulated worker, demo sink | PENDING | -- | -- |
@@ -95,7 +95,11 @@ Note: Sequential execution model (one Builder task at a time). The dependency la
 
 ## Iterate Loop State
 
-NONE -- not currently in an iterate loop.
+**Task:** TASK-005 -- Task submission via REST API
+**Iteration:** 1 of max (per Manifest)
+**Failure count (iteration 1):** 2 issues (wiring omission: 3 nil args in `cmd/api/main.go`; auth middleware plain text 401)
+**Trend:** First iteration -- no trend yet
+**Convergence concern:** No -- root cause is a single wiring omission with a clear fix
 
 ---
 
