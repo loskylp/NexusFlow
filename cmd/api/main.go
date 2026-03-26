@@ -4,12 +4,12 @@
 //
 // Service startup order:
 //  1. Load config (config.Load)
-//  2. Open PostgreSQL pool (db.New — implemented in TASK-002)
+//  2. Open PostgreSQL pool and run migrations (db.New — TASK-002)
 //  3. Connect Redis client (go-redis)
-//  4. Build API server (api.NewServer) with nil repositories until TASK-002 is complete
+//  4. Build API server (api.NewServer) with repository implementations wired from TASK-002
 //  5. Start HTTP server with graceful shutdown on SIGTERM/SIGINT
 //
-// See: ADR-004, ADR-005, ADR-006, TASK-001, TASK-003
+// See: ADR-004, ADR-005, ADR-006, TASK-001, TASK-002, TASK-003
 package main
 
 import (
@@ -24,6 +24,7 @@ import (
 
 	"github.com/nxlabs/nexusflow/api"
 	"github.com/nxlabs/nexusflow/internal/config"
+	"github.com/nxlabs/nexusflow/internal/db"
 	"github.com/redis/go-redis/v9"
 )
 
@@ -53,17 +54,26 @@ func main() {
 		log.Printf("api: Redis connected at %s", cfg.RedisURL)
 	}
 
-	// PostgreSQL pool and repository implementations are wired in TASK-002.
-	// Until then, pass nil so the server starts; /api/health reports "error" for postgres
-	// which is expected and acceptable in a TASK-001-only deployment.
+	// Open PostgreSQL pool and run all pending schema migrations (TASK-002).
+	startCtx, startCancel := context.WithTimeout(context.Background(), 30*time.Second)
+	pool, err := db.New(startCtx, cfg.DatabaseURL)
+	startCancel()
+	if err != nil {
+		log.Fatalf("api: cannot connect to PostgreSQL: %v", err)
+	}
+	defer pool.Close()
+	log.Printf("api: PostgreSQL connected and migrations applied")
+
+	// Repository implementations are wired in later tasks (TASK-003, TASK-005, etc.).
+	// Pass nil for repositories not yet implemented; handler stubs return 500 until implemented.
 	srv := api.NewServer(
 		cfg,
-		nil, // pool — wired in TASK-002
+		pool,
 		redisClient,
-		nil, // users — wired in TASK-002
-		nil, // tasks — wired in TASK-002
-		nil, // pipelines — wired in TASK-002
-		nil, // workers — wired in TASK-002
+		nil, // users — wired in TASK-003
+		nil, // tasks — wired in TASK-005
+		nil, // pipelines — wired in TASK-013
+		nil, // workers — wired in TASK-006
 		nil, // producer — wired in TASK-004
 		nil, // sessions — wired in TASK-003
 		nil, // broker — wired in TASK-015
