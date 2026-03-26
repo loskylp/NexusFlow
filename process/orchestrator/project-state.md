@@ -8,13 +8,13 @@
 
 ## Where We Are
 
-All four blocking audit findings (AUDIT-001 through AUDIT-004) have been resolved. Manifest v2 produced with Designer re-activated. Requirements v3 produced with pipeline CRUD gap filled, auth mechanism specified, and REQ-003/NFR-001 duplication clarified. Auditor dispatched for re-validation of all resolved findings against Requirements v3.
+Ingestion complete. Auditor re-validated Requirements v3 against all four blocking findings from audit v1 -- result: PASS WITH DEFERRALS. Zero blocking issues. Zero regressions. Three non-blocking deferrals carry forward (AUDIT-005: log retention, AUDIT-006: pipeline sharing, AUDIT-007: schema mapping validation timing). The Requirements Gate briefing has been presented to the Nexus for approval.
 
 ## Active Work
 
-**Agent in control:** Auditor
-**Current task:** Re-audit of Requirements v3 -- validate that AUDIT-001 (Manifest contradiction), AUDIT-002 (pipeline CRUD gap), AUDIT-003 (auth mechanism ambiguity), and AUDIT-004 (REQ-003/NFR-001 duplication) are resolved. Regression check: confirm previously-passing requirements still pass.
-**Waiting for:** Auditor to produce audit report v2 with PASS or ISSUES FOUND.
+**Agent in control:** Orchestrator (awaiting Nexus decision)
+**Current task:** Requirements Gate -- Nexus reviews and approves Requirements v3 (27 requirements: 23 functional, 4 non-functional).
+**Waiting for:** Nexus approval at the Requirements Gate to proceed to Architecture phase.
 
 ---
 
@@ -28,7 +28,7 @@ No tasks defined yet. Ingestion and decomposition phases must complete first.
 
 | Gate | Date | Decision | Notes |
 |---|---|---|---|
-| Requirements Gate | -- | -- | Audit v1 returned ISSUES FOUND; 4 blocking resolved; Auditor re-validating |
+| Requirements Gate | 2026-03-25 | PENDING | Audit v2: PASS WITH DEFERRALS; briefing presented to Nexus |
 | Architecture Gate | -- | -- | |
 | Plan Gate | -- | -- | |
 | Demo Sign-off -- Cycle 1 | -- | -- | |
@@ -52,7 +52,7 @@ NONE -- not currently in an iterate loop.
 
 | Metric | Value |
 |---|---|
-| Auditor passes -- requirements | 0 (first audit: ISSUES FOUND; re-audit in progress) |
+| Auditor passes -- requirements | 1 (audit v2: PASS WITH DEFERRALS) |
 | Auditor passes -- architecture | 0 |
 | Gate rejections this cycle | 0 |
 | Tasks completed | 0 of 0 planned |
@@ -65,8 +65,8 @@ NONE -- not currently in an iterate loop.
 
 ## Standing Routing Rules (Cycle 0)
 
-- After Auditor produces audit report v2 with PASS: prepare Nexus Check briefing for Requirements Gate.
-- After Auditor produces audit report v2 with ISSUES FOUND: route for resolution based on findings.
+- After Nexus approves Requirements Gate: route to Architect for system design.
+- After Nexus requests changes at Requirements Gate: route to Analyst for revision, then Auditor for re-validation.
 
 ---
 
