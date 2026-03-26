@@ -8,6 +8,7 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/hex"
+	"encoding/json"
 	"net/http"
 	"strings"
 
@@ -108,19 +109,19 @@ func GenerateToken() (string, error) {
 //
 // Postconditions:
 //   - On valid token: next handler is called with Session in context.
-//   - On missing, invalid, or expired token: 401 is written; next handler is not called.
+//   - On missing, invalid, or expired token: 401 JSON {"error":"unauthorized"} is written; next handler is not called.
 func Middleware(sessions queue.SessionStore) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			token := extractToken(r)
 			if token == "" {
-				http.Error(w, "unauthorized", http.StatusUnauthorized)
+				writeJSONUnauthorized(w)
 				return
 			}
 
 			sess, err := sessions.Get(r.Context(), token)
 			if err != nil || sess == nil {
-				http.Error(w, "unauthorized", http.StatusUnauthorized)
+				writeJSONUnauthorized(w)
 				return
 			}
 
@@ -177,6 +178,15 @@ var ErrInvalidCredentials = &authError{"invalid credentials"}
 type authError struct{ msg string }
 
 func (e *authError) Error() string { return e.msg }
+
+// writeJSONUnauthorized writes a 401 Unauthorized response with a JSON body.
+// Used by Middleware so API clients receive a consistent JSON error envelope
+// rather than the plain-text body produced by http.Error.
+func writeJSONUnauthorized(w http.ResponseWriter) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusUnauthorized)
+	_ = json.NewEncoder(w).Encode(map[string]string{"error": "unauthorized"})
+}
 
 // extractToken reads the session token from the request.
 // It prefers the Authorization: Bearer header; falls back to the session cookie.

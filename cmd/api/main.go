@@ -8,8 +8,9 @@
 //  3. Connect Redis client (go-redis)
 //  4. Construct SessionStore and UserRepository (TASK-003)
 //  5. Seed admin user if no users exist (TASK-003)
-//  6. Build API server (api.NewServer) with all dependencies wired
-//  7. Start HTTP server with graceful shutdown on SIGTERM/SIGINT
+//  6. Construct TaskRepository, PipelineRepository, and RedisQueue Producer (TASK-005)
+//  7. Build API server (api.NewServer) with all dependencies wired
+//  8. Start HTTP server with graceful shutdown on SIGTERM/SIGINT
 //
 // See: ADR-004, ADR-005, ADR-006, TASK-001, TASK-002, TASK-003
 package main
@@ -74,6 +75,11 @@ func main() {
 	userRepo := db.NewPgUserRepository(pool)
 	sessionStore := queue.NewRedisSessionStore(redisClient, 24*time.Hour)
 
+	// Wire TASK-005 dependencies: TaskRepository, PipelineRepository, and queue Producer.
+	taskRepo := db.NewPgTaskRepository(pool)
+	pipelineRepo := db.NewPgPipelineRepository(pool)
+	q := queue.NewRedisQueue(redisClient)
+
 	// Seed the initial admin user if no users exist (TASK-003, AC-7).
 	seedCtx, seedCancel := context.WithTimeout(context.Background(), 10*time.Second)
 	if err := seedAdminIfEmpty(seedCtx, userRepo); err != nil {
@@ -86,10 +92,10 @@ func main() {
 		pool,
 		redisClient,
 		userRepo,
-		nil, // tasks — wired in TASK-005
-		nil, // pipelines — wired in TASK-013
+		taskRepo,
+		pipelineRepo,
 		nil, // workers — wired in TASK-006
-		nil, // producer — wired in TASK-004
+		q,
 		sessionStore,
 		nil, // broker — wired in TASK-015
 	)
