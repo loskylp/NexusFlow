@@ -8,14 +8,14 @@
 
 ## Where We Are
 
-Plan Gate v2.1 APPROVED (2026-03-26). Phase: EXECUTION. Layer 1 COMPLETE (TASK-001, TASK-002, TASK-004). Layer 2 COMPLETE (TASK-003, TASK-006). Layer 3: TASK-005 COMPLETE (iteration 2 PASS), TASK-013 and TASK-015 now unblocked. Dispatching Builder for TASK-013 (Pipeline CRUD via REST API) -- on walking skeleton critical path, unblocks TASK-007 and TASK-042.
+Plan Gate v2.1 APPROVED (2026-03-26). Phase: EXECUTION. Layer 1 COMPLETE (TASK-001, TASK-002, TASK-004). Layer 2 COMPLETE (TASK-003, TASK-006). Layer 3: TASK-005 COMPLETE (iteration 2 PASS), TASK-013 BUILT -- PENDING VERIFICATION. TASK-015 unblocked but waiting. Dispatching Verifier for TASK-013 (Pipeline CRUD via REST API) -- initial verification, Pre-staging mode.
 
 ## Active Work
 
-**Agent in control:** Builder (dispatching 2026-03-26)
-**Current task:** TASK-013 -- Pipeline CRUD via REST API
-**Waiting for:** Builder to implement pipeline CRUD endpoints (POST/GET/PUT/DELETE /api/pipelines)
-**Next after Builder:** Route to Verifier for initial verification (Pre-staging mode). If PASS, dispatch Builder for TASK-015 (SSE event infrastructure). If FAIL, iterate loop.
+**Agent in control:** Verifier (dispatching 2026-03-26)
+**Current task:** TASK-013 -- Pipeline CRUD via REST API (initial verification)
+**Waiting for:** Verifier to verify TASK-013 against 7 acceptance criteria (Pre-staging mode)
+**Next after Verifier:** If PASS, dispatch Builder for TASK-015 (SSE event infrastructure). If FAIL, iterate loop (Builder iteration 2).
 
 ---
 
@@ -29,7 +29,7 @@ Plan Gate v2.1 APPROVED (2026-03-26). Phase: EXECUTION. Layer 1 COMPLETE (TASK-0
 | TASK-003: Authentication and session management | COMPLETE | 1 | PASS (24/24 acceptance, 55 unit tests) |
 | TASK-006: Worker self-registration and heartbeat | COMPLETE | 1 | PASS (14/14 acceptance, 35 unit tests) |
 | TASK-005: Task submission via REST API | COMPLETE | 2 | PASS (iteration 2) |
-| TASK-013: Pipeline CRUD via REST API | IN PROGRESS | -- | -- |
+| TASK-013: Pipeline CRUD via REST API | BUILT -- PENDING VERIFICATION | 1 (build) | Verifier dispatched |
 | TASK-007: Tag-based task assignment and pipeline execution | PENDING | -- | -- |
 | TASK-042: Demo connectors -- demo source, simulated worker, demo sink | PENDING | -- | -- |
 | TASK-019: React app shell with sidebar navigation and auth flow | PENDING | -- | -- |
@@ -96,7 +96,7 @@ Note: Sequential execution model (one Builder task at a time). The dependency la
 
 ## Iterate Loop State
 
-No active iterate loop. TASK-005 converged on iteration 2 (PASS). TASK-013 starting fresh.
+No active iterate loop. TASK-005 converged on iteration 2 (PASS). TASK-013 built, dispatching Verifier for initial verification.
 
 ---
 
