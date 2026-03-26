@@ -8,14 +8,14 @@
 
 ## Where We Are
 
-Plan Gate v2.1 APPROVED (2026-03-26). Phase: EXECUTION. Layer 1 COMPLETE (TASK-001, TASK-002, TASK-004). Layer 2 COMPLETE (TASK-003, TASK-006). TASK-006 BUILT -- dispatching Verifier for initial verification. After TASK-006 verification: Layer 3 (TASK-005, TASK-013, TASK-015).
+Plan Gate v2.1 APPROVED (2026-03-26). Phase: EXECUTION. Layer 1 COMPLETE (TASK-001, TASK-002, TASK-004). Layer 2 COMPLETE (TASK-003, TASK-006). Layer 3 unlocked: TASK-005, TASK-013, TASK-015 all have dependencies satisfied. Dispatching Builder for TASK-005 (Task submission via REST API) -- walking skeleton critical path, primary system entry point. TASK-013 and TASK-015 follow.
 
 ## Active Work
 
-**Agent in control:** Verifier (dispatching 2026-03-26)
-**Current task:** TASK-006 -- Worker self-registration and heartbeat (VERIFICATION)
-**Waiting for:** Verifier to verify TASK-006 against 4 acceptance criteria
-**Next after Verifier:** Layer 3 -- TASK-005 (Task submission via REST API), TASK-013 (Pipeline CRUD via REST API), TASK-015 (SSE event infrastructure)
+**Agent in control:** Builder (dispatching 2026-03-26)
+**Current task:** TASK-005 -- Task submission via REST API (BUILD)
+**Waiting for:** Builder to implement TASK-005 (6 acceptance criteria)
+**Next after Builder:** Verifier (TASK-005 initial verification), then TASK-013 (Pipeline CRUD via REST API)
 
 ---
 
@@ -27,7 +27,7 @@ Plan Gate v2.1 APPROVED (2026-03-26). Phase: EXECUTION. Layer 1 COMPLETE (TASK-0
 | TASK-002: Database schema and migration foundation | COMPLETE | 1 | PASS (95/95 acceptance, 7/7 integration) |
 | TASK-004: Redis Streams queue infrastructure | COMPLETE | 1 | PASS (16/16 acceptance, p95=0.12ms) |
 | TASK-003: Authentication and session management | COMPLETE | 1 | PASS (24/24 acceptance, 55 unit tests) |
-| TASK-006: Worker self-registration and heartbeat | BUILT -- PENDING VERIFICATION | -- | -- |
+| TASK-006: Worker self-registration and heartbeat | COMPLETE | 1 | PASS (14/14 acceptance, 35 unit tests) |
 | TASK-005: Task submission via REST API | PENDING | -- | -- |
 | TASK-013: Pipeline CRUD via REST API | PENDING | -- | -- |
 | TASK-007: Tag-based task assignment and pipeline execution | PENDING | -- | -- |
@@ -39,7 +39,7 @@ Plan Gate v2.1 APPROVED (2026-03-26). Phase: EXECUTION. Layer 1 COMPLETE (TASK-0
 | TASK-029: DevOps Phase 2 -- staging environment and CD pipeline | PENDING | -- | -- |
 
 **Cycle summary:**
-- Tasks complete: 4 of 14
+- Tasks complete: 5 of 14
 - Requirements satisfied this cycle: REQ-019 (TASK-003 delivers auth -- first direct requirement deliverable)
 - Sentinel: Not invoked
 - Scaffolder: COMPLETE (2026-03-26, 57 files, manifest at process/scaffolder/scaffold-manifest.md)
@@ -47,6 +47,7 @@ Plan Gate v2.1 APPROVED (2026-03-26). Phase: EXECUTION. Layer 1 COMPLETE (TASK-0
 - TASK-002: COMPLETE (2026-03-26) -- Verifier PASS (95/95 acceptance, 7/7 integration), CI green (run 23606734063). OBS-003 resolved (health endpoint 200 with postgres). 4 non-blocking observations recorded.
 - TASK-004: COMPLETE (2026-03-26) -- Verifier PASS (16/16 acceptance, p95=0.12ms), CI green (run 23613717030, commit 9661a5f). Deviations: EnqueueDeadLetter, ReadTasks, Acknowledge implemented here (scaffold had them in TASK-009/TASK-007); ReadTasks uses 200ms polling loop for context cancellation responsiveness. 3 non-blocking observations recorded (OBS-010 through OBS-012).
 - TASK-003: COMPLETE (2026-03-26) -- Verifier PASS (24/24 acceptance, 55 unit tests), CI green (commit d78ad65). Deviations: login uses `username` not `email` (consistent with DB schema); Session struct lacks Token field (token is Redis key per ADR-006); conditional auth middleware (nil-safe pattern, temporary). 4 non-blocking observations recorded (OBS-013 through OBS-016).
+- TASK-006: COMPLETE (2026-03-26) -- Verifier PASS (14/14 acceptance, 35 unit tests), CI green. Worker registration with tags, heartbeat every 5s, concurrent registration, graceful shutdown. 3 non-blocking observations recorded (OBS-016 through OBS-018).
 
 ---
 
@@ -105,8 +106,8 @@ NONE -- not currently in an iterate loop.
 | Auditor passes -- requirements | 2 (audit v2: PASS WITH DEFERRALS; audit v4: PASS WITH DEFERRALS) |
 | Auditor passes -- architecture | 2 (architecture-audit-v1: PASS; architecture-audit-v2: PASS) |
 | Gate rejections this cycle | 0 |
-| Tasks completed | 4 of 14 planned |
-| Average iterations to PASS | 1.0 (4 tasks) |
+| Tasks completed | 5 of 14 planned |
+| Average iterations to PASS | 1.0 (5 tasks) |
 | Tasks that hit max iterations | 0 |
 | Escalations to Nexus | 0 |
 | Backward cascade triggered | No |
@@ -133,6 +134,9 @@ NONE -- not currently in an iterate loop.
 | OBS-014 | TASK-003 | `seedAdminIfEmpty` uses `List()` instead of `COUNT(*)` -- acceptable at single-org scale | Open -- awareness for future cleanup |
 | OBS-015 | TASK-003 | AC-5 system-level 403 test gap -- RequireRole 403 path exercised only at unit level; first admin-only route (TASK-013 or TASK-020) must include system-level 403 test | Open -- pending TASK-013 or TASK-020 |
 | OBS-016 | TASK-003 | Stale Docker container caused initial test failures -- Builder handoff should include rebuild note | Open -- process improvement |
+| OBS-016 | TASK-006 | `markOffline` uses `WorkerStatusDown` ("down") vs plain English "offline" -- ADR-002 defines "down"; code is correct; terminology note for docs | Resolved (no action -- by design) |
+| OBS-017 | TASK-006 | `runConsumptionLoop` blocks on `ctx.Done()` (TASK-007 stub); `InitGroups` creates Redis stream structures before tasks exist -- benign, idempotent via BUSYGROUP | Open -- awareness for TASK-007 |
+| OBS-018 | TASK-006 | Worker Dockerfile binary built with `golang:1.23-alpine` (musl) runs on `alpine:3.20` -- if CI changes to glibc builder, needs `CGO_ENABLED=0` or runtime image change | Open -- awareness for CI changes |
 
 ---
 
