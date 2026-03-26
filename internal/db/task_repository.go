@@ -57,6 +57,11 @@ func (r *PgTaskRepository) Create(ctx context.Context, task *models.Task) (*mode
 		return nil, err
 	}
 
+	var pipelineID uuid.NullUUID
+	if task.PipelineID != nil {
+		pipelineID = uuid.NullUUID{UUID: *task.PipelineID, Valid: true}
+	}
+
 	var chainID uuid.NullUUID
 	if task.ChainID != nil {
 		chainID = uuid.NullUUID{UUID: *task.ChainID, Valid: true}
@@ -70,7 +75,7 @@ func (r *PgTaskRepository) Create(ctx context.Context, task *models.Task) (*mode
 	now := time.Now().UTC()
 	row, err := r.queries.CreateTask(ctx, sqlcdb.CreateTaskParams{
 		ID:          task.ID,
-		PipelineID:  task.PipelineID,
+		PipelineID:  pipelineID,
 		ChainID:     chainID,
 		UserID:      task.UserID,
 		Status:      string(task.Status),
@@ -226,6 +231,8 @@ func (r *PgTaskRepository) GetStateLog(ctx context.Context, taskID uuid.UUID) ([
 
 // toModelTask converts a sqlcdb.Task (generated) to a models.Task (domain).
 // Unmarshals the JSON-encoded retry_config and input fields.
+// PipelineID is mapped from uuid.NullUUID to *uuid.UUID: nil when the
+// referenced pipeline has been deleted (ON DELETE SET NULL).
 func toModelTask(row sqlcdb.Task) (*models.Task, error) {
 	var retryConfig models.RetryConfig
 	if err := json.Unmarshal(row.RetryConfig, &retryConfig); err != nil {
@@ -236,6 +243,12 @@ func toModelTask(row sqlcdb.Task) (*models.Task, error) {
 		return nil, err
 	}
 
+	var pipelineID *uuid.UUID
+	if row.PipelineID.Valid {
+		id := row.PipelineID.UUID
+		pipelineID = &id
+	}
+
 	var chainID *uuid.UUID
 	if row.ChainID.Valid {
 		id := row.ChainID.UUID
@@ -244,7 +257,7 @@ func toModelTask(row sqlcdb.Task) (*models.Task, error) {
 
 	return &models.Task{
 		ID:          row.ID,
-		PipelineID:  row.PipelineID,
+		PipelineID:  pipelineID,
 		ChainID:     chainID,
 		UserID:      row.UserID,
 		Status:      models.TaskStatus(row.Status),

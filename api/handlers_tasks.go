@@ -125,7 +125,7 @@ func (h *TaskHandler) Submit(w http.ResponseWriter, r *http.Request) {
 
 	task := &models.Task{
 		ID:          taskID,
-		PipelineID:  pipelineID,
+		PipelineID:  &pipelineID,
 		UserID:      sess.UserID,
 		Status:      models.TaskStatusSubmitted,
 		RetryConfig: retryConfig,

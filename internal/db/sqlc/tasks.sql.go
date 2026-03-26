@@ -34,7 +34,7 @@ RETURNING id, pipeline_id, chain_id, user_id, status, retry_config, retry_count,
 
 type CreateTaskParams struct {
 	ID          uuid.UUID          `db:"id" json:"id"`
-	PipelineID  uuid.UUID          `db:"pipeline_id" json:"pipeline_id"`
+	PipelineID  uuid.NullUUID      `db:"pipeline_id" json:"pipeline_id"`
 	ChainID     uuid.NullUUID      `db:"chain_id" json:"chain_id"`
 	UserID      uuid.UUID          `db:"user_id" json:"user_id"`
 	Status      string             `db:"status" json:"status"`

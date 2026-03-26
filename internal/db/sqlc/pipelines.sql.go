@@ -163,7 +163,7 @@ SELECT EXISTS (
 `
 
 // Returns TRUE if any non-terminal task references this pipeline.
-func (q *Queries) PipelineHasActiveTasks(ctx context.Context, pipelineID uuid.UUID) (bool, error) {
+func (q *Queries) PipelineHasActiveTasks(ctx context.Context, pipelineID uuid.NullUUID) (bool, error) {
 	row := q.db.QueryRow(ctx, pipelineHasActiveTasks, pipelineID)
 	var has_active_tasks bool
 	err := row.Scan(&has_active_tasks)

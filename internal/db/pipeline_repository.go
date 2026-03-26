@@ -175,7 +175,7 @@ func (r *PgPipelineRepository) Update(ctx context.Context, pipeline *models.Pipe
 //   - On success: pipeline is deleted; all references from tasks remain (tasks are not deleted).
 //   - On ErrActiveTasks: pipeline is unchanged; caller maps to 409.
 func (r *PgPipelineRepository) Delete(ctx context.Context, id uuid.UUID) error {
-	hasActive, err := r.queries.PipelineHasActiveTasks(ctx, id)
+	hasActive, err := r.queries.PipelineHasActiveTasks(ctx, uuid.NullUUID{UUID: id, Valid: true})
 	if err != nil {
 		return err
 	}
@@ -189,7 +189,7 @@ func (r *PgPipelineRepository) Delete(ctx context.Context, id uuid.UUID) error {
 // Returns true if any non-terminal Task references this pipeline.
 // Used by Delete to enforce the 409 guard before attempting deletion.
 func (r *PgPipelineRepository) HasActiveTasks(ctx context.Context, pipelineID uuid.UUID) (bool, error) {
-	return r.queries.PipelineHasActiveTasks(ctx, pipelineID)
+	return r.queries.PipelineHasActiveTasks(ctx, uuid.NullUUID{UUID: pipelineID, Valid: true})
 }
 
 // toModelPipeline converts a sqlcdb.Pipeline (generated) to a models.Pipeline (domain).

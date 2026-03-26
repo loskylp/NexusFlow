@@ -159,10 +159,13 @@ type PipelineChain struct {
 // A Task references a Pipeline and carries input parameters. It transitions through
 // the lifecycle states defined by TaskStatus.
 // ExecutionID encodes task ID + attempt number for Sink idempotency (ADR-003).
+// PipelineID is nullable: when the referenced pipeline is deleted, PipelineID
+// is set to nil by the database (ON DELETE SET NULL). Historical tasks are
+// preserved with a nil PipelineID rather than being cascade-deleted.
 // See: process/analyst/brief.md (Task), REQ-001, REQ-009, ADR-003
 type Task struct {
 	ID          uuid.UUID    `json:"id"          db:"id"`
-	PipelineID  uuid.UUID    `json:"pipelineId"  db:"pipeline_id"`
+	PipelineID  *uuid.UUID   `json:"pipelineId"  db:"pipeline_id"`
 	ChainID     *uuid.UUID   `json:"chainId"     db:"chain_id"`
 	UserID      uuid.UUID    `json:"userId"      db:"user_id"`
 	Status      TaskStatus   `json:"status"      db:"status"`
