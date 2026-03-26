@@ -10,4 +10,4 @@
 **From:** Auditor (AUDIT-003) | **Type:** Ambiguous requirement -- Nexus decision required
 **Description:** REQ-019 and REQ-020 specify authentication and user management but do not specify the authentication mechanism. The Brief's Open Context Question 5 asks whether NexusFlow manages its own credentials or integrates with an external auth system. At Blueprint weight, this ambiguity blocks testability -- the Verifier cannot write auth tests without knowing the mechanism.
 **Decision:** Surfaced to Nexus. Question: Does NexusFlow manage its own user credentials (username/password with sessions or tokens), or will it integrate with an external authentication system (OAuth2, SSO, LDAP)?
-**Outcome:** Pending Nexus response.
+**Outcome:** Nexus decided: NexusFlow manages its own credentials (username/password with session tokens). No external auth. Analyst revised REQ-019 and REQ-020 in Requirements v3. Resolved.

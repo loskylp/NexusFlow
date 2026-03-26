@@ -1,5 +1,5 @@
 # Project State
-**Manifest version:** v1 (v2 pending -- Methodologist dispatched) | **Profile:** Critical
+**Manifest version:** v2 | **Profile:** Critical
 **Current phase:** INGESTION
 **Current cycle:** 0 (pre-execution)
 **Last updated:** 2026-03-25
@@ -8,13 +8,13 @@
 
 ## Where We Are
 
-Auditor completed requirements audit with ISSUES FOUND (4 blocking). Nexus resolved AUDIT-001 (re-activate Designer). Methodologist dispatched to update Manifest. Analyst dispatched to resolve AUDIT-002 (pipeline CRUD gap) and AUDIT-004 (REQ-003/NFR-001 duplication). AUDIT-003 (auth mechanism) surfaced to Nexus -- awaiting decision before Analyst can revise REQ-019/REQ-020.
+All four blocking audit findings (AUDIT-001 through AUDIT-004) have been resolved. Manifest v2 produced with Designer re-activated. Requirements v3 produced with pipeline CRUD gap filled, auth mechanism specified, and REQ-003/NFR-001 duplication clarified. Auditor dispatched for re-validation of all resolved findings against Requirements v3.
 
 ## Active Work
 
-**Agent in control:** Methodologist (Manifest update) + Analyst (AUDIT-002, AUDIT-004) -- parallel dispatch
-**Current task:** Methodologist: re-activate Designer in Manifest. Analyst: add pipeline CRUD requirement(s), clarify REQ-003/NFR-001 relationship.
-**Waiting for:** (1) Methodologist to produce Manifest v2. (2) Analyst to produce Requirements v2 (partial -- AUDIT-002 and AUDIT-004 only). (3) Nexus decision on AUDIT-003 (auth mechanism).
+**Agent in control:** Auditor
+**Current task:** Re-audit of Requirements v3 -- validate that AUDIT-001 (Manifest contradiction), AUDIT-002 (pipeline CRUD gap), AUDIT-003 (auth mechanism ambiguity), and AUDIT-004 (REQ-003/NFR-001 duplication) are resolved. Regression check: confirm previously-passing requirements still pass.
+**Waiting for:** Auditor to produce audit report v2 with PASS or ISSUES FOUND.
 
 ---
 
@@ -28,7 +28,7 @@ No tasks defined yet. Ingestion and decomposition phases must complete first.
 
 | Gate | Date | Decision | Notes |
 |---|---|---|---|
-| Requirements Gate | -- | -- | Audit returned ISSUES FOUND; resolving 4 blocking issues before gate |
+| Requirements Gate | -- | -- | Audit v1 returned ISSUES FOUND; 4 blocking resolved; Auditor re-validating |
 | Architecture Gate | -- | -- | |
 | Plan Gate | -- | -- | |
 | Demo Sign-off -- Cycle 1 | -- | -- | |
@@ -38,7 +38,7 @@ No tasks defined yet. Ingestion and decomposition phases must complete first.
 
 ## Pending Decisions
 
-- **AUDIT-003 (surfaced to Nexus):** Does NexusFlow manage its own user credentials (username/password with sessions or tokens), or will it integrate with an external authentication system (OAuth2, SSO, LDAP)? This determines how REQ-019 and REQ-020 are specified and tested. Analyst cannot revise these requirements until this is answered.
+NONE -- all previously pending decisions have been resolved.
 
 ---
 
@@ -52,22 +52,21 @@ NONE -- not currently in an iterate loop.
 
 | Metric | Value |
 |---|---|
-| Auditor passes -- requirements | 0 (first audit: ISSUES FOUND) |
+| Auditor passes -- requirements | 0 (first audit: ISSUES FOUND; re-audit in progress) |
 | Auditor passes -- architecture | 0 |
 | Gate rejections this cycle | 0 |
 | Tasks completed | 0 of 0 planned |
 | Average iterations to PASS | -- |
 | Tasks that hit max iterations | 0 |
-| Escalations to Nexus | 2 (ESC-001 resolved, ESC-002 pending) |
+| Escalations to Nexus | 2 (ESC-001 resolved, ESC-002 resolved) |
 | Backward cascade triggered | No |
 
 ---
 
 ## Standing Routing Rules (Cycle 0)
 
-- After Nexus answers AUDIT-003: route Analyst to revise REQ-019 and REQ-020 with the specified auth mechanism.
-- After Analyst completes all revisions (AUDIT-002 + AUDIT-004 + AUDIT-003 if answered): route to Auditor for re-audit of Requirements v2.
-- After Methodologist produces Manifest v2: update Manifest version reference in this document.
+- After Auditor produces audit report v2 with PASS: prepare Nexus Check briefing for Requirements Gate.
+- After Auditor produces audit report v2 with ISSUES FOUND: route for resolution based on findings.
 
 ---
 
@@ -76,5 +75,5 @@ NONE -- not currently in an iterate loop.
 | Decision | Date | Outcome |
 |---|---|---|
 | Ratify Manifest v1 | 2026-03-25 | Approved -- Methodologist produced, Nexus accepted |
-| AUDIT-001: Designer agent | 2026-03-25 | Re-activate Designer -- Manifest must be updated |
-| AUDIT-003: Auth mechanism | -- | Pending Nexus decision |
+| AUDIT-001: Designer agent | 2026-03-25 | Re-activate Designer -- Manifest v2 produced |
+| AUDIT-003: Auth mechanism | 2026-03-25 | Own credentials (username/password with session tokens) -- Requirements v3 produced |
