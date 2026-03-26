@@ -8,14 +8,14 @@
 
 ## Where We Are
 
-Plan Gate v2.1 APPROVED (2026-03-26). Phase: EXECUTION. TASK-001 (DevOps Phase 1) implementation complete by Builder (2026-03-26). Builder handoff note at `process/builder/handoff-notes/TASK-001-handoff.md`. Now dispatching Verifier (Pre-staging mode) to verify TASK-001 against its 4 acceptance criteria.
+Plan Gate v2.1 APPROVED (2026-03-26). Phase: EXECUTION. TASK-001 (DevOps Phase 1) COMPLETE -- Verifier PASS (52/52 acceptance tests, 16/16 integration tests), CI green (all 3 jobs passed). Now dispatching Builder for TASK-002 (Database schema and migration foundation), the first task in Layer 1.
 
 ## Active Work
 
-**Agent in control:** Verifier (dispatched 2026-03-26)
-**Current task:** TASK-001 -- DevOps Phase 1: CI pipeline and dev environment (VERIFICATION)
-**Waiting for:** Verifier to verify TASK-001 against acceptance criteria (Pre-staging mode, Initial verification)
-**Next after Verifier:** If PASS: commit + push + CI green, then Orchestrator dispatches Builder for TASK-002. If FAIL: Orchestrator dispatches Builder for iteration 2.
+**Agent in control:** Builder (dispatched 2026-03-26)
+**Current task:** TASK-002 -- Database schema and migration foundation (BUILD)
+**Waiting for:** Builder to implement TASK-002 against 5 acceptance criteria
+**Next after Builder:** Verifier (Pre-staging mode, Initial verification) to verify TASK-002
 
 ---
 
@@ -23,8 +23,8 @@ Plan Gate v2.1 APPROVED (2026-03-26). Phase: EXECUTION. TASK-001 (DevOps Phase 1
 
 | Task | Status | Iterations | Verifier |
 |---|---|---|---|
-| TASK-001: DevOps Phase 1 -- CI pipeline and dev environment | BUILT -- PENDING VERIFICATION | 1 | Verifier dispatched |
-| TASK-002: Database schema and migration foundation | PENDING | -- | -- |
+| TASK-001: DevOps Phase 1 -- CI pipeline and dev environment | COMPLETE | 1 | PASS (52/52 acceptance, 16/16 integration) |
+| TASK-002: Database schema and migration foundation | IN PROGRESS (Builder dispatched) | -- | -- |
 | TASK-004: Redis Streams queue infrastructure | PENDING | -- | -- |
 | TASK-003: Authentication and session management | PENDING | -- | -- |
 | TASK-006: Worker self-registration and heartbeat | PENDING | -- | -- |
@@ -39,11 +39,12 @@ Plan Gate v2.1 APPROVED (2026-03-26). Phase: EXECUTION. TASK-001 (DevOps Phase 1
 | TASK-029: DevOps Phase 2 -- staging environment and CD pipeline | PENDING | -- | -- |
 
 **Cycle summary:**
-- Tasks complete: 0 of 14
-- Requirements satisfied this cycle: 0 of target
+- Tasks complete: 1 of 14
+- Requirements satisfied this cycle: 0 of target (TASK-001 was DevOps infrastructure, not a requirement task)
 - Sentinel: Not invoked
 - Scaffolder: COMPLETE (2026-03-26, 57 files, manifest at process/scaffolder/scaffold-manifest.md)
-- TASK-001: BUILT -- Verifier dispatched 2026-03-26 (Pre-staging mode, Initial verification)
+- TASK-001: COMPLETE (2026-03-26) -- Verifier PASS, CI green. Note: staticcheck U1000 errors on 30 scaffold stubs required a fix commit (1687c64, added lint:ignore directives) before CI passed on second run.
+- TASK-002: Builder dispatched 2026-03-26
 
 ---
 
@@ -102,11 +103,23 @@ NONE -- not currently in an iterate loop.
 | Auditor passes -- requirements | 2 (audit v2: PASS WITH DEFERRALS; audit v4: PASS WITH DEFERRALS) |
 | Auditor passes -- architecture | 2 (architecture-audit-v1: PASS; architecture-audit-v2: PASS) |
 | Gate rejections this cycle | 0 |
-| Tasks completed | 0 of 14 planned |
-| Average iterations to PASS | -- |
+| Tasks completed | 1 of 14 planned |
+| Average iterations to PASS | 1.0 (1 task) |
 | Tasks that hit max iterations | 0 |
 | Escalations to Nexus | 0 |
 | Backward cascade triggered | No |
+
+---
+
+## Open Verifier Observations (Cycle 1)
+
+| ID | Source | Description | Status |
+|---|---|---|---|
+| OBS-001 | TASK-001 | Dockerfile go.sum generation strategy is fragile -- resolved by committing go.sum | Resolved (TASK-001 verification) |
+| OBS-002 | TASK-001 | golang-migrate removed from go.mod by go mod tidy -- TASK-002 Builder must re-add it | Open -- pending TASK-002 |
+| OBS-003 | TASK-001 | API health endpoint returns 503 until TASK-002 wires postgres pool | Open -- pending TASK-002 |
+| OBS-004 | TASK-001 | golang.org/x/crypto moved to indirect in go.mod -- expected, no action needed | Resolved (no action) |
+| OBS-005 | TASK-001 | npm audit reports 2 moderate vulnerabilities in frontend deps | Open -- pending Sentinel review |
 
 ---
 
