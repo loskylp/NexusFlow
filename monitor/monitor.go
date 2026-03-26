@@ -23,13 +23,13 @@ import (
 
 // Monitor is the main struct for the NexusFlow monitor service.
 type Monitor struct {
-	cfg       *config.Config
-	workers   db.WorkerRepository
-	tasks     db.TaskRepository
-	heartbeat queue.HeartbeatStore
-	scanner   queue.PendingScanner
-	producer  queue.Producer
-	broker    sse.Broker
+	cfg       *config.Config      //lint:ignore U1000 scaffold stub — wired in TASK-009
+	workers   db.WorkerRepository //lint:ignore U1000 scaffold stub — wired in TASK-009
+	tasks     db.TaskRepository   //lint:ignore U1000 scaffold stub — wired in TASK-009
+	heartbeat queue.HeartbeatStore //lint:ignore U1000 scaffold stub — wired in TASK-009
+	scanner   queue.PendingScanner //lint:ignore U1000 scaffold stub — wired in TASK-009
+	producer  queue.Producer       //lint:ignore U1000 scaffold stub — wired in TASK-009
+	broker    sse.Broker           //lint:ignore U1000 scaffold stub — wired in TASK-009
 }
 
 // NewMonitor constructs a Monitor with all required dependencies.
@@ -76,6 +76,7 @@ func (m *Monitor) Run(ctx context.Context) error {
 // Complexity signal: MEDIUM
 //   - Single ZRANGEBYSCORE query then N PostgreSQL updates.
 //   - N is bounded by fleet size (typical: < 10).
+//lint:ignore U1000 scaffold stub — wired in TASK-009
 func (m *Monitor) checkHeartbeats(ctx context.Context) error {
 	// TODO: Implement in TASK-009 (Cycle 2)
 	panic("not implemented")
@@ -90,6 +91,7 @@ func (m *Monitor) checkHeartbeats(ctx context.Context) error {
 // Complexity signal: HIGH
 //   - Integrates XPENDING, XCLAIM, PostgreSQL retry count check, dead-letter routing,
 //     and cascading cancellation. Correctness is critical — errors here mean orphaned tasks.
+//lint:ignore U1000 scaffold stub — wired in TASK-009
 func (m *Monitor) scanPendingEntries(ctx context.Context) error {
 	// TODO: Implement in TASK-009 (Cycle 2)
 	panic("not implemented")
@@ -105,6 +107,7 @@ func (m *Monitor) scanPendingEntries(ctx context.Context) error {
 //
 // Postconditions:
 //   - On success: task is re-queued and will be picked up by the next healthy matching worker.
+//lint:ignore U1000 scaffold stub — wired in TASK-009
 func (m *Monitor) reclaimTask(ctx context.Context, entry *queue.PendingEntry, tag string) error {
 	// TODO: Implement in TASK-009 (Cycle 2)
 	panic("not implemented")
@@ -122,6 +125,7 @@ func (m *Monitor) reclaimTask(ctx context.Context, entry *queue.PendingEntry, ta
 // Postconditions:
 //   - On success: task is in queue:dead-letter; task.Status = "failed".
 //   - On success: downstream chain tasks (if any) are cancelled (cascading cancellation).
+//lint:ignore U1000 scaffold stub — wired in TASK-009
 func (m *Monitor) deadLetterTask(ctx context.Context, entry *queue.PendingEntry, tag string) error {
 	// TODO: Implement in TASK-009 (Cycle 2); cascading cancel in TASK-011 (Cycle 2)
 	panic("not implemented")

@@ -166,7 +166,7 @@ func (d *DemoProcessConnector) Transform(ctx context.Context, config map[string]
 // See: TASK-042
 type DemoSinkConnector struct {
 	// store is the in-memory record of committed writes, keyed by executionID.
-	store map[string][]map[string]any
+	store map[string][]map[string]any //lint:ignore U1000 scaffold stub — wired in TASK-042
 }
 
 // Type implements SinkConnector.Type.

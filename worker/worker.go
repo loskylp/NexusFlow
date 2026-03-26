@@ -29,13 +29,13 @@ import (
 // Worker is the main struct for the NexusFlow worker process.
 // A single Worker instance manages registration, heartbeat, and task execution.
 type Worker struct {
-	cfg        *config.Config
-	tasks      db.TaskRepository
-	workers    db.WorkerRepository
-	consumer   queue.Consumer
-	heartbeat  queue.HeartbeatStore
-	broker     sse.Broker
-	connectors ConnectorRegistry
+	cfg        *config.Config      //lint:ignore U1000 scaffold stub — wired in TASK-006
+	tasks      db.TaskRepository   //lint:ignore U1000 scaffold stub — wired in TASK-006
+	workers    db.WorkerRepository //lint:ignore U1000 scaffold stub — wired in TASK-006
+	consumer   queue.Consumer      //lint:ignore U1000 scaffold stub — wired in TASK-006
+	heartbeat  queue.HeartbeatStore //lint:ignore U1000 scaffold stub — wired in TASK-006
+	broker     sse.Broker           //lint:ignore U1000 scaffold stub — wired in TASK-006
+	connectors ConnectorRegistry    //lint:ignore U1000 scaffold stub — wired in TASK-006
 }
 
 // NewWorker constructs a Worker with all required dependencies.
@@ -96,6 +96,7 @@ func (w *Worker) Register(ctx context.Context) error {
 // Postconditions:
 //   - On each tick: workers:active entry for this worker has score = current Unix timestamp.
 //   - On ctx done: last heartbeat may be stale; Monitor will detect and mark down after timeout.
+//lint:ignore U1000 scaffold stub — wired in TASK-006
 func (w *Worker) emitHeartbeats(ctx context.Context) {
 	// TODO: Implement in TASK-006
 	panic("not implemented")
@@ -106,6 +107,7 @@ func (w *Worker) emitHeartbeats(ctx context.Context) {
 //
 // Complexity note: This is the hot path of the worker. Goroutine management,
 // XREADGROUP blocking timeout, and error handling must all be correct here.
+//lint:ignore U1000 scaffold stub — wired in TASK-007
 func (w *Worker) runConsumptionLoop(ctx context.Context) {
 	// TODO: Implement in TASK-007
 	panic("not implemented")
@@ -132,6 +134,7 @@ func (w *Worker) runConsumptionLoop(ctx context.Context) {
 //   - On success: task.Status = "completed"; message is XACKed.
 //   - On Process error: task.Status = "failed"; message is XACKed; no retry.
 //   - On infrastructure error: task.Status = "failed"; message NOT XACKed (eligible for XCLAIM by Monitor).
+//lint:ignore U1000 scaffold stub — wired in TASK-007
 func (w *Worker) executeTask(ctx context.Context, message *queue.TaskMessage) {
 	// TODO: Implement in TASK-007
 	panic("not implemented")
@@ -155,6 +158,7 @@ func (w *Worker) executeTask(ctx context.Context, message *queue.TaskMessage) {
 // Postconditions:
 //   - On success: returned map contains exactly the fields specified in mappings (by TargetField).
 //   - On error: the task must be marked "failed" by the caller; the error reason is logged.
+//lint:ignore U1000 scaffold stub — wired in TASK-007
 func (w *Worker) applySchemaMapping(data map[string]any, mappings []models.SchemaMapping) (map[string]any, error) {
 	// TODO: Implement in TASK-007
 	panic("not implemented")

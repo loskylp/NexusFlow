@@ -15,7 +15,7 @@ import (
 // A single RedisQueue instance is shared across the interfaces via embedding.
 // See: TASK-004
 type RedisQueue struct {
-	client *redis.Client
+	client *redis.Client //lint:ignore U1000 scaffold stub — wired in TASK-004
 }
 
 // NewRedisQueue constructs a RedisQueue from the given go-redis client.
@@ -212,8 +212,8 @@ type SessionStore interface {
 // RedisSessionStore implements SessionStore using go-redis.
 // See: ADR-006, TASK-003
 type RedisSessionStore struct {
-	client *redis.Client
-	ttl    time.Duration
+	client *redis.Client    //lint:ignore U1000 scaffold stub — wired in TASK-003
+	ttl    time.Duration    //lint:ignore U1000 scaffold stub — wired in TASK-003
 }
 
 // NewRedisSessionStore constructs a RedisSessionStore.

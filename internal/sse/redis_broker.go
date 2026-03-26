@@ -16,11 +16,11 @@ import (
 // and an in-process subscriber registry for fan-out to SSE connections.
 // See: ADR-007, TASK-015
 type RedisBroker struct {
-	client *redis.Client
-	mu     sync.RWMutex
+	client      *redis.Client                                  //lint:ignore U1000 scaffold stub — wired in TASK-015
+	mu          sync.RWMutex                                   //lint:ignore U1000 scaffold stub — wired in TASK-015
 	// subscribers maps a channel key to a set of send-only event channels,
 	// one per connected SSE client.
-	subscribers map[string]map[chan *models.SSEEvent]struct{}
+	subscribers map[string]map[chan *models.SSEEvent]struct{} //lint:ignore U1000 scaffold stub — wired in TASK-015
 }
 
 // NewRedisBroker constructs a RedisBroker.
@@ -112,6 +112,7 @@ func (b *RedisBroker) PublishSinkSnapshot(ctx context.Context, snapshot *models.
 //
 // The id field is omitted if event.ID is empty.
 // Returns an error if the write or flush fails (client disconnected).
+//lint:ignore U1000 scaffold stub — wired in TASK-015
 func writeSSEEvent(w http.ResponseWriter, event *models.SSEEvent) error {
 	// TODO: Implement in TASK-015
 	panic("not implemented")

@@ -14,10 +14,12 @@ import (
 
 // contextKey is an unexported type for context keys set by auth middleware,
 // preventing collisions with other packages.
+//lint:ignore U1000 scaffold stub — wired in TASK-003
 type contextKey int
 
 const (
 	// sessionContextKey is the key under which the *models.Session is stored in the request context.
+	//lint:ignore U1000 scaffold stub — wired in TASK-003
 	sessionContextKey contextKey = iota
 )
 
