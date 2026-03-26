@@ -8,14 +8,14 @@
 
 ## Where We Are
 
-Plan Gate v2.1 APPROVED (2026-03-26). Phase: EXECUTION. Layer 1 COMPLETE (TASK-001, TASK-002, TASK-004). Layer 2 COMPLETE (TASK-003, TASK-006). Layer 3 COMPLETE (TASK-005, TASK-013, TASK-015 still pending). TASK-013 verified PASS (iteration 2), CI green. Layer 5: dispatching Builder for TASK-007 (Tag-based task assignment and pipeline execution) -- highest complexity task in Cycle 1, walking skeleton critical path. Unblocked tasks in queue: TASK-015, TASK-025, TASK-019 (all P2, will follow TASK-007).
+Plan Gate v2.1 APPROVED (2026-03-26). Phase: EXECUTION. Layer 1 COMPLETE (TASK-001, TASK-002, TASK-004). Layer 2 COMPLETE (TASK-003, TASK-006). Layer 3 COMPLETE (TASK-005, TASK-013, TASK-015 still pending). Layer 5: TASK-007 BUILT -- dispatching Verifier for initial verification (Pre-staging mode). Builder produced 22 tests (14 new + 8 pre-existing), all passing; go build/vet/staticcheck clean. 9 acceptance criteria, 4 deviations documented. Unblocked tasks in queue after TASK-007: TASK-042, TASK-015, TASK-025, TASK-019.
 
 ## Active Work
 
-**Agent in control:** Builder (dispatching 2026-03-26)
-**Current task:** TASK-007 -- Tag-based task assignment and pipeline execution (initial build)
-**Waiting for:** Builder to implement TASK-007 (9 acceptance criteria, P1 HH, high-risk)
-**Next after Builder:** Dispatch Verifier for TASK-007 (initial verification, Pre-staging mode). If PASS, dispatch Builder for TASK-042 (demo connectors). If FAIL, iterate loop.
+**Agent in control:** Verifier (dispatching 2026-03-26)
+**Current task:** TASK-007 -- Tag-based task assignment and pipeline execution (initial verification)
+**Waiting for:** Verifier to verify TASK-007 against 9 acceptance criteria (Pre-staging mode)
+**Next after Verifier:** If PASS, dispatch Builder for TASK-042 (demo connectors). If FAIL, iterate loop (Builder fix → Verifier re-verify).
 
 ---
 
@@ -30,7 +30,7 @@ Plan Gate v2.1 APPROVED (2026-03-26). Phase: EXECUTION. Layer 1 COMPLETE (TASK-0
 | TASK-006: Worker self-registration and heartbeat | COMPLETE | 1 | PASS (14/14 acceptance, 35 unit tests) |
 | TASK-005: Task submission via REST API | COMPLETE | 2 | PASS (iteration 2) |
 | TASK-013: Pipeline CRUD via REST API | COMPLETE | 2 | PASS (iteration 2) |
-| TASK-007: Tag-based task assignment and pipeline execution | BUILDING | 1 | -- |
+| TASK-007: Tag-based task assignment and pipeline execution | BUILT -- PENDING VERIFICATION | 1 | -- |
 | TASK-042: Demo connectors -- demo source, simulated worker, demo sink | PENDING | -- | -- |
 | TASK-019: React app shell with sidebar navigation and auth flow | PENDING | -- | -- |
 | TASK-025: Worker fleet status API | PENDING | -- | -- |
@@ -97,7 +97,7 @@ Note: Sequential execution model (one Builder task at a time). The dependency la
 
 ## Iterate Loop State
 
-No active iterate loop. TASK-005 converged on iteration 2 (PASS). TASK-013 converged on iteration 2 (PASS). Dispatching Builder for TASK-007.
+No active iterate loop. TASK-005 converged on iteration 2 (PASS). TASK-013 converged on iteration 2 (PASS). TASK-007 built, dispatching Verifier for initial verification.
 
 ---
 
