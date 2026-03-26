@@ -8,14 +8,14 @@
 
 ## Where We Are
 
-Plan Gate v2.1 APPROVED (2026-03-26). Phase: EXECUTION. Layer 1 COMPLETE (TASK-001, TASK-002, TASK-004). Layer 2 COMPLETE (TASK-003, TASK-006). Layer 3 COMPLETE (TASK-005, TASK-013, TASK-015 still pending). Layer 5: TASK-007 BUILT -- dispatching Verifier for initial verification (Pre-staging mode). Builder produced 22 tests (14 new + 8 pre-existing), all passing; go build/vet/staticcheck clean. 9 acceptance criteria, 4 deviations documented. Unblocked tasks in queue after TASK-007: TASK-042, TASK-015, TASK-025, TASK-019.
+Plan Gate v2.1 APPROVED (2026-03-26). Phase: EXECUTION. Layers 1-5 COMPLETE (TASK-001, TASK-002, TASK-004, TASK-003, TASK-006, TASK-005, TASK-013, TASK-007). 8 of 14 tasks complete. Layer 6: dispatching Builder for TASK-042 (demo connectors). Remaining tasks: TASK-042, TASK-015, TASK-025, TASK-019, TASK-020, TASK-029.
 
 ## Active Work
 
-**Agent in control:** Verifier (dispatching 2026-03-26)
-**Current task:** TASK-007 -- Tag-based task assignment and pipeline execution (initial verification)
-**Waiting for:** Verifier to verify TASK-007 against 9 acceptance criteria (Pre-staging mode)
-**Next after Verifier:** If PASS, dispatch Builder for TASK-042 (demo connectors). If FAIL, iterate loop (Builder fix → Verifier re-verify).
+**Agent in control:** Builder (dispatching 2026-03-26)
+**Current task:** TASK-042 -- Demo connectors (demo source, simulated worker, demo sink)
+**Waiting for:** Builder to implement TASK-042
+**Next after Builder:** Verifier (Pre-staging mode) for TASK-042 verification. Then TASK-015 or TASK-025 or TASK-019 (all unblocked).
 
 ---
 
@@ -30,7 +30,7 @@ Plan Gate v2.1 APPROVED (2026-03-26). Phase: EXECUTION. Layer 1 COMPLETE (TASK-0
 | TASK-006: Worker self-registration and heartbeat | COMPLETE | 1 | PASS (14/14 acceptance, 35 unit tests) |
 | TASK-005: Task submission via REST API | COMPLETE | 2 | PASS (iteration 2) |
 | TASK-013: Pipeline CRUD via REST API | COMPLETE | 2 | PASS (iteration 2) |
-| TASK-007: Tag-based task assignment and pipeline execution | BUILT -- PENDING VERIFICATION | 1 | -- |
+| TASK-007: Tag-based task assignment and pipeline execution | COMPLETE | 1 | PASS (9/9 acceptance, 22 tests) |
 | TASK-042: Demo connectors -- demo source, simulated worker, demo sink | PENDING | -- | -- |
 | TASK-019: React app shell with sidebar navigation and auth flow | PENDING | -- | -- |
 | TASK-025: Worker fleet status API | PENDING | -- | -- |
@@ -39,9 +39,10 @@ Plan Gate v2.1 APPROVED (2026-03-26). Phase: EXECUTION. Layer 1 COMPLETE (TASK-0
 | TASK-029: DevOps Phase 2 -- staging environment and CD pipeline | PENDING | -- | -- |
 
 **Cycle summary:**
-- Tasks complete: 7 of 14
+- Tasks complete: 8 of 14
 - TASK-005: COMPLETE (2026-03-26) -- Verifier PASS (iteration 2), CI green. Wiring omission in `cmd/api/main.go` and plain text 401 fixed in iteration 1; verified PASS on iteration 2.
 - TASK-013: COMPLETE (2026-03-26) -- Verifier PASS (iteration 2), CI green. Pipeline CRUD via REST API with all 7 acceptance criteria met.
+- TASK-007: COMPLETE (2026-03-26) -- Verifier PASS (9/9 acceptance, 22 tests), CI green. Tag-based task assignment, pipeline execution (DataSource/Process/Sink), schema mapping, state transitions, SSE event emission. 4 non-blocking observations recorded (OBS-019 through OBS-022).
 - Requirements satisfied this cycle: REQ-019 (TASK-003 delivers auth -- first direct requirement deliverable)
 - Sentinel: Not invoked
 - Scaffolder: COMPLETE (2026-03-26, 57 files, manifest at process/scaffolder/scaffold-manifest.md)
@@ -97,7 +98,7 @@ Note: Sequential execution model (one Builder task at a time). The dependency la
 
 ## Iterate Loop State
 
-No active iterate loop. TASK-005 converged on iteration 2 (PASS). TASK-013 converged on iteration 2 (PASS). TASK-007 built, dispatching Verifier for initial verification.
+No active iterate loop. TASK-005 converged on iteration 2 (PASS). TASK-013 converged on iteration 2 (PASS). TASK-007 converged on iteration 1 (PASS). Dispatching Builder for TASK-042.
 
 ---
 
@@ -108,8 +109,8 @@ No active iterate loop. TASK-005 converged on iteration 2 (PASS). TASK-013 conve
 | Auditor passes -- requirements | 2 (audit v2: PASS WITH DEFERRALS; audit v4: PASS WITH DEFERRALS) |
 | Auditor passes -- architecture | 2 (architecture-audit-v1: PASS; architecture-audit-v2: PASS) |
 | Gate rejections this cycle | 0 |
-| Tasks completed | 7 of 14 planned |
-| Average iterations to PASS | 1.29 (7 tasks: 5 at 1 iteration, 2 at 2 iterations) |
+| Tasks completed | 8 of 14 planned |
+| Average iterations to PASS | 1.25 (8 tasks: 6 at 1 iteration, 2 at 2 iterations) |
 | Tasks that hit max iterations | 0 |
 | Escalations to Nexus | 0 |
 | Backward cascade triggered | No |
@@ -139,6 +140,10 @@ No active iterate loop. TASK-005 converged on iteration 2 (PASS). TASK-013 conve
 | OBS-016 | TASK-006 | `markOffline` uses `WorkerStatusDown` ("down") vs plain English "offline" -- ADR-002 defines "down"; code is correct; terminology note for docs | Resolved (no action -- by design) |
 | OBS-017 | TASK-006 | `runConsumptionLoop` blocks on `ctx.Done()` (TASK-007 stub); `InitGroups` creates Redis stream structures before tasks exist -- benign, idempotent via BUSYGROUP | Open -- awareness for TASK-007 |
 | OBS-018 | TASK-006 | Worker Dockerfile binary built with `golang:1.23-alpine` (musl) runs on `alpine:3.20` -- if CI changes to glibc builder, needs `CGO_ENABLED=0` or runtime image change | Open -- awareness for CI changes |
+| OBS-019 | TASK-007 | AC-9 scope boundary: `PublishTaskEvent` verified at worker level; full Pub/Sub delivery (broker -> Redis -> SSE client) deferred to TASK-015 | Open -- pending TASK-015 |
+| OBS-020 | TASK-007 | XACK multi-tag loop: `ackMessage` tries XACK against each tag sequentially; clean fix (adding `StreamTag` to `TaskMessage`) deferred to TASK-004 scope | Open -- awareness for future refactor |
+| OBS-021 | TASK-007 | Seven tests use 2-second timeouts for consumption loop exit; test suite takes ~14s for worker package | Open -- awareness for test performance |
+| OBS-022 | TASK-007 | `applyMappingsToSlice` docstring says empty mappings returns empty map but actual behavior is pass-through; docstring is misleading | Open -- Builder should correct comment |
 
 ---
 
