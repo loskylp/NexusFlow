@@ -1,5 +1,5 @@
 # Project State
-**Manifest version:** v1 | **Profile:** Critical
+**Manifest version:** v1 (v2 pending -- Methodologist dispatched) | **Profile:** Critical
 **Current phase:** INGESTION
 **Current cycle:** 0 (pre-execution)
 **Last updated:** 2026-03-25
@@ -8,13 +8,13 @@
 
 ## Where We Are
 
-Analyst has completed guided discovery and produced Brief v1 and Requirements v1 (21 functional + 4 non-functional requirements). Routing to Auditor for requirements audit. One escalation logged: Designer agent status contradicts requirements (ESC-001).
+Auditor completed requirements audit with ISSUES FOUND (4 blocking). Nexus resolved AUDIT-001 (re-activate Designer). Methodologist dispatched to update Manifest. Analyst dispatched to resolve AUDIT-002 (pipeline CRUD gap) and AUDIT-004 (REQ-003/NFR-001 duplication). AUDIT-003 (auth mechanism) surfaced to Nexus -- awaiting decision before Analyst can revise REQ-019/REQ-020.
 
 ## Active Work
 
-**Agent in control:** Auditor (pending dispatch)
-**Current task:** Audit Requirements v1 against Brief v1 for completeness, consistency, and testability
-**Waiting for:** Auditor to produce audit report
+**Agent in control:** Methodologist (Manifest update) + Analyst (AUDIT-002, AUDIT-004) -- parallel dispatch
+**Current task:** Methodologist: re-activate Designer in Manifest. Analyst: add pipeline CRUD requirement(s), clarify REQ-003/NFR-001 relationship.
+**Waiting for:** (1) Methodologist to produce Manifest v2. (2) Analyst to produce Requirements v2 (partial -- AUDIT-002 and AUDIT-004 only). (3) Nexus decision on AUDIT-003 (auth mechanism).
 
 ---
 
@@ -28,7 +28,7 @@ No tasks defined yet. Ingestion and decomposition phases must complete first.
 
 | Gate | Date | Decision | Notes |
 |---|---|---|---|
-| Requirements Gate | -- | -- | Auditor audit in progress |
+| Requirements Gate | -- | -- | Audit returned ISSUES FOUND; resolving 4 blocking issues before gate |
 | Architecture Gate | -- | -- | |
 | Plan Gate | -- | -- | |
 | Demo Sign-off -- Cycle 1 | -- | -- | |
@@ -38,7 +38,7 @@ No tasks defined yet. Ingestion and decomposition phases must complete first.
 
 ## Pending Decisions
 
-- **ESC-001:** Designer agent marked "Skipped" in Manifest v1, but requirements REQ-002, REQ-015, REQ-016, REQ-017, REQ-018 require a web GUI with 4 views. Auditor should flag this contradiction. Resolution requires Methodologist to update the Manifest to re-activate the Designer agent. Will surface to Nexus at the Requirements Gate.
+- **AUDIT-003 (surfaced to Nexus):** Does NexusFlow manage its own user credentials (username/password with sessions or tokens), or will it integrate with an external authentication system (OAuth2, SSO, LDAP)? This determines how REQ-019 and REQ-020 are specified and tested. Analyst cannot revise these requirements until this is answered.
 
 ---
 
@@ -52,20 +52,22 @@ NONE -- not currently in an iterate loop.
 
 | Metric | Value |
 |---|---|
-| Auditor passes -- requirements | 0 |
+| Auditor passes -- requirements | 0 (first audit: ISSUES FOUND) |
 | Auditor passes -- architecture | 0 |
 | Gate rejections this cycle | 0 |
 | Tasks completed | 0 of 0 planned |
 | Average iterations to PASS | -- |
 | Tasks that hit max iterations | 0 |
-| Escalations to Nexus | 1 (ESC-001) |
+| Escalations to Nexus | 2 (ESC-001 resolved, ESC-002 pending) |
 | Backward cascade triggered | No |
 
 ---
 
 ## Standing Routing Rules (Cycle 0)
 
-NONE
+- After Nexus answers AUDIT-003: route Analyst to revise REQ-019 and REQ-020 with the specified auth mechanism.
+- After Analyst completes all revisions (AUDIT-002 + AUDIT-004 + AUDIT-003 if answered): route to Auditor for re-audit of Requirements v2.
+- After Methodologist produces Manifest v2: update Manifest version reference in this document.
 
 ---
 
@@ -74,3 +76,5 @@ NONE
 | Decision | Date | Outcome |
 |---|---|---|
 | Ratify Manifest v1 | 2026-03-25 | Approved -- Methodologist produced, Nexus accepted |
+| AUDIT-001: Designer agent | 2026-03-25 | Re-activate Designer -- Manifest must be updated |
+| AUDIT-003: Auth mechanism | -- | Pending Nexus decision |
