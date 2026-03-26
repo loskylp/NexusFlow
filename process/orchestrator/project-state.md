@@ -8,14 +8,14 @@
 
 ## Where We Are
 
-Plan Gate v2.1 APPROVED (2026-03-26). Phase transitioned from PLANNING to EXECUTION. Cycle 1 has 14 tasks. Dispatching Scaffolder (14 tasks >= 3, per Manifest rule) before any Builder task. DevOps Phase 1 (TASK-001) runs after Scaffolder completes.
+Plan Gate v2.1 APPROVED (2026-03-26). Phase: EXECUTION. Scaffolder completed 2026-03-26 (57 files across Go backend, React frontend, infrastructure, and process artifacts). Scaffold manifest at `process/scaffolder/scaffold-manifest.md`. Now dispatching TASK-001 (DevOps Phase 1 -- CI pipeline and dev environment) to Builder.
 
 ## Active Work
 
-**Agent in control:** Scaffolder (dispatched 2026-03-26)
-**Current task:** Generate scaffold for Cycle 1 iteration (14 tasks)
-**Waiting for:** Scaffolder to produce scaffold manifest and project skeleton
-**Next after Scaffolder:** DevOps Phase 1 (TASK-001), then Builder tasks per dependency order
+**Agent in control:** Builder (dispatched 2026-03-26)
+**Current task:** TASK-001 -- DevOps Phase 1: CI pipeline and dev environment
+**Waiting for:** Builder to implement CI pipeline, Docker Compose dev environment, and complete TASK-001 acceptance criteria
+**Next after Builder:** Verifier (Pre-staging mode) to verify TASK-001
 
 ---
 
@@ -23,7 +23,7 @@ Plan Gate v2.1 APPROVED (2026-03-26). Phase transitioned from PLANNING to EXECUT
 
 | Task | Status | Iterations | Verifier |
 |---|---|---|---|
-| TASK-001: DevOps Phase 1 -- CI pipeline and dev environment | PENDING | -- | -- |
+| TASK-001: DevOps Phase 1 -- CI pipeline and dev environment | IN PROGRESS | 1 | -- |
 | TASK-002: Database schema and migration foundation | PENDING | -- | -- |
 | TASK-004: Redis Streams queue infrastructure | PENDING | -- | -- |
 | TASK-003: Authentication and session management | PENDING | -- | -- |
@@ -42,7 +42,8 @@ Plan Gate v2.1 APPROVED (2026-03-26). Phase transitioned from PLANNING to EXECUT
 - Tasks complete: 0 of 14
 - Requirements satisfied this cycle: 0 of target
 - Sentinel: Not invoked
-- Scaffolder: DISPATCHED (2026-03-26)
+- Scaffolder: COMPLETE (2026-03-26, 57 files, manifest at process/scaffolder/scaffold-manifest.md)
+- TASK-001: IN PROGRESS (Builder dispatched 2026-03-26)
 
 ---
 
@@ -68,7 +69,7 @@ NONE -- Plan Gate approved. Autonomous execution in progress through Cycle 1.
 
 Per Manifest and Plan Gate approval, the execution sequence is:
 
-1. **Scaffolder** -- generate project skeleton for all 14 Cycle 1 tasks (IN PROGRESS)
+1. **Scaffolder** -- generate project skeleton for all 14 Cycle 1 tasks (COMPLETE 2026-03-26)
 2. **DevOps Phase 1** (TASK-001) -- CI pipeline, dev environment, Environment Contract
 3. **Builder tasks** in dependency order:
    - Layer 1: TASK-002, TASK-004 (both depend only on TASK-001)
@@ -111,7 +112,7 @@ NONE -- not currently in an iterate loop.
 
 ## Standing Routing Rules (Cycle 1)
 
-- Scaffolder runs before any Builder task (14 tasks >= 3, Manifest rule). DISPATCHED.
+- Scaffolder runs before any Builder task (14 tasks >= 3, Manifest rule). COMPLETE (2026-03-26).
 - DevOps Phase 1 (TASK-001) must complete before any other Builder task begins.
 - DevOps Phase 2 (TASK-029) runs after TASK-042 passes Verifier. After TASK-029 completes, Verifier mode switches from Pre-staging to Full.
 - Verifier mode is Pre-staging until TASK-029 completes.
