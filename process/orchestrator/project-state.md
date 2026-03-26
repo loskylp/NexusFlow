@@ -8,14 +8,14 @@
 
 ## Where We Are
 
-Architecture v2 has passed Auditor re-audit (PASS -- no blocking issues, no invalidated requirements). The Architecture Gate is being re-presented to the Nexus for approval. This is the second presentation of this gate -- the first resulted in the Nexus directing Go + nxlabs.cc changes, which the Architect incorporated and the Auditor has now verified.
+Architecture Gate APPROVED by the Nexus (2026-03-26). Architecture v2 is the approved baseline. AUDIT-006 (pipeline template sharing) closed as NOT APPLICABLE -- the Nexus has decided there will be no templates at all. All other deferrals remain as tracked. Routing to the Designer for visual/interface design before the Planner.
 
 ## Active Work
 
-**Agent in control:** Orchestrator
-**Current task:** Architecture Gate briefing for Nexus (re-presentation after revision)
-**Waiting for:** Nexus approval of architecture v2 at the Architecture Gate
-**Next after approval:** Route to Designer (delivery channel is Web + API, requires visual interface design)
+**Agent in control:** Designer
+**Current task:** Visual and interaction design for NexusFlow Web GUI (Pipeline Builder, Worker Fleet Dashboard, Task Feed and Monitor, Log Streamer, Sink Inspector, Chaos Controller)
+**Waiting for:** Designer completion
+**Next after completion:** Route to Planner (three-pass sequence: decomposition, scoring, release map)
 
 ---
 
@@ -30,7 +30,7 @@ No tasks defined yet. Design and planning phases must complete first.
 | Gate | Date | Decision | Notes |
 |---|---|---|---|
 | Requirements Gate | 2026-03-25 | APPROVED | 31 requirements, 4 deferrals non-blocking; Nexus approved |
-| Architecture Gate | 2026-03-26 | REVISION IN PROGRESS | Nexus directed Go + nxlabs.cc changes; Architect revised to v2; Auditor re-audit dispatched |
+| Architecture Gate | 2026-03-26 | APPROVED | Architecture v2 approved. AUDIT-006 closed as NOT APPLICABLE (no templates). All other architecture approved. |
 | Plan Gate | -- | -- | |
 | Demo Sign-off -- Cycle 1 | -- | -- | |
 | Go-Live -- v1.0 | -- | -- | |
@@ -39,7 +39,7 @@ No tasks defined yet. Design and planning phases must complete first.
 
 ## Pending Decisions
 
-Architecture Gate awaiting Nexus approval. Auditor re-audit of v2 passed clean -- no blocking issues, no invalidated requirements.
+None. Architecture Gate approved. Designer dispatched. Next human gate: Plan Gate (after Designer and Planner complete).
 
 ---
 
@@ -66,10 +66,9 @@ NONE -- not currently in an iterate loop.
 
 ## Standing Routing Rules (Cycle 0)
 
-- Architecture Gate awaiting Nexus approval (re-presentation after v2 revision).
-- After Nexus approves Architecture Gate -> route to Designer (delivery channel is Web + API, requires visual interface design).
+- Designer dispatched for Web GUI design (2026-03-26).
 - After Designer completes -> route to Planner (three-pass sequence: decomposition, scoring, release map).
-- AUDIT-006 (pipeline template sharing) deferred to before Cycle 2 planning.
+- AUDIT-006 (pipeline template sharing) CLOSED -- NOT APPLICABLE (Nexus decision: no templates at all).
 
 ---
 
@@ -83,6 +82,7 @@ NONE -- not currently in an iterate loop.
 | ESC-003: Demo requirements | 2026-03-25 | Nexus requested 4 demo-infrastructure requirements -- added in Requirements v4, corrected in v5, audit v4 PASS |
 | Requirements Gate | 2026-03-25 | APPROVED -- all 31 requirements approved, 4 non-blocking deferrals tracked |
 | Architecture Gate -- revision directed | 2026-03-26 | Nexus directed two changes: (1) Go replaces Node.js/TypeScript; (2) deploy to nxlabs.cc infrastructure |
+| Architecture Gate -- approved | 2026-03-26 | Architecture v2 APPROVED. AUDIT-006 closed NOT APPLICABLE (no templates). All other architecture approved. |
 
 ---
 
@@ -130,7 +130,7 @@ NONE -- not currently in an iterate loop.
 - Coherence: all provisions credibly address requirements with Go backend and nxlabs.cc deployment
 - Fitness functions: 25/25 traceable (19 to requirements, 6 to ADRs)
 - Backward impact check: no [INVALIDATED] flags -- neither Go backend nor nxlabs.cc deployment invalidates any requirement acceptance scenario
-- AUDIT-006 remains deferred (gate count 2; deadline: before Cycle 2 planning)
+- AUDIT-006 CLOSED -- NOT APPLICABLE (Nexus decision 2026-03-26: no templates at all; template sharing is moot)
 **Non-blocking observations:** 5 (OBS-001: requirements file version discrepancy; OBS-002: DEMO-004 provision lightweight; OBS-003: OpenAPI contract enforcement newly critical; OBS-004: 6 fitness functions trace to ADRs; OBS-005: 2 new fitness functions FF-024 and FF-025)
 
 ---
