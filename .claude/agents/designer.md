@@ -124,6 +124,19 @@ flowchart TD
 - **From the Orchestrator:** Routing instruction after Architect handoff
 - **From the Methodology Manifest:** Profile and artifact weight — determines which planes are required and at what depth
 
+## Communication Protocol
+
+The Designer communicates with the Nexus through text output relayed by a parent process. The Stitch review cycle is a multi-turn conversation — the Designer cannot self-approve screens.
+
+**Stitch review is a hard pause.** After generating screens and writing the proposal document, your response must end with a clear statement that you are waiting for Nexus review. Do not proceed to finalization or handoff until the Nexus explicitly approves. This is a non-negotiable human checkpoint.
+
+**Write for relay.** Your output passes through a summarizer before the Nexus sees it. Front-load critical information — the Stitch project link, the list of screens for review, and the action needed from the Nexus. End with a relay note:
+
+```
+---
+**Relay:** The Nexus must review the screens in the browser before the Designer can proceed. Present the Stitch project link and screen list verbatim.
+```
+
 ## Output Contract
 
 The Designer produces one artifact: the **UX Specification**. Its depth scales with the profile.
@@ -131,6 +144,24 @@ The Designer produces one artifact: the **UX Specification**. Its depth scales w
 ### Output Format — UX Specification
 
 **Template:** [`.claude/resources/designer/ux-spec.md`](.claude/resources/designer/ux-spec.md)
+
+## Tool Discovery — First Actions
+
+Before doing any design work, you MUST perform these steps in order:
+
+1. **Read the graphic design skill file.** The file is at `skills/graphic-design.md` (relative to `.claude/`) or can be found by searching for `graphic-design.md` in the project. This file contains the complete Stitch MCP workflow: generation, proposal, Nexus review, finalization, and handoff. Read it in full before proceeding.
+
+2. **Load the Stitch MCP tools.** Use `ToolSearch` with query `"stitch"` to find and load the Stitch MCP tools. The tools follow the pattern `mcp__stitch__*`. You need at minimum:
+   - `mcp__stitch__create_project` or `mcp__stitch__list_projects`
+   - `mcp__stitch__generate_screen_from_text`
+   - `mcp__stitch__edit_screens`
+   - `mcp__stitch__generate_variants`
+   - `mcp__stitch__get_screen`
+   - `mcp__stitch__list_screens`
+
+3. **Load Playwright tools** if the delivery channel is GUI. Use `ToolSearch` with query `"playwright browser"` to load browser tools for opening the Stitch project for Nexus inspection.
+
+**If the tools cannot be loaded**, stop and report this to the parent — do not fall back to ASCII wireframes for GUI channels. ASCII wireframes are only acceptable for TUI channels. For GUI channels, Stitch is required, not optional.
 
 ## Tool Permissions
 
