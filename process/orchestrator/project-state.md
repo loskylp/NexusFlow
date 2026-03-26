@@ -8,14 +8,14 @@
 
 ## Where We Are
 
-Plan Gate v2.1 APPROVED (2026-03-26). Phase: EXECUTION. Scaffolder completed 2026-03-26 (57 files across Go backend, React frontend, infrastructure, and process artifacts). Scaffold manifest at `process/scaffolder/scaffold-manifest.md`. Now dispatching TASK-001 (DevOps Phase 1 -- CI pipeline and dev environment) to Builder.
+Plan Gate v2.1 APPROVED (2026-03-26). Phase: EXECUTION. TASK-001 (DevOps Phase 1) implementation complete by Builder (2026-03-26). Builder handoff note at `process/builder/handoff-notes/TASK-001-handoff.md`. Now dispatching Verifier (Pre-staging mode) to verify TASK-001 against its 4 acceptance criteria.
 
 ## Active Work
 
-**Agent in control:** Builder (dispatched 2026-03-26)
-**Current task:** TASK-001 -- DevOps Phase 1: CI pipeline and dev environment
-**Waiting for:** Builder to implement CI pipeline, Docker Compose dev environment, and complete TASK-001 acceptance criteria
-**Next after Builder:** Verifier (Pre-staging mode) to verify TASK-001
+**Agent in control:** Verifier (dispatched 2026-03-26)
+**Current task:** TASK-001 -- DevOps Phase 1: CI pipeline and dev environment (VERIFICATION)
+**Waiting for:** Verifier to verify TASK-001 against acceptance criteria (Pre-staging mode, Initial verification)
+**Next after Verifier:** If PASS: commit + push + CI green, then Orchestrator dispatches Builder for TASK-002. If FAIL: Orchestrator dispatches Builder for iteration 2.
 
 ---
 
@@ -23,7 +23,7 @@ Plan Gate v2.1 APPROVED (2026-03-26). Phase: EXECUTION. Scaffolder completed 202
 
 | Task | Status | Iterations | Verifier |
 |---|---|---|---|
-| TASK-001: DevOps Phase 1 -- CI pipeline and dev environment | IN PROGRESS | 1 | -- |
+| TASK-001: DevOps Phase 1 -- CI pipeline and dev environment | BUILT -- PENDING VERIFICATION | 1 | Verifier dispatched |
 | TASK-002: Database schema and migration foundation | PENDING | -- | -- |
 | TASK-004: Redis Streams queue infrastructure | PENDING | -- | -- |
 | TASK-003: Authentication and session management | PENDING | -- | -- |
@@ -43,7 +43,7 @@ Plan Gate v2.1 APPROVED (2026-03-26). Phase: EXECUTION. Scaffolder completed 202
 - Requirements satisfied this cycle: 0 of target
 - Sentinel: Not invoked
 - Scaffolder: COMPLETE (2026-03-26, 57 files, manifest at process/scaffolder/scaffold-manifest.md)
-- TASK-001: IN PROGRESS (Builder dispatched 2026-03-26)
+- TASK-001: BUILT -- Verifier dispatched 2026-03-26 (Pre-staging mode, Initial verification)
 
 ---
 
