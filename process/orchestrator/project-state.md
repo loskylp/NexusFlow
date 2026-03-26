@@ -8,14 +8,14 @@
 
 ## Where We Are
 
-Plan Gate v2.1 APPROVED (2026-03-26). Phase: EXECUTION. Layer 1 COMPLETE (TASK-001, TASK-002, TASK-004). Layer 2 COMPLETE (TASK-003). Dispatching Builder for TASK-006 (Worker self-registration and heartbeat) -- last task in Layer 2.
+Plan Gate v2.1 APPROVED (2026-03-26). Phase: EXECUTION. Layer 1 COMPLETE (TASK-001, TASK-002, TASK-004). Layer 2 COMPLETE (TASK-003, TASK-006). TASK-006 BUILT -- dispatching Verifier for initial verification. After TASK-006 verification: Layer 3 (TASK-005, TASK-013, TASK-015).
 
 ## Active Work
 
-**Agent in control:** Builder (dispatching 2026-03-26)
-**Current task:** TASK-006 -- Worker self-registration and heartbeat (BUILD)
-**Waiting for:** Builder to implement worker registration, heartbeat, and unit tests
-**Next after Builder:** Verifier (Pre-staging mode) for TASK-006 verification. Then Layer 3: TASK-005, TASK-013, TASK-015.
+**Agent in control:** Verifier (dispatching 2026-03-26)
+**Current task:** TASK-006 -- Worker self-registration and heartbeat (VERIFICATION)
+**Waiting for:** Verifier to verify TASK-006 against 4 acceptance criteria
+**Next after Verifier:** Layer 3 -- TASK-005 (Task submission via REST API), TASK-013 (Pipeline CRUD via REST API), TASK-015 (SSE event infrastructure)
 
 ---
 
@@ -27,7 +27,7 @@ Plan Gate v2.1 APPROVED (2026-03-26). Phase: EXECUTION. Layer 1 COMPLETE (TASK-0
 | TASK-002: Database schema and migration foundation | COMPLETE | 1 | PASS (95/95 acceptance, 7/7 integration) |
 | TASK-004: Redis Streams queue infrastructure | COMPLETE | 1 | PASS (16/16 acceptance, p95=0.12ms) |
 | TASK-003: Authentication and session management | COMPLETE | 1 | PASS (24/24 acceptance, 55 unit tests) |
-| TASK-006: Worker self-registration and heartbeat | PENDING | -- | -- |
+| TASK-006: Worker self-registration and heartbeat | BUILT -- PENDING VERIFICATION | -- | -- |
 | TASK-005: Task submission via REST API | PENDING | -- | -- |
 | TASK-013: Pipeline CRUD via REST API | PENDING | -- | -- |
 | TASK-007: Tag-based task assignment and pipeline execution | PENDING | -- | -- |
