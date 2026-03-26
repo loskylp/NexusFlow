@@ -6,8 +6,10 @@
 //  1. Load config (config.Load)
 //  2. Open PostgreSQL pool and run migrations (db.New — TASK-002)
 //  3. Connect Redis client (go-redis)
-//  4. Build API server (api.NewServer) with repository implementations wired from TASK-002
-//  5. Start HTTP server with graceful shutdown on SIGTERM/SIGINT
+//  4. Construct SessionStore and UserRepository (TASK-003)
+//  5. Seed admin user if no users exist (TASK-003)
+//  6. Build API server (api.NewServer) with all dependencies wired
+//  7. Start HTTP server with graceful shutdown on SIGTERM/SIGINT
 //
 // See: ADR-004, ADR-005, ADR-006, TASK-001, TASK-002, TASK-003
 package main
@@ -22,9 +24,13 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/nxlabs/nexusflow/api"
+	"github.com/nxlabs/nexusflow/internal/auth"
 	"github.com/nxlabs/nexusflow/internal/config"
 	"github.com/nxlabs/nexusflow/internal/db"
+	"github.com/nxlabs/nexusflow/internal/models"
+	"github.com/nxlabs/nexusflow/internal/queue"
 	"github.com/redis/go-redis/v9"
 )
 
@@ -64,18 +70,27 @@ func main() {
 	defer pool.Close()
 	log.Printf("api: PostgreSQL connected and migrations applied")
 
-	// Repository implementations are wired in later tasks (TASK-003, TASK-005, etc.).
-	// Pass nil for repositories not yet implemented; handler stubs return 500 until implemented.
+	// Wire TASK-003 dependencies: UserRepository and SessionStore.
+	userRepo := db.NewPgUserRepository(pool)
+	sessionStore := queue.NewRedisSessionStore(redisClient, 24*time.Hour)
+
+	// Seed the initial admin user if no users exist (TASK-003, AC-7).
+	seedCtx, seedCancel := context.WithTimeout(context.Background(), 10*time.Second)
+	if err := seedAdminIfEmpty(seedCtx, userRepo); err != nil {
+		log.Printf("api: admin seed warning: %v", err)
+	}
+	seedCancel()
+
 	srv := api.NewServer(
 		cfg,
 		pool,
 		redisClient,
-		nil, // users — wired in TASK-003
+		userRepo,
 		nil, // tasks — wired in TASK-005
 		nil, // pipelines — wired in TASK-013
 		nil, // workers — wired in TASK-006
 		nil, // producer — wired in TASK-004
-		nil, // sessions — wired in TASK-003
+		sessionStore,
 		nil, // broker — wired in TASK-015
 	)
 
@@ -108,4 +123,50 @@ func main() {
 		log.Fatalf("api: graceful shutdown failed: %v", err)
 	}
 	log.Printf("api: stopped cleanly")
+}
+
+// seedAdminIfEmpty creates the default admin user when no users exist in the database.
+// This satisfies TASK-003 AC-7: "admin user (admin/admin) is seeded if no users exist".
+//
+// Admin credentials: username=admin, password=admin (bcrypt-hashed at cost 12).
+// Email/username domain: admin@nexusflow.local per TASK-003 spec.
+//
+// Args:
+//
+//	ctx:      Context for database operations.
+//	userRepo: The UserRepository used to check and create users.
+//
+// Postconditions:
+//   - If users exist: no action taken; returns nil.
+//   - If no users exist: admin user is created and logged; returns nil on success.
+//   - On failure: returns a non-fatal error (caller logs and continues startup).
+func seedAdminIfEmpty(ctx context.Context, userRepo db.UserRepository) error {
+	users, err := userRepo.List(ctx)
+	if err != nil {
+		return fmt.Errorf("seedAdmin: list users: %w", err)
+	}
+	if len(users) > 0 {
+		return nil // Users exist; skip seeding.
+	}
+
+	hash, err := auth.HashPassword("admin")
+	if err != nil {
+		return fmt.Errorf("seedAdmin: hash password: %w", err)
+	}
+
+	admin := &models.User{
+		ID:           uuid.New(),
+		Username:     "admin",
+		PasswordHash: hash,
+		Role:         models.RoleAdmin,
+		Active:       true,
+		CreatedAt:    time.Now().UTC(),
+	}
+
+	if _, err := userRepo.Create(ctx, admin); err != nil {
+		return fmt.Errorf("seedAdmin: create admin user: %w", err)
+	}
+
+	log.Printf("api: admin user seeded (username=admin) — change password immediately in production")
+	return nil
 }

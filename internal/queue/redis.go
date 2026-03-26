@@ -369,45 +369,120 @@ type SessionStore interface {
 // RedisSessionStore implements SessionStore using go-redis.
 // See: ADR-006, TASK-003
 type RedisSessionStore struct {
-	client *redis.Client //lint:ignore U1000 scaffold stub — wired in TASK-003
-	ttl    time.Duration //lint:ignore U1000 scaffold stub — wired in TASK-003
+	client *redis.Client
+	ttl    time.Duration
 }
 
 // NewRedisSessionStore constructs a RedisSessionStore.
+// Panics if client is nil (fail-fast: a nil client causes silent failures on every call).
 //
 // Args:
 //
-//	client: A connected go-redis client.
+//	client: A connected go-redis client. Must not be nil.
 //	ttl:    Session time-to-live (default 24h per ADR-006).
 func NewRedisSessionStore(client *redis.Client, ttl time.Duration) *RedisSessionStore {
-	// TODO: Implement in TASK-003
-	panic("not implemented")
+	if client == nil {
+		panic("queue.NewRedisSessionStore: client must not be nil")
+	}
+	return &RedisSessionStore{client: client, ttl: ttl}
+}
+
+// sessionKey returns the Redis key for the given session token.
+// Format: session:{token} per ADR-006.
+func sessionKey(token string) string {
+	return "session:" + token
 }
 
 // Create implements SessionStore.Create.
+// Marshals the session to JSON and stores it at session:{token} with the configured TTL.
+//
+// Postconditions:
+//   - On success: session:{token} exists in Redis with configured TTL.
 func (s *RedisSessionStore) Create(ctx context.Context, token string, session *models.Session) error {
-	// TODO: Implement in TASK-003
-	panic("not implemented")
+	payload, err := json.Marshal(session)
+	if err != nil {
+		return fmt.Errorf("queue.SessionStore.Create: marshal session: %w", err)
+	}
+	if err := s.client.Set(ctx, sessionKey(token), payload, s.ttl).Err(); err != nil {
+		return fmt.Errorf("queue.SessionStore.Create: SET session:%s: %w", token, err)
+	}
+	return nil
 }
 
 // Get implements SessionStore.Get.
+// Returns nil, nil when the token does not exist or has expired (redis.Nil treated as missing).
+//
+// Postconditions:
+//   - Returns (*models.Session, nil) when found.
+//   - Returns (nil, nil) when the key is absent or expired.
+//   - Returns (nil, error) only for Redis connectivity failures.
 func (s *RedisSessionStore) Get(ctx context.Context, token string) (*models.Session, error) {
-	// TODO: Implement in TASK-003
-	panic("not implemented")
+	data, err := s.client.Get(ctx, sessionKey(token)).Bytes()
+	if errors.Is(err, redis.Nil) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("queue.SessionStore.Get: GET session:%s: %w", token, err)
+	}
+	var sess models.Session
+	if err := json.Unmarshal(data, &sess); err != nil {
+		return nil, fmt.Errorf("queue.SessionStore.Get: unmarshal session: %w", err)
+	}
+	return &sess, nil
 }
 
 // Delete implements SessionStore.Delete.
+// Removes the session key from Redis immediately. Idempotent: returns nil if the key is absent.
+//
+// Postconditions:
+//   - On success: subsequent Get calls with this token return nil.
 func (s *RedisSessionStore) Delete(ctx context.Context, token string) error {
-	// TODO: Implement in TASK-003
-	panic("not implemented")
+	if err := s.client.Del(ctx, sessionKey(token)).Err(); err != nil {
+		return fmt.Errorf("queue.SessionStore.Delete: DEL session:%s: %w", token, err)
+	}
+	return nil
 }
 
 // DeleteAllForUser implements SessionStore.DeleteAllForUser.
-// Uses SCAN to find all session:{*} keys belonging to the user, then DEL.
-// Complexity note: this is O(N) in total session count; acceptable for single-org scale.
+// Uses SCAN to find all session:{*} keys, deserialises each, and deletes those
+// belonging to the given userID. Complexity: O(N) in total session count.
+// Acceptable for single-org scale (ADR-006 — Warning threshold: >1000 active sessions).
+//
+// Postconditions:
+//   - On success: no active session remains for this user.
 func (s *RedisSessionStore) DeleteAllForUser(ctx context.Context, userID string) error {
-	// TODO: Implement in TASK-003
-	panic("not implemented")
+	var cursor uint64
+	for {
+		keys, nextCursor, err := s.client.Scan(ctx, cursor, "session:*", 100).Result()
+		if err != nil {
+			return fmt.Errorf("queue.SessionStore.DeleteAllForUser: SCAN: %w", err)
+		}
+
+		for _, key := range keys {
+			data, err := s.client.Get(ctx, key).Bytes()
+			if errors.Is(err, redis.Nil) {
+				continue // expired between SCAN and GET
+			}
+			if err != nil {
+				return fmt.Errorf("queue.SessionStore.DeleteAllForUser: GET %s: %w", key, err)
+			}
+			var sess models.Session
+			if err := json.Unmarshal(data, &sess); err != nil {
+				continue // malformed entry — skip rather than halt
+			}
+			if sess.UserID.String() == userID {
+				if err := s.client.Del(ctx, key).Err(); err != nil {
+					return fmt.Errorf("queue.SessionStore.DeleteAllForUser: DEL %s: %w", key, err)
+				}
+			}
+		}
+
+		cursor = nextCursor
+		if cursor == 0 {
+			break
+		}
+	}
+	return nil
 }
 
 // --- internal helpers ---

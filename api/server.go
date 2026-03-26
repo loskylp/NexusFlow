@@ -10,6 +10,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
+	"github.com/nxlabs/nexusflow/internal/auth"
 	"github.com/nxlabs/nexusflow/internal/config"
 	"github.com/nxlabs/nexusflow/internal/db"
 	"github.com/nxlabs/nexusflow/internal/queue"
@@ -81,26 +82,23 @@ func NewServer(
 //
 // Route map:
 //
-//	POST   /api/auth/login             — AuthHandler.Login       (TASK-003)
-//	POST   /api/auth/logout            — AuthHandler.Logout      (TASK-003)
-//	GET    /api/health                 — HealthHandler.Health    (TASK-001)
-//	POST   /api/tasks                  — TaskHandler.Submit      (TASK-005)
-//	GET    /api/tasks                  — TaskHandler.List        (TASK-008, Cycle 2)
-//	GET    /api/tasks/{id}             — TaskHandler.Get         (TASK-008, Cycle 2)
-//	POST   /api/tasks/{id}/cancel      — TaskHandler.Cancel      (TASK-012, Cycle 2)
-//	GET    /api/pipelines              — PipelineHandler.List    (TASK-013)
-//	POST   /api/pipelines              — PipelineHandler.Create  (TASK-013)
-//	GET    /api/pipelines/{id}         — PipelineHandler.Get     (TASK-013)
-//	PUT    /api/pipelines/{id}         — PipelineHandler.Update  (TASK-013)
-//	DELETE /api/pipelines/{id}         — PipelineHandler.Delete  (TASK-013)
-//	GET    /api/workers                — WorkerHandler.List      (TASK-025)
-//	GET    /events/tasks               — SSEHandler.Tasks        (TASK-015)
-//	GET    /events/workers             — SSEHandler.Workers      (TASK-015)
-//	GET    /events/tasks/{id}/logs     — SSEHandler.Logs         (TASK-015)
-//	GET    /events/sink/{taskId}       — SSEHandler.Sink         (TASK-015)
-//
-// Only the health endpoint is fully implemented in TASK-001.
-// All other route handlers are scaffolded stubs implemented in later tasks.
+//	POST   /api/auth/login             — AuthHandler.Login       (TASK-003) — public
+//	POST   /api/auth/logout            — AuthHandler.Logout      (TASK-003) — authenticated
+//	GET    /api/health                 — HealthHandler.Health    (TASK-001) — public
+//	POST   /api/tasks                  — TaskHandler.Submit      (TASK-005) — authenticated
+//	GET    /api/tasks                  — TaskHandler.List        (TASK-008, Cycle 2) — authenticated
+//	GET    /api/tasks/{id}             — TaskHandler.Get         (TASK-008, Cycle 2) — authenticated
+//	POST   /api/tasks/{id}/cancel      — TaskHandler.Cancel      (TASK-012, Cycle 2) — authenticated
+//	GET    /api/pipelines              — PipelineHandler.List    (TASK-013) — authenticated
+//	POST   /api/pipelines              — PipelineHandler.Create  (TASK-013) — authenticated
+//	GET    /api/pipelines/{id}         — PipelineHandler.Get     (TASK-013) — authenticated
+//	PUT    /api/pipelines/{id}         — PipelineHandler.Update  (TASK-013) — authenticated
+//	DELETE /api/pipelines/{id}         — PipelineHandler.Delete  (TASK-013) — authenticated
+//	GET    /api/workers                — WorkerHandler.List      (TASK-025) — authenticated
+//	GET    /events/tasks               — SSEHandler.Tasks        (TASK-015) — authenticated
+//	GET    /events/workers             — SSEHandler.Workers      (TASK-015) — authenticated
+//	GET    /events/tasks/{id}/logs     — SSEHandler.Logs         (TASK-015) — authenticated
+//	GET    /events/sink/{taskId}       — SSEHandler.Sink         (TASK-015) — authenticated
 func (s *Server) Handler() http.Handler {
 	r := chi.NewRouter()
 	r.Use(middleware.Recoverer)
@@ -110,35 +108,42 @@ func (s *Server) Handler() http.Handler {
 	health := &HealthHandler{server: s}
 	r.Get("/api/health", health.Health)
 
-	// --- Auth routes (TASK-003) ---
+	// Login is public — no auth middleware.
 	authH := &AuthHandler{server: s}
 	r.Post("/api/auth/login", authH.Login)
-	r.Post("/api/auth/logout", authH.Logout)
 
-	// --- Protected routes ---
-	// Auth middleware is wired in TASK-003. Handlers below panic until their task is implemented.
-	taskH := &TaskHandler{server: s}
-	r.Post("/api/tasks", taskH.Submit)
-	r.Get("/api/tasks", taskH.List)
-	r.Get("/api/tasks/{id}", taskH.Get)
-	r.Post("/api/tasks/{id}/cancel", taskH.Cancel)
+	// All routes below require a valid session token (ADR-006).
+	// The group applies auth.Middleware to every route registered within it.
+	r.Group(func(protected chi.Router) {
+		if s.sessions != nil {
+			protected.Use(auth.Middleware(s.sessions))
+		}
 
-	pipelineH := &PipelineHandler{server: s}
-	r.Post("/api/pipelines", pipelineH.Create)
-	r.Get("/api/pipelines", pipelineH.List)
-	r.Get("/api/pipelines/{id}", pipelineH.Get)
-	r.Put("/api/pipelines/{id}", pipelineH.Update)
-	r.Delete("/api/pipelines/{id}", pipelineH.Delete)
+		protected.Post("/api/auth/logout", authH.Logout)
 
-	workerH := &WorkerHandler{server: s}
-	r.Get("/api/workers", workerH.List)
+		taskH := &TaskHandler{server: s}
+		protected.Post("/api/tasks", taskH.Submit)
+		protected.Get("/api/tasks", taskH.List)
+		protected.Get("/api/tasks/{id}", taskH.Get)
+		protected.Post("/api/tasks/{id}/cancel", taskH.Cancel)
 
-	// --- SSE routes (TASK-015) ---
-	sseH := &SSEHandler{server: s}
-	r.Get("/events/tasks", sseH.Tasks)
-	r.Get("/events/workers", sseH.Workers)
-	r.Get("/events/tasks/{id}/logs", sseH.Logs)
-	r.Get("/events/sink/{taskId}", sseH.Sink)
+		pipelineH := &PipelineHandler{server: s}
+		protected.Post("/api/pipelines", pipelineH.Create)
+		protected.Get("/api/pipelines", pipelineH.List)
+		protected.Get("/api/pipelines/{id}", pipelineH.Get)
+		protected.Put("/api/pipelines/{id}", pipelineH.Update)
+		protected.Delete("/api/pipelines/{id}", pipelineH.Delete)
+
+		workerH := &WorkerHandler{server: s}
+		protected.Get("/api/workers", workerH.List)
+
+		// SSE routes (TASK-015).
+		sseH := &SSEHandler{server: s}
+		protected.Get("/events/tasks", sseH.Tasks)
+		protected.Get("/events/workers", sseH.Workers)
+		protected.Get("/events/tasks/{id}/logs", sseH.Logs)
+		protected.Get("/events/sink/{taskId}", sseH.Sink)
+	})
 
 	return r
 }
