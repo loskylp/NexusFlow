@@ -8,14 +8,14 @@
 
 ## Where We Are
 
-Planner complete (2026-03-26). Three-pass decomposition produced 41 tasks (38 active + 3 deferred). Task Plan v1, Release Map v1, and Dependency Graph v1 produced. Cycle 1 (MVP): 28 tasks covering 27 requirements + infrastructure. Cycle 2 (Demo + Production): 10 tasks covering DEMO-001 through DEMO-004 plus staging/production deployment. 3 tasks deferred below cut line (pipeline template sharing, rate limiting, priority queuing). No spikes required. Rolling confidence HIGH for both cycles. Awaiting Nexus approval at Plan Gate.
+Plan Gate revision in progress (2026-03-26). Nexus reviewed Plan v1 and requested four revisions: (1) Remove TASK-039 entirely -- AUDIT-006 was DISMISSED, not deferred; (2) Separate cycles from production versions -- cycles are internal iterations, versions are release milestones, not 1:1; (3) Break Cycle 1 into three cycles: Cycle 1 (MVP walking skeleton), Cycle 2 (core system completion), Cycle 3 (remaining GUI/API/infra) -- all three compose v1.0.0; (4) Post-v1.0 cycles remain but are versioned separately. Planner dispatched for full three-pass re-plan with new cycle boundaries.
 
 ## Active Work
 
-**Agent in control:** Orchestrator (presenting Plan Gate to Nexus)
-**Current task:** Plan Gate briefing
-**Waiting for:** Nexus decision (approve, amend, or reject task plan and release map)
-**Next after approval:** Invoke Scaffolder (28 Builder tasks in Cycle 1 >= 3, per Manifest rule), then DevOps Phase 1 (TASK-001) before any Builder task begins
+**Agent in control:** Planner (revision pass -- three-pass re-plan with Nexus-directed cycle boundaries)
+**Current task:** Revise task-plan.md, release-map.md, dependency-graph.md per Nexus feedback
+**Waiting for:** Planner completion
+**Next after Planner completes:** Re-present Plan Gate to Nexus for approval
 
 ---
 
