@@ -8,14 +8,14 @@
 
 ## Where We Are
 
-Plan Gate v2.1 APPROVED (2026-03-26). Phase: EXECUTION. TASK-001 COMPLETE. TASK-002 COMPLETE -- Verifier PASS, CI green (run 23606734063), committed and pushed. Layer 1 complete. Dispatching Builder for TASK-004 (Redis Streams queue infrastructure) -- next task in execution sequence (Layer 1, second task).
+Plan Gate v2.1 APPROVED (2026-03-26). Phase: EXECUTION. TASK-001 COMPLETE. TASK-002 COMPLETE. TASK-004 BUILT -- Builder finished 2026-03-26 (23 unit tests, all passing, p95 latency 120us). Dispatching Verifier for TASK-004 (Pre-staging mode, Initial verification).
 
 ## Active Work
 
-**Agent in control:** Builder (dispatched 2026-03-26)
-**Current task:** TASK-004 -- Redis Streams queue infrastructure (BUILD)
-**Waiting for:** Builder to implement TASK-004 against 6 acceptance criteria
-**Next after Builder:** Dispatch Verifier for TASK-004 (Pre-staging mode, Initial verification). If PASS, next task is TASK-003 (Layer 2).
+**Agent in control:** Verifier (dispatching 2026-03-26)
+**Current task:** TASK-004 -- Redis Streams queue infrastructure (VERIFICATION)
+**Waiting for:** Verifier to run acceptance criteria against Builder's implementation
+**Next after Verifier:** If PASS, dispatch Builder for TASK-003 (Layer 2 -- Authentication and session management). If FAIL, enter iterate loop (Builder fix -> Verifier re-verify).
 
 ---
 
@@ -25,7 +25,7 @@ Plan Gate v2.1 APPROVED (2026-03-26). Phase: EXECUTION. TASK-001 COMPLETE. TASK-
 |---|---|---|---|
 | TASK-001: DevOps Phase 1 -- CI pipeline and dev environment | COMPLETE | 1 | PASS (52/52 acceptance, 16/16 integration) |
 | TASK-002: Database schema and migration foundation | COMPLETE | 1 | PASS (95/95 acceptance, 7/7 integration) |
-| TASK-004: Redis Streams queue infrastructure | IN PROGRESS (Builder) | -- | -- |
+| TASK-004: Redis Streams queue infrastructure | BUILT -- PENDING VERIFICATION | -- | -- |
 | TASK-003: Authentication and session management | PENDING | -- | -- |
 | TASK-006: Worker self-registration and heartbeat | PENDING | -- | -- |
 | TASK-005: Task submission via REST API | PENDING | -- | -- |
@@ -45,7 +45,7 @@ Plan Gate v2.1 APPROVED (2026-03-26). Phase: EXECUTION. TASK-001 COMPLETE. TASK-
 - Scaffolder: COMPLETE (2026-03-26, 57 files, manifest at process/scaffolder/scaffold-manifest.md)
 - TASK-001: COMPLETE (2026-03-26) -- Verifier PASS, CI green. Note: staticcheck U1000 errors on 30 scaffold stubs required a fix commit (1687c64, added lint:ignore directives) before CI passed on second run.
 - TASK-002: COMPLETE (2026-03-26) -- Verifier PASS (95/95 acceptance, 7/7 integration), CI green (run 23606734063). OBS-003 resolved (health endpoint 200 with postgres). 4 non-blocking observations recorded.
-- TASK-004: Builder dispatched 2026-03-26
+- TASK-004: BUILT 2026-03-26 -- 23 unit tests passing, p95 120us. Verifier dispatched 2026-03-26. Deviations: EnqueueDeadLetter, ReadTasks, Acknowledge implemented here (scaffold had them in TASK-009/TASK-007); ReadTasks uses 200ms polling loop for context cancellation responsiveness.
 
 ---
 
