@@ -121,6 +121,93 @@ type ConnectorRegistry interface {
 	Register(connectorKind string, connector any)
 }
 
+// DefaultConnectorRegistry is the standard ConnectorRegistry implementation.
+// Connectors are registered at startup and resolved by type name at execution time.
+// Panics on duplicate registration to surface misconfiguration at startup (fail-fast).
+// See: TASK-007, TASK-042
+type DefaultConnectorRegistry struct {
+	sources map[string]DataSourceConnector
+	procs   map[string]ProcessConnector
+	sinks   map[string]SinkConnector
+}
+
+// NewDefaultConnectorRegistry constructs an empty DefaultConnectorRegistry.
+// Call Register to add connectors before the Worker starts consuming tasks.
+func NewDefaultConnectorRegistry() *DefaultConnectorRegistry {
+	return &DefaultConnectorRegistry{
+		sources: make(map[string]DataSourceConnector),
+		procs:   make(map[string]ProcessConnector),
+		sinks:   make(map[string]SinkConnector),
+	}
+}
+
+// DataSource implements ConnectorRegistry.DataSource.
+// Returns ErrUnknownConnector when the type has no registered implementation.
+func (r *DefaultConnectorRegistry) DataSource(connectorType string) (DataSourceConnector, error) {
+	c, ok := r.sources[connectorType]
+	if !ok {
+		return nil, ErrUnknownConnector
+	}
+	return c, nil
+}
+
+// Process implements ConnectorRegistry.Process.
+// Returns ErrUnknownConnector when the type has no registered implementation.
+func (r *DefaultConnectorRegistry) Process(connectorType string) (ProcessConnector, error) {
+	c, ok := r.procs[connectorType]
+	if !ok {
+		return nil, ErrUnknownConnector
+	}
+	return c, nil
+}
+
+// Sink implements ConnectorRegistry.Sink.
+// Returns ErrUnknownConnector when the type has no registered implementation.
+func (r *DefaultConnectorRegistry) Sink(connectorType string) (SinkConnector, error) {
+	c, ok := r.sinks[connectorType]
+	if !ok {
+		return nil, ErrUnknownConnector
+	}
+	return c, nil
+}
+
+// Register implements ConnectorRegistry.Register.
+// connectorKind must be one of "datasource", "process", or "sink".
+// Panics if connectorKind is invalid or if the type name is already registered (fail-fast).
+func (r *DefaultConnectorRegistry) Register(connectorKind string, connector any) {
+	switch connectorKind {
+	case "datasource":
+		c, ok := connector.(DataSourceConnector)
+		if !ok {
+			panic("DefaultConnectorRegistry.Register: connector does not implement DataSourceConnector")
+		}
+		if _, exists := r.sources[c.Type()]; exists {
+			panic("DefaultConnectorRegistry.Register: duplicate DataSource connector type " + c.Type())
+		}
+		r.sources[c.Type()] = c
+	case "process":
+		c, ok := connector.(ProcessConnector)
+		if !ok {
+			panic("DefaultConnectorRegistry.Register: connector does not implement ProcessConnector")
+		}
+		if _, exists := r.procs[c.Type()]; exists {
+			panic("DefaultConnectorRegistry.Register: duplicate Process connector type " + c.Type())
+		}
+		r.procs[c.Type()] = c
+	case "sink":
+		c, ok := connector.(SinkConnector)
+		if !ok {
+			panic("DefaultConnectorRegistry.Register: connector does not implement SinkConnector")
+		}
+		if _, exists := r.sinks[c.Type()]; exists {
+			panic("DefaultConnectorRegistry.Register: duplicate Sink connector type " + c.Type())
+		}
+		r.sinks[c.Type()] = c
+	default:
+		panic("DefaultConnectorRegistry.Register: unknown connectorKind " + connectorKind + "; must be datasource, process, or sink")
+	}
+}
+
 // ErrUnknownConnector is returned by ConnectorRegistry methods when the requested type
 // has no registered implementation.
 var ErrUnknownConnector = &connectorError{"unknown connector type"}

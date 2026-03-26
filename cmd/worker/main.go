@@ -6,11 +6,12 @@
 //  1. Load config (DATABASE_URL, REDIS_URL, WORKER_TAGS, WORKER_ID required)
 //  2. Connect to PostgreSQL (run migrations)
 //  3. Connect to Redis (verify with PING)
-//  4. Build WorkerRepository, HeartbeatStore (RedisQueue), Consumer (RedisQueue)
-//  5. Construct Worker and call Run (blocks until SIGTERM/SIGINT)
-//  6. Graceful shutdown: Run marks worker as "down" before returning
+//  4. Build WorkerRepository, TaskRepository, PipelineRepository, HeartbeatStore, Consumer
+//  5. Build ConnectorRegistry and register demo connectors (TASK-042 wires real connectors)
+//  6. Construct Worker and call Run (blocks until SIGTERM/SIGINT)
+//  7. Graceful shutdown: Run marks worker as "down" before returning
 //
-// WORKER_ID defaults to a UUID generated on startup if not set via env.
+// WORKER_ID defaults to a UUID generated on startup if not set via environment.
 // WORKER_TAGS is a comma-separated list (e.g. "etl,report"). Defaults to "demo".
 //
 // See: ADR-001, ADR-002, ADR-004, ADR-005, TASK-006, TASK-007, TASK-042
@@ -74,24 +75,34 @@ func main() {
 	redisClient := redis.NewClient(redisOpts)
 	defer func() { _ = redisClient.Close() }()
 
-	if err := redisClient.Ping(startupCtx, ).Err(); err != nil {
+	if err := redisClient.Ping(startupCtx).Err(); err != nil {
 		log.Fatalf("worker: redis not reachable: %v", err)
 	}
 	log.Printf("worker: redis connected at %s", cfg.RedisURL)
 
-	// Build dependencies.
+	// Build dependencies wired in TASK-007.
 	workerRepo := db.NewPgWorkerRepository(pool)
+	taskRepo := db.NewPgTaskRepository(pool)
+	pipelineRepo := db.NewPgPipelineRepository(pool)
 	redisQueue := queue.NewRedisQueue(redisClient)
 
-	// Construct the worker. Task and SSE dependencies are wired in TASK-007 and TASK-015.
-	w := workerPkg.NewWorker(
+	// Build connector registry. Demo connectors are implemented in TASK-042.
+	// The registry is constructed now (empty) so the Worker starts cleanly;
+	// tasks with unregistered connector types will be marked "failed" at execution time.
+	connectorRegistry := workerPkg.NewDefaultConnectorRegistry()
+
+	// Construct the worker.
+	// broker is nil until TASK-015 (SSE infrastructure) is implemented.
+	// When broker is nil, the Worker skips event publication silently.
+	w := workerPkg.NewWorkerWithPipelines(
 		cfg,
-		nil,         // TaskRepository — wired in TASK-007
+		taskRepo,
 		workerRepo,
-		redisQueue,  // Consumer
-		redisQueue,  // HeartbeatStore
-		nil,         // Broker — wired in TASK-015
-		nil,         // ConnectorRegistry — wired in TASK-042
+		pipelineRepo,
+		redisQueue, // Consumer
+		redisQueue, // HeartbeatStore
+		nil,        // Broker — wired in TASK-015
+		connectorRegistry,
 	)
 
 	// Run blocks until SIGTERM/SIGINT.

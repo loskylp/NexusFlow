@@ -66,9 +66,13 @@ func (q *RedisQueue) Enqueue(ctx context.Context, message *ProducerMessage) ([]s
 		return nil, errors.New("queue.Enqueue: tags must not be empty")
 	}
 
+	pipelineIDStr := ""
+	if message.Task.PipelineID != nil {
+		pipelineIDStr = message.Task.PipelineID.String()
+	}
 	tm := TaskMessage{
 		TaskID:      message.Task.ID.String(),
-		PipelineID:  message.Task.PipelineID.String(),
+		PipelineID:  pipelineIDStr,
 		UserID:      message.Task.UserID.String(),
 		ExecutionID: message.Task.ExecutionID,
 	}
