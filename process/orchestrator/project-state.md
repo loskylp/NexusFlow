@@ -1,27 +1,48 @@
 # Project State
 **Manifest version:** v1 | **Profile:** Critical
-**Current phase:** PLANNING
-**Current cycle:** 0 (pre-execution)
+**Current phase:** EXECUTION
+**Current cycle:** 1
 **Last updated:** 2026-03-26
 
 ---
 
 ## Where We Are
 
-Plan Gate revision in progress (2026-03-26). Nexus reviewed Plan v1 and requested four revisions: (1) Remove TASK-039 entirely -- AUDIT-006 was DISMISSED, not deferred; (2) Separate cycles from production versions -- cycles are internal iterations, versions are release milestones, not 1:1; (3) Break Cycle 1 into three cycles: Cycle 1 (MVP walking skeleton), Cycle 2 (core system completion), Cycle 3 (remaining GUI/API/infra) -- all three compose v1.0.0; (4) Post-v1.0 cycles remain but are versioned separately. Planner dispatched for full three-pass re-plan with new cycle boundaries.
+Plan Gate v2.1 APPROVED (2026-03-26). Phase transitioned from PLANNING to EXECUTION. Cycle 1 has 14 tasks. Dispatching Scaffolder (14 tasks >= 3, per Manifest rule) before any Builder task. DevOps Phase 1 (TASK-001) runs after Scaffolder completes.
 
 ## Active Work
 
-**Agent in control:** Planner (revision pass -- three-pass re-plan with Nexus-directed cycle boundaries)
-**Current task:** Revise task-plan.md, release-map.md, dependency-graph.md per Nexus feedback
-**Waiting for:** Planner completion
-**Next after Planner completes:** Re-present Plan Gate to Nexus for approval
+**Agent in control:** Scaffolder (dispatched 2026-03-26)
+**Current task:** Generate scaffold for Cycle 1 iteration (14 tasks)
+**Waiting for:** Scaffolder to produce scaffold manifest and project skeleton
+**Next after Scaffolder:** DevOps Phase 1 (TASK-001), then Builder tasks per dependency order
 
 ---
 
-## Cycle 0 -- Pre-Execution
+## Cycle 1 -- Task Status
 
-No tasks defined yet. Design and planning phases must complete first.
+| Task | Status | Iterations | Verifier |
+|---|---|---|---|
+| TASK-001: DevOps Phase 1 -- CI pipeline and dev environment | PENDING | -- | -- |
+| TASK-002: Database schema and migration foundation | PENDING | -- | -- |
+| TASK-004: Redis Streams queue infrastructure | PENDING | -- | -- |
+| TASK-003: Authentication and session management | PENDING | -- | -- |
+| TASK-006: Worker self-registration and heartbeat | PENDING | -- | -- |
+| TASK-005: Task submission via REST API | PENDING | -- | -- |
+| TASK-013: Pipeline CRUD via REST API | PENDING | -- | -- |
+| TASK-007: Tag-based task assignment and pipeline execution | PENDING | -- | -- |
+| TASK-042: Demo connectors -- demo source, simulated worker, demo sink | PENDING | -- | -- |
+| TASK-019: React app shell with sidebar navigation and auth flow | PENDING | -- | -- |
+| TASK-025: Worker fleet status API | PENDING | -- | -- |
+| TASK-015: SSE event infrastructure | PENDING | -- | -- |
+| TASK-020: Worker Fleet Dashboard (GUI) | PENDING | -- | -- |
+| TASK-029: DevOps Phase 2 -- staging environment and CD pipeline | PENDING | -- | -- |
+
+**Cycle summary:**
+- Tasks complete: 0 of 14
+- Requirements satisfied this cycle: 0 of target
+- Sentinel: Not invoked
+- Scaffolder: DISPATCHED (2026-03-26)
 
 ---
 
@@ -31,28 +52,39 @@ No tasks defined yet. Design and planning phases must complete first.
 |---|---|---|---|
 | Requirements Gate | 2026-03-25 | APPROVED | 31 requirements, 4 deferrals non-blocking; Nexus approved |
 | Architecture Gate | 2026-03-26 | APPROVED | Architecture v2 approved. AUDIT-006 closed as NOT APPLICABLE (no templates). All other architecture approved. |
-| Plan Gate | -- | -- | |
+| Plan Gate | 2026-03-26 | APPROVED | Plan v2.1: 39 tasks across 5 cycles. v1.0.0 = Cycles 1-3 (31 tasks), v1.1.0 = Cycles 4-5 (8 tasks). Cycle 1 = 14 tasks. Approval authorizes full execution sequence. |
 | Demo Sign-off -- Cycle 1 | -- | -- | |
-| Go-Live -- v1.0 | -- | -- | |
+| Go-Live -- v1.0.0 | -- | -- | |
 
 ---
 
 ## Pending Decisions
 
-Plan Gate approval pending. Nexus must review task plan (41 tasks), release map (2 cycles + deferred), and dependency graph. Approval authorizes the full execution sequence: Scaffolder, DevOps Phase 1, then Builder tasks through Cycle 1.
+NONE -- Plan Gate approved. Autonomous execution in progress through Cycle 1.
 
-## Planner Completion Record
+---
 
-**Date:** 2026-03-26
-**Artifacts produced:**
-- `process/planner/task-plan.md` -- Task Plan v1 (41 tasks: 28 Cycle 1, 10 Cycle 2, 3 deferred)
-- `process/planner/release-map.md` -- Release Map v1 (MVP v1.0.0 + Release 2 v1.1.0 + Tentative Release 3+)
-- `process/planner/dependency-graph.md` -- Dependency Graph v1 (Mermaid graphs for Cycle 1 and Cycle 2)
+## Execution Sequence -- Cycle 1
 
-**Three-pass execution:** Pass 1 (decomposition), Pass 2 (scoring/ordering), Pass 3 (release map) -- all completed in sequence.
-**No spikes required.** All architectural unknowns resolved in Architecture v2.
-**Walking skeleton critical path:** TASK-001 -> TASK-002/TASK-004 -> TASK-003/TASK-006 -> TASK-005 -> TASK-007 -> TASK-009
-**High-risk tasks (3):** TASK-007 (pipeline execution), TASK-009 (monitor/failover), TASK-015 (SSE infrastructure), TASK-018 (sink atomicity)
+Per Manifest and Plan Gate approval, the execution sequence is:
+
+1. **Scaffolder** -- generate project skeleton for all 14 Cycle 1 tasks (IN PROGRESS)
+2. **DevOps Phase 1** (TASK-001) -- CI pipeline, dev environment, Environment Contract
+3. **Builder tasks** in dependency order:
+   - Layer 1: TASK-002, TASK-004 (both depend only on TASK-001)
+   - Layer 2: TASK-003, TASK-006 (depend on TASK-002)
+   - Layer 3: TASK-005, TASK-013, TASK-015 (depend on TASK-003/TASK-004)
+   - Layer 4: TASK-025 (depends on TASK-003, TASK-006)
+   - Layer 5: TASK-007 (depends on TASK-004, TASK-005, TASK-006, TASK-013)
+   - Layer 6: TASK-042 (depends on TASK-007, TASK-013)
+   - Layer 7: TASK-019 (depends on TASK-003)
+   - Layer 8: TASK-020 (depends on TASK-019, TASK-025, TASK-015, TASK-006)
+   - Layer 9: TASK-029 (DevOps Phase 2 -- depends on TASK-001, TASK-042)
+4. **Verifier** after each Builder task (Pre-staging mode until TASK-029 completes; Full mode after)
+5. **Sentinel** cycle-level security review after all tasks pass Verifier
+6. **Demo Sign-off** -- present to Nexus
+
+Note: Sequential execution model (one Builder task at a time). The dependency layers above guide ordering; within a layer, tasks are executed sequentially.
 
 ---
 
@@ -62,29 +94,30 @@ NONE -- not currently in an iterate loop.
 
 ---
 
-## Process Metrics -- Cycle 0
+## Process Metrics -- Cycle 1
 
 | Metric | Value |
 |---|---|
 | Auditor passes -- requirements | 2 (audit v2: PASS WITH DEFERRALS; audit v4: PASS WITH DEFERRALS) |
 | Auditor passes -- architecture | 2 (architecture-audit-v1: PASS; architecture-audit-v2: PASS) |
-| Gate rejections this cycle | 1 (Architecture Gate -- Nexus directed revision) |
-| Tasks completed | 0 of 0 planned |
+| Gate rejections this cycle | 0 |
+| Tasks completed | 0 of 14 planned |
 | Average iterations to PASS | -- |
 | Tasks that hit max iterations | 0 |
-| Escalations to Nexus | 3 (ESC-001 resolved, ESC-002 resolved, ESC-003 resolved) |
+| Escalations to Nexus | 0 |
 | Backward cascade triggered | No |
 
 ---
 
-## Standing Routing Rules (Cycle 0)
+## Standing Routing Rules (Cycle 1)
 
-- Designer COMPLETE (2026-03-26). Nexus approved all 7 screens.
-- Planner dispatched (2026-03-26) for three-pass decomposition.
-- After Planner completes -> Plan Gate (Nexus approval).
-- After Plan Gate approved -> if >= 3 Builder tasks, invoke Scaffolder before Builder tasks (Manifest rule).
-- DevOps Phase 1 (CI pipeline, dev environment, Environment Contract) must complete before any Builder task begins.
-- AUDIT-006 (pipeline template sharing) CLOSED -- NOT APPLICABLE (Nexus decision: no templates at all).
+- Scaffolder runs before any Builder task (14 tasks >= 3, Manifest rule). DISPATCHED.
+- DevOps Phase 1 (TASK-001) must complete before any other Builder task begins.
+- DevOps Phase 2 (TASK-029) runs after TASK-042 passes Verifier. After TASK-029 completes, Verifier mode switches from Pre-staging to Full.
+- Verifier mode is Pre-staging until TASK-029 completes.
+- AUDIT-006 (pipeline template sharing) CLOSED -- NOT APPLICABLE (Nexus decision 2026-03-26).
+
+---
 
 ## Designer Completion Record
 
@@ -102,6 +135,21 @@ NONE -- not currently in an iterate loop.
 
 ---
 
+## Planner Completion Record
+
+**Date:** 2026-03-26
+**Artifacts produced (v1, revised to v2, then v2.1):**
+- `process/planner/task-plan.md` -- Task Plan v2.1 (39 tasks: 14 Cycle 1, 10 Cycle 2, 7 Cycle 3, 6 Cycle 4, 2 Cycle 5)
+- `process/planner/release-map.md` -- Release Map v2.1 (v1.0.0 = Cycles 1-3, v1.1.0 = Cycles 4-5)
+- `process/planner/dependency-graph.md` -- Dependency Graph v2.1 (Mermaid graphs for all 5 cycles)
+
+**Three-pass execution:** Pass 1 (decomposition), Pass 2 (scoring/ordering), Pass 3 (release map) -- all completed in sequence. Full re-plan for v2 after Nexus feedback. Further revision to v2.1.
+**No spikes required.** All architectural unknowns resolved in Architecture v2.
+**Walking skeleton critical path (Cycle 1):** TASK-001 -> TASK-002/TASK-004 -> TASK-003/TASK-006 -> TASK-005/TASK-013 -> TASK-007 -> TASK-042
+**High-risk tasks (4):** TASK-007 (pipeline execution), TASK-009 (monitor/failover), TASK-015 (SSE infrastructure), TASK-018 (sink atomicity)
+
+---
+
 ## All Nexus Decisions (Complete)
 
 | Decision | Date | Outcome |
@@ -113,6 +161,7 @@ NONE -- not currently in an iterate loop.
 | Requirements Gate | 2026-03-25 | APPROVED -- all 31 requirements approved, 4 non-blocking deferrals tracked |
 | Architecture Gate -- revision directed | 2026-03-26 | Nexus directed two changes: (1) Go replaces Node.js/TypeScript; (2) deploy to nxlabs.cc infrastructure |
 | Architecture Gate -- approved | 2026-03-26 | Architecture v2 APPROVED. AUDIT-006 closed NOT APPLICABLE (no templates). All other architecture approved. |
+| Plan Gate | 2026-03-26 | APPROVED -- Plan v2.1: 39 tasks, 5 cycles; v1.0.0 (Cycles 1-3, 31 tasks), v1.1.0 (Cycles 4-5, 8 tasks). Authorizes full Cycle 1 execution. |
 
 ---
 
