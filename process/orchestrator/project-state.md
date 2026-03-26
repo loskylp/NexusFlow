@@ -8,14 +8,14 @@
 
 ## Where We Are
 
-Plan Gate v2.1 APPROVED (2026-03-26). Phase: EXECUTION. Layer 1 COMPLETE (TASK-001, TASK-002, TASK-004). Layer 2 COMPLETE (TASK-003, TASK-006). Layer 3 unlocked: TASK-005, TASK-013, TASK-015 all have dependencies satisfied. Dispatching Builder for TASK-005 (Task submission via REST API) -- walking skeleton critical path, primary system entry point. TASK-013 and TASK-015 follow.
+Plan Gate v2.1 APPROVED (2026-03-26). Phase: EXECUTION. Layer 1 COMPLETE (TASK-001, TASK-002, TASK-004). Layer 2 COMPLETE (TASK-003, TASK-006). Layer 3 in progress: TASK-005 BUILT, now PENDING VERIFICATION. TASK-013 and TASK-015 have dependencies satisfied but await TASK-005 verification before dispatch. Routing Verifier for TASK-005 initial verification (Pre-staging mode).
 
 ## Active Work
 
-**Agent in control:** Builder (dispatching 2026-03-26)
-**Current task:** TASK-005 -- Task submission via REST API (BUILD)
-**Waiting for:** Builder to implement TASK-005 (6 acceptance criteria)
-**Next after Builder:** Verifier (TASK-005 initial verification), then TASK-013 (Pipeline CRUD via REST API)
+**Agent in control:** Verifier (dispatching 2026-03-26)
+**Current task:** TASK-005 -- Task submission via REST API (VERIFICATION)
+**Waiting for:** Verifier to run initial verification against 6 acceptance criteria
+**Next after Verifier:** If PASS, dispatch Builder for TASK-013 (Pipeline CRUD via REST API). If FAIL, iterate loop with Builder.
 
 ---
 
@@ -28,7 +28,7 @@ Plan Gate v2.1 APPROVED (2026-03-26). Phase: EXECUTION. Layer 1 COMPLETE (TASK-0
 | TASK-004: Redis Streams queue infrastructure | COMPLETE | 1 | PASS (16/16 acceptance, p95=0.12ms) |
 | TASK-003: Authentication and session management | COMPLETE | 1 | PASS (24/24 acceptance, 55 unit tests) |
 | TASK-006: Worker self-registration and heartbeat | COMPLETE | 1 | PASS (14/14 acceptance, 35 unit tests) |
-| TASK-005: Task submission via REST API | PENDING | -- | -- |
+| TASK-005: Task submission via REST API | BUILT -- PENDING VERIFICATION | 0 | -- |
 | TASK-013: Pipeline CRUD via REST API | PENDING | -- | -- |
 | TASK-007: Tag-based task assignment and pipeline execution | PENDING | -- | -- |
 | TASK-042: Demo connectors -- demo source, simulated worker, demo sink | PENDING | -- | -- |
@@ -39,7 +39,7 @@ Plan Gate v2.1 APPROVED (2026-03-26). Phase: EXECUTION. Layer 1 COMPLETE (TASK-0
 | TASK-029: DevOps Phase 2 -- staging environment and CD pipeline | PENDING | -- | -- |
 
 **Cycle summary:**
-- Tasks complete: 5 of 14
+- Tasks complete: 5 of 14 (TASK-005 built, pending verification)
 - Requirements satisfied this cycle: REQ-019 (TASK-003 delivers auth -- first direct requirement deliverable)
 - Sentinel: Not invoked
 - Scaffolder: COMPLETE (2026-03-26, 57 files, manifest at process/scaffolder/scaffold-manifest.md)
