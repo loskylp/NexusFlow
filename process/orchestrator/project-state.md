@@ -8,14 +8,14 @@
 
 ## Where We Are
 
-Plan Gate v2.1 APPROVED (2026-03-26). Phase: CYCLE 1 COMPLETE -- staging provisioning in progress before Demo Sign-off. All 14 of 14 Cycle 1 tasks verified PASS. CI green. TASK-029 (DevOps Phase 2) verified PASS (2026-03-27, 68/68 acceptance). Sentinel cycle-level security review: PASS WITH CONDITIONS (2026-03-27). Nexus directed: staging environment must be provisioned and smoke-tested before Demo Sign-off. DevOps dispatched for staging provisioning (2026-03-27).
+Plan Gate v2.1 APPROVED (2026-03-26). Phase: CYCLE 1 EXECUTION -- planning correction in progress. All 14 of 14 original Cycle 1 tasks verified PASS. CI green. Sentinel: PASS WITH CONDITIONS. Staging provisioning paused. Nexus identified planning gap: TASK-008 (Task query API -- GET /api/tasks, GET /api/tasks/{id}) was omitted from Cycle 1 despite being needed for the demo flow. Nexus directed: add minimal TASK-008 to Cycle 1 and implement immediately. This is a planning correction, not a scope change. Planner dispatched (2026-03-27).
 
 ## Active Work
 
-**Agent in control:** DevOps
-**Current task:** Staging environment provisioning and smoke testing -- Nexus-directed pre-Demo requirement
-**Waiting for:** DevOps to (1) tag and push demo/v0.1 to trigger CD pipeline, (2) provision staging environment on nxlabs.cc, (3) run smoke tests (health, login, create pipeline, submit task, verify worker processing), (4) report results
-**Blocker:** Staging environment not yet provisioned. TASK-029 produced configuration files but the actual environment was never stood up. Must be operational and smoke-tested before Demo Sign-off can proceed.
+**Agent in control:** Planner (dispatched 2026-03-27)
+**Current task:** Planning correction -- add minimal TASK-008 (GET /api/tasks, GET /api/tasks/{id}) to Cycle 1
+**Waiting for:** Planner to produce task plan revision adding TASK-008 to Cycle 1, then Builder to implement, then Verifier to verify
+**Blocker:** TASK-008 blocks demo flow -- cannot demonstrate task lifecycle without the ability to query task status. Staging provisioning paused until this is resolved.
 
 ---
 
@@ -73,7 +73,7 @@ Plan Gate v2.1 APPROVED (2026-03-26). Phase: CYCLE 1 COMPLETE -- staging provisi
 
 ## Pending Decisions
 
-NONE -- Plan Gate approved. Autonomous execution in progress through Cycle 1.
+Nexus directed planning correction: add TASK-008 to Cycle 1 (2026-03-27). Planner dispatched. After Planner + Builder + Verifier complete, resume staging provisioning.
 
 ---
 
@@ -100,7 +100,7 @@ Per Manifest and Plan Gate approval, the execution sequence is:
 Note: Sequential execution model (one Builder task at a time). The dependency layers above guide ordering; within a layer, tasks are executed sequentially.
 
 **Remaining execution order:**
-ALL 14 TASKS COMPLETE. Sentinel COMPLETE (PASS WITH CONDITIONS). DevOps staging provisioning and smoke testing in progress. Then Demo Sign-off.
+14 of 15 TASKS COMPLETE. TASK-008 added by Nexus directive (planning correction). Planner -> Builder -> Verifier for TASK-008, then resume staging provisioning and Demo Sign-off.
 
 ---
 
