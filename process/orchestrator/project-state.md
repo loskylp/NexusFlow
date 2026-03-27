@@ -8,14 +8,14 @@
 
 ## Where We Are
 
-Plan Gate v2.1 APPROVED (2026-03-26). Phase: EXECUTION. 13 of 14 tasks complete. TASK-020 (Worker Fleet Dashboard GUI) verified PASS by Verifier (2026-03-27), CI green. Dispatching Builder for TASK-029 (DevOps Phase 2 -- staging environment and CD pipeline), the final Cycle 1 task.
+Plan Gate v2.1 APPROVED (2026-03-26). Phase: EXECUTION. 13 of 14 tasks complete. TASK-029 (DevOps Phase 2 -- staging environment and CD pipeline) BUILT by Builder (2026-03-27). Dispatching Verifier for TASK-029 verification. This is the final Cycle 1 task -- after Verifier PASS, Sentinel cycle-level review, then Demo Sign-off.
 
 ## Active Work
 
-**Agent in control:** Builder (dispatching 2026-03-27)
-**Current task:** TASK-029 -- DevOps Phase 2: staging environment and CD pipeline (BUILD)
-**Waiting for:** Builder to implement TASK-029 (staging environment on nxlabs.cc, CD pipeline with Watchtower, Traefik TLS, Uptime Kuma)
-**Next after TASK-029 build:** Dispatch Verifier for TASK-029 verification (Full mode -- TASK-029 is DevOps Phase 2 itself). If PASS, dispatch Sentinel for cycle-level security review, then prepare Demo Sign-off Briefing.
+**Agent in control:** Verifier (dispatching 2026-03-27)
+**Current task:** TASK-029 -- DevOps Phase 2: staging environment and CD pipeline (VERIFICATION)
+**Waiting for:** Verifier to verify TASK-029 (staging docker-compose, CD workflow, Makefile targets, Uptime Kuma labels, Traefik TLS config)
+**Next after TASK-029 verification:** If PASS, dispatch Sentinel for cycle-level security review. After Sentinel, prepare Demo Sign-off Briefing.
 
 ---
 
@@ -36,7 +36,7 @@ Plan Gate v2.1 APPROVED (2026-03-26). Phase: EXECUTION. 13 of 14 tasks complete.
 | TASK-025: Worker fleet status API | COMPLETE | 2 | PASS (iteration 2) |
 | TASK-015: SSE event infrastructure | COMPLETE | 1 | PASS, CI green |
 | TASK-020: Worker Fleet Dashboard (GUI) | COMPLETE | 1 | PASS, CI green |
-| TASK-029: DevOps Phase 2 -- staging environment and CD pipeline | PENDING | -- | -- |
+| TASK-029: DevOps Phase 2 -- staging environment and CD pipeline | BUILT | -- | PENDING VERIFICATION |
 
 **Cycle summary:**
 - Tasks complete: 13 of 14
@@ -99,7 +99,7 @@ Per Manifest and Plan Gate approval, the execution sequence is:
 Note: Sequential execution model (one Builder task at a time). The dependency layers above guide ordering; within a layer, tasks are executed sequentially.
 
 **Remaining execution order:**
-1. TASK-029: DevOps Phase 2 (Layer 9, depends on TASK-042) -- **DISPATCHING BUILDER**
+1. TASK-029: DevOps Phase 2 (Layer 9) -- **BUILT, DISPATCHING VERIFIER**
 
 ---
 
