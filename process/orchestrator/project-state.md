@@ -8,14 +8,14 @@
 
 ## Where We Are
 
-Plan Gate v2.1 APPROVED (2026-03-26). Phase: EXECUTION. Layers 1-7 backbone COMPLETE (TASK-001, TASK-002, TASK-004, TASK-003, TASK-006, TASK-005, TASK-013, TASK-007, TASK-042). 9 of 14 tasks complete. OBS-023 (race condition in TASK-005 submit handler) identified during TASK-042 verification -- fixing before proceeding to TASK-015. Dispatching Builder for OBS-023 fix on TASK-005.
+Plan Gate v2.1 APPROVED (2026-03-26). Phase: EXECUTION. Layers 1-7 backbone COMPLETE (TASK-001, TASK-002, TASK-004, TASK-003, TASK-006, TASK-005, TASK-013, TASK-007, TASK-042). 9 of 14 tasks complete. OBS-023 (race condition in TASK-005 submit handler) RESOLVED. Dispatching Builder for TASK-015 (SSE event infrastructure).
 
 ## Active Work
 
 **Agent in control:** Builder (dispatching 2026-03-26)
-**Current task:** OBS-023 fix -- TASK-005 race condition (XADD fires before UpdateStatus(queued); reorder to call UpdateStatus(queued) before Enqueue)
-**Waiting for:** Builder to apply OBS-023 fix, then Verifier to re-verify TASK-005
-**Next after OBS-023 fix:** TASK-015 (SSE event infrastructure) -- high-risk, high-value, unblocks TASK-020
+**Current task:** TASK-015 -- SSE event infrastructure (high-risk, high-value; implements RedisBroker, 4 SSE endpoints, Redis Pub/Sub fan-out, Last-Event-ID replay)
+**Waiting for:** Builder to implement TASK-015
+**Next after TASK-015:** TASK-025 (Worker fleet status API)
 
 ---
 
@@ -28,13 +28,13 @@ Plan Gate v2.1 APPROVED (2026-03-26). Phase: EXECUTION. Layers 1-7 backbone COMP
 | TASK-004: Redis Streams queue infrastructure | COMPLETE | 1 | PASS (16/16 acceptance, p95=0.12ms) |
 | TASK-003: Authentication and session management | COMPLETE | 1 | PASS (24/24 acceptance, 55 unit tests) |
 | TASK-006: Worker self-registration and heartbeat | COMPLETE | 1 | PASS (14/14 acceptance, 35 unit tests) |
-| TASK-005: Task submission via REST API | COMPLETE (OBS-023 fix in progress) | 2 | PASS (iteration 2) -- OBS-023 race condition fix dispatched |
+| TASK-005: Task submission via REST API | COMPLETE | 2 | PASS (iteration 2) -- OBS-023 race condition RESOLVED |
 | TASK-013: Pipeline CRUD via REST API | COMPLETE | 2 | PASS (iteration 2) |
 | TASK-007: Tag-based task assignment and pipeline execution | COMPLETE | 1 | PASS (9/9 acceptance, 22 tests) |
 | TASK-042: Demo connectors -- demo source, simulated worker, demo sink | COMPLETE | 1 | PASS, CI green |
 | TASK-019: React app shell with sidebar navigation and auth flow | PENDING | -- | -- |
 | TASK-025: Worker fleet status API | PENDING | -- | -- |
-| TASK-015: SSE event infrastructure | PENDING | -- | -- |
+| TASK-015: SSE event infrastructure | IN PROGRESS | -- | -- |
 | TASK-020: Worker Fleet Dashboard (GUI) | PENDING | -- | -- |
 | TASK-029: DevOps Phase 2 -- staging environment and CD pipeline | PENDING | -- | -- |
 
@@ -95,19 +95,18 @@ Per Manifest and Plan Gate approval, the execution sequence is:
 
 Note: Sequential execution model (one Builder task at a time). The dependency layers above guide ordering; within a layer, tasks are executed sequentially.
 
-**Remaining execution order (after OBS-023 fix):**
-1. OBS-023 fix on TASK-005 (in progress) -> Verifier re-verify TASK-005
-2. TASK-015: SSE event infrastructure (high-risk, Layer 3)
-3. TASK-025: Worker fleet status API (low-risk, Layer 4)
-4. TASK-019: React app shell (Layer 7)
-5. TASK-020: Worker Fleet Dashboard GUI (Layer 8, depends on TASK-019 + TASK-025 + TASK-015)
-6. TASK-029: DevOps Phase 2 (Layer 9, depends on TASK-042)
+**Remaining execution order:**
+1. TASK-015: SSE event infrastructure (high-risk, Layer 3) -- **IN PROGRESS**
+2. TASK-025: Worker fleet status API (low-risk, Layer 4)
+3. TASK-019: React app shell (Layer 7)
+4. TASK-020: Worker Fleet Dashboard GUI (Layer 8, depends on TASK-019 + TASK-025 + TASK-015)
+5. TASK-029: DevOps Phase 2 (Layer 9, depends on TASK-042)
 
 ---
 
 ## Iterate Loop State
 
-No active iterate loop. TASK-005 converged on iteration 2 (PASS). TASK-013 converged on iteration 2 (PASS). TASK-007 converged on iteration 1 (PASS). TASK-042 converged on iteration 1 (PASS). OBS-023 targeted fix dispatched to Builder (not a full iterate loop -- this is a reliability patch).
+No active iterate loop. TASK-005 converged on iteration 2 (PASS). TASK-013 converged on iteration 2 (PASS). TASK-007 converged on iteration 1 (PASS). TASK-042 converged on iteration 1 (PASS). OBS-023 resolved (targeted fix applied). TASK-015 iteration 1 starting.
 
 ---
 
@@ -153,7 +152,7 @@ No active iterate loop. TASK-005 converged on iteration 2 (PASS). TASK-013 conve
 | OBS-020 | TASK-007 | XACK multi-tag loop: `ackMessage` tries XACK against each tag sequentially; clean fix (adding `StreamTag` to `TaskMessage`) deferred to TASK-004 scope | Open -- awareness for future refactor |
 | OBS-021 | TASK-007 | Seven tests use 2-second timeouts for consumption loop exit; test suite takes ~14s for worker package | Open -- awareness for test performance |
 | OBS-022 | TASK-007 | `applyMappingsToSlice` docstring says empty mappings returns empty map but actual behavior is pass-through; docstring is misleading | Resolved (TASK-042 Builder corrected docstring) |
-| OBS-023 | TASK-042 | Race condition in TASK-005 submit handler: XADD fires before UpdateStatus(queued) completes, causing worker to see task in "submitted" state and fail submitted->assigned transition. Fix: call UpdateStatus(queued) before Enqueue. | **In progress -- Builder dispatched for fix** |
+| OBS-023 | TASK-042 | Race condition in TASK-005 submit handler: XADD fires before UpdateStatus(queued) completes, causing worker to see task in "submitted" state and fail submitted->assigned transition. Fix: call UpdateStatus(queued) before Enqueue. | **Resolved** (2026-03-26) |
 
 ---
 
