@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
 	"github.com/nxlabs/nexusflow/internal/auth"
 	"github.com/nxlabs/nexusflow/internal/models"
@@ -179,8 +180,16 @@ func (h *TaskHandler) Submit(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// taskDetailResponse is the JSON body returned by GET /api/tasks/{id}.
+// It embeds the full Task domain model alongside its state transition history.
+type taskDetailResponse struct {
+	Task         *models.Task            `json:"task"`
+	StateHistory []*models.TaskStateLog  `json:"stateHistory"`
+}
+
 // List handles GET /api/tasks.
 // Returns all tasks visible to the caller: own tasks for User role; all tasks for Admin.
+// The optional ?status= query parameter filters results to tasks with that exact status.
 // Satisfies Domain Invariant 5 (visibility isolation).
 //
 // Responses:
@@ -188,26 +197,127 @@ func (h *TaskHandler) Submit(w http.ResponseWriter, r *http.Request) {
 //	200 OK:           [ { task }, ... ]
 //	401 Unauthorized: no valid session
 //
+// Preconditions:
+//   - Auth middleware has placed a valid Session in the request context.
+//
 // Postconditions:
 //   - User role: only tasks with user_id matching session.UserID are returned.
 //   - Admin role: all tasks across all users are returned.
+//   - If ?status=<value> is present, only tasks with that status are included in the response.
 func (h *TaskHandler) List(w http.ResponseWriter, r *http.Request) {
-	// TODO: Implement in TASK-008 (Cycle 2)
-	panic("not implemented")
+	sess := auth.SessionFromContext(r.Context())
+	if sess == nil {
+		writeError(w, http.StatusUnauthorized, "unauthorized")
+		return
+	}
+
+	var (
+		tasks []*models.Task
+		err   error
+	)
+	if sess.Role == models.RoleAdmin {
+		tasks, err = h.server.tasks.List(r.Context())
+	} else {
+		tasks, err = h.server.tasks.ListByUser(r.Context(), sess.UserID)
+	}
+	if err != nil {
+		log.Printf("task.List: %v", err)
+		writeError(w, http.StatusInternalServerError, "internal error")
+		return
+	}
+
+	// Apply optional ?status= filter.
+	if statusFilter := r.URL.Query().Get("status"); statusFilter != "" {
+		tasks = filterByStatus(tasks, models.TaskStatus(statusFilter))
+	}
+
+	// Always return a JSON array, never null.
+	if tasks == nil {
+		tasks = []*models.Task{}
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(tasks)
+}
+
+// filterByStatus returns only those tasks whose Status equals the given target.
+// Extracted to keep List's branching logic flat and testable in isolation.
+func filterByStatus(tasks []*models.Task, target models.TaskStatus) []*models.Task {
+	out := make([]*models.Task, 0, len(tasks))
+	for _, t := range tasks {
+		if t.Status == target {
+			out = append(out, t)
+		}
+	}
+	return out
 }
 
 // Get handles GET /api/tasks/{id}.
-// Returns the task with its current status and state log.
+// Returns the task with its current status and full state transition history.
+// Enforces ownership: a non-Admin caller may only read tasks they submitted.
 //
 // Responses:
 //
-//	200 OK:           { task, stateLog: [...] }
+//	200 OK:           { "task": {...}, "stateHistory": [...] }
+//	400 Bad Request:  {id} is not a valid UUID
 //	401 Unauthorized: no valid session
 //	403 Forbidden:    caller does not own the task and is not Admin
 //	404 Not Found:    task does not exist
+//
+// Preconditions:
+//   - Auth middleware has placed a valid Session in the request context.
+//   - chi router has parsed the "id" URL parameter.
+//
+// Postconditions:
+//   - On 200: response includes task details and all state transitions in chronological order.
+//   - On 403: no task data is disclosed to the caller.
 func (h *TaskHandler) Get(w http.ResponseWriter, r *http.Request) {
-	// TODO: Implement in TASK-008 (Cycle 2)
-	panic("not implemented")
+	sess := auth.SessionFromContext(r.Context())
+	if sess == nil {
+		writeError(w, http.StatusUnauthorized, "unauthorized")
+		return
+	}
+
+	rawID := chi.URLParam(r, "id")
+	taskID, err := uuid.Parse(rawID)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "task id must be a valid UUID")
+		return
+	}
+
+	task, err := h.server.tasks.GetByID(r.Context(), taskID)
+	if err != nil {
+		log.Printf("task.Get: GetByID(%v): %v", taskID, err)
+		writeError(w, http.StatusInternalServerError, "internal error")
+		return
+	}
+	if task == nil {
+		writeError(w, http.StatusNotFound, "task not found")
+		return
+	}
+
+	// Enforce ownership: non-admin callers may only read their own tasks.
+	if sess.Role != models.RoleAdmin && task.UserID != sess.UserID {
+		writeError(w, http.StatusForbidden, "forbidden")
+		return
+	}
+
+	history, err := h.server.tasks.GetStateLog(r.Context(), taskID)
+	if err != nil {
+		log.Printf("task.Get: GetStateLog(%v): %v", taskID, err)
+		writeError(w, http.StatusInternalServerError, "internal error")
+		return
+	}
+	// Always return an array, never null.
+	if history == nil {
+		history = []*models.TaskStateLog{}
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(taskDetailResponse{
+		Task:         task,
+		StateHistory: history,
+	})
 }
 
 // Cancel handles POST /api/tasks/{id}/cancel.

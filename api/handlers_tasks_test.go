@@ -1,7 +1,7 @@
-// Package api — unit tests for TaskHandler.Submit.
+// Package api — unit tests for TaskHandler (Submit, List, Get).
 // Uses in-memory stubs for TaskRepository, PipelineRepository, and queue.Producer
 // to avoid external dependencies on PostgreSQL or Redis.
-// See: REQ-001, REQ-003, REQ-009, TASK-005
+// See: REQ-001, REQ-003, REQ-009, TASK-005, TASK-008
 package api
 
 import (
@@ -13,6 +13,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
 	"github.com/nxlabs/nexusflow/internal/auth"
 	"github.com/nxlabs/nexusflow/internal/db"
@@ -55,12 +56,26 @@ func (r *stubTaskRepo) GetByID(_ context.Context, id uuid.UUID) (*models.Task, e
 	return t, nil
 }
 
-func (r *stubTaskRepo) ListByUser(_ context.Context, _ uuid.UUID) ([]*models.Task, error) {
-	return nil, nil
+// ListByUser returns all tasks in the stub repository owned by the given userID.
+func (r *stubTaskRepo) ListByUser(_ context.Context, userID uuid.UUID) ([]*models.Task, error) {
+	var out []*models.Task
+	for _, t := range r.tasks {
+		if t.UserID == userID {
+			cp := *t
+			out = append(out, &cp)
+		}
+	}
+	return out, nil
 }
 
+// List returns all tasks in the stub repository regardless of owner.
 func (r *stubTaskRepo) List(_ context.Context) ([]*models.Task, error) {
-	return nil, nil
+	out := make([]*models.Task, 0, len(r.tasks))
+	for _, t := range r.tasks {
+		cp := *t
+		out = append(out, &cp)
+	}
+	return out, nil
 }
 
 func (r *stubTaskRepo) UpdateStatus(_ context.Context, id uuid.UUID, newStatus models.TaskStatus, reason string, workerID *string) error {
@@ -723,6 +738,306 @@ func TestSubmit_StatusQueuedBeforeEnqueue(t *testing.T) {
 	if spy.statusAtEnqueue != models.TaskStatusQueued {
 		t.Errorf("expected task status %q at enqueue time, got %q — OBS-023 not fixed",
 			models.TaskStatusQueued, spy.statusAtEnqueue)
+	}
+}
+
+// --- List tests (TASK-008) ---
+
+// taskRequest builds an authenticated or unauthenticated GET request for task queries.
+// If sess is non-nil, the session is injected into the request context via auth.Middleware.
+// If sess is nil, no authentication is applied.
+func taskRequest(t *testing.T, method, url string, sess *models.Session) *http.Request {
+	t.Helper()
+	req := httptest.NewRequest(method, url, nil)
+	if sess == nil {
+		return req
+	}
+	store := newStubSessionStore()
+	token := "task-query-token-" + uuid.New().String()
+	_ = store.Create(context.Background(), token, sess)
+	req.Header.Set("Authorization", "Bearer "+token)
+	var captured *http.Request
+	inner := http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) { captured = r })
+	auth.Middleware(store)(inner).ServeHTTP(httptest.NewRecorder(), req)
+	if captured == nil {
+		t.Fatal("auth.Middleware did not call inner handler — session injection failed")
+	}
+	return captured
+}
+
+// TestTaskList_UnauthenticatedReturns401 verifies that GET /api/tasks without a
+// valid session returns 401.
+func TestTaskList_UnauthenticatedReturns401(t *testing.T) {
+	srv := newTaskTestServer(newStubTaskRepo(), newStubPipelineRepo(), &stubProducer{})
+	h := &TaskHandler{server: srv}
+
+	rec := httptest.NewRecorder()
+	h.List(rec, taskRequest(t, http.MethodGet, "/api/tasks", nil))
+
+	if rec.Code != http.StatusUnauthorized {
+		t.Errorf("expected 401, got %d", rec.Code)
+	}
+}
+
+// TestTaskList_UserRoleReturnsOwnTasksOnly verifies acceptance criterion 1:
+// a User-role caller receives only tasks where user_id matches session.UserID.
+func TestTaskList_UserRoleReturnsOwnTasksOnly(t *testing.T) {
+	repo := newStubTaskRepo()
+	userID := uuid.New()
+	otherID := uuid.New()
+
+	// Seed one task owned by the caller and one by another user.
+	repo.tasks[uuid.New()] = &models.Task{ID: uuid.New(), UserID: userID, Status: models.TaskStatusQueued, Input: map[string]any{}}
+	repo.tasks[uuid.New()] = &models.Task{ID: uuid.New(), UserID: otherID, Status: models.TaskStatusQueued, Input: map[string]any{}}
+
+	srv := newTaskTestServer(repo, newStubPipelineRepo(), &stubProducer{})
+	h := &TaskHandler{server: srv}
+
+	sess := &models.Session{UserID: userID, Role: models.RoleUser, CreatedAt: time.Now()}
+	rec := httptest.NewRecorder()
+	h.List(rec, taskRequest(t, http.MethodGet, "/api/tasks", sess))
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", rec.Code, rec.Body.String())
+	}
+
+	var tasks []*models.Task
+	if err := json.NewDecoder(rec.Body).Decode(&tasks); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+	for _, task := range tasks {
+		if task.UserID != userID {
+			t.Errorf("expected only tasks owned by %v, got task owned by %v", userID, task.UserID)
+		}
+	}
+}
+
+// TestTaskList_AdminRoleReturnsAllTasks verifies acceptance criterion 5:
+// an Admin-role caller receives tasks from all users.
+func TestTaskList_AdminRoleReturnsAllTasks(t *testing.T) {
+	repo := newStubTaskRepo()
+	userA := uuid.New()
+	userB := uuid.New()
+
+	idA := uuid.New()
+	idB := uuid.New()
+	repo.tasks[idA] = &models.Task{ID: idA, UserID: userA, Status: models.TaskStatusQueued, Input: map[string]any{}}
+	repo.tasks[idB] = &models.Task{ID: idB, UserID: userB, Status: models.TaskStatusQueued, Input: map[string]any{}}
+
+	srv := newTaskTestServer(repo, newStubPipelineRepo(), &stubProducer{})
+	h := &TaskHandler{server: srv}
+
+	sess := &models.Session{UserID: userA, Role: models.RoleAdmin, CreatedAt: time.Now()}
+	rec := httptest.NewRecorder()
+	h.List(rec, taskRequest(t, http.MethodGet, "/api/tasks", sess))
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", rec.Code, rec.Body.String())
+	}
+
+	var tasks []*models.Task
+	if err := json.NewDecoder(rec.Body).Decode(&tasks); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+	if len(tasks) < 2 {
+		t.Errorf("expected at least 2 tasks for Admin, got %d", len(tasks))
+	}
+}
+
+// TestTaskList_StatusFilterReturnsOnlyMatchingTasks verifies acceptance criterion 2:
+// GET /api/tasks?status=running filters the result to the specified status only.
+func TestTaskList_StatusFilterReturnsOnlyMatchingTasks(t *testing.T) {
+	repo := newStubTaskRepo()
+	userID := uuid.New()
+
+	runningID := uuid.New()
+	queuedID := uuid.New()
+	repo.tasks[runningID] = &models.Task{ID: runningID, UserID: userID, Status: models.TaskStatusRunning, Input: map[string]any{}}
+	repo.tasks[queuedID] = &models.Task{ID: queuedID, UserID: userID, Status: models.TaskStatusQueued, Input: map[string]any{}}
+
+	srv := newTaskTestServer(repo, newStubPipelineRepo(), &stubProducer{})
+	h := &TaskHandler{server: srv}
+
+	sess := &models.Session{UserID: userID, Role: models.RoleUser, CreatedAt: time.Now()}
+	rec := httptest.NewRecorder()
+	h.List(rec, taskRequest(t, http.MethodGet, "/api/tasks?status=running", sess))
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", rec.Code, rec.Body.String())
+	}
+
+	var tasks []*models.Task
+	if err := json.NewDecoder(rec.Body).Decode(&tasks); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+	for _, task := range tasks {
+		if task.Status != models.TaskStatusRunning {
+			t.Errorf("expected only running tasks, got status %q", task.Status)
+		}
+	}
+	if len(tasks) == 0 {
+		t.Error("expected at least one running task in result")
+	}
+}
+
+// --- Get tests (TASK-008) ---
+
+// taskGetRequest builds an authenticated GET /api/tasks/{id} request and wires
+// the chi URL parameter "id" so chi.URLParam reads it correctly.
+func taskGetRequest(t *testing.T, taskID string, sess *models.Session) *http.Request {
+	t.Helper()
+	url := "/api/tasks/" + taskID
+	req := taskRequest(t, http.MethodGet, url, sess)
+
+	// Wire the chi URL parameter so chi.URLParam(r, "id") returns taskID.
+	rctx := chi.NewRouteContext()
+	rctx.URLParams.Add("id", taskID)
+	return req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
+}
+
+// TestTaskGet_UnauthenticatedReturns401 verifies that GET /api/tasks/{id} without a
+// valid session returns 401.
+func TestTaskGet_UnauthenticatedReturns401(t *testing.T) {
+	srv := newTaskTestServer(newStubTaskRepo(), newStubPipelineRepo(), &stubProducer{})
+	h := &TaskHandler{server: srv}
+
+	id := uuid.New()
+	rec := httptest.NewRecorder()
+	h.Get(rec, taskGetRequest(t, id.String(), nil))
+
+	if rec.Code != http.StatusUnauthorized {
+		t.Errorf("expected 401, got %d", rec.Code)
+	}
+}
+
+// TestTaskGet_NotFoundReturns404 verifies that requesting a non-existent task
+// returns 404.
+func TestTaskGet_NotFoundReturns404(t *testing.T) {
+	srv := newTaskTestServer(newStubTaskRepo(), newStubPipelineRepo(), &stubProducer{})
+	h := &TaskHandler{server: srv}
+
+	userID := uuid.New()
+	sess := &models.Session{UserID: userID, Role: models.RoleUser, CreatedAt: time.Now()}
+	rec := httptest.NewRecorder()
+	h.Get(rec, taskGetRequest(t, uuid.New().String(), sess))
+
+	if rec.Code != http.StatusNotFound {
+		t.Errorf("expected 404, got %d", rec.Code)
+	}
+}
+
+// TestTaskGet_OwnerCanReadOwnTask verifies that the task owner receives 200 with
+// full task details including state_history.
+func TestTaskGet_OwnerCanReadOwnTask(t *testing.T) {
+	repo := newStubTaskRepo()
+	userID := uuid.New()
+	taskID := uuid.New()
+	pipelineID := uuid.New()
+	repo.tasks[taskID] = &models.Task{
+		ID:         taskID,
+		UserID:     userID,
+		PipelineID: &pipelineID,
+		Status:     models.TaskStatusQueued,
+		Input:      map[string]any{"key": "value"},
+		RetryConfig: models.RetryConfig{MaxRetries: 3, Backoff: models.BackoffExponential},
+	}
+	repo.statusLog = append(repo.statusLog, &models.TaskStateLog{
+		ID:        uuid.New(),
+		TaskID:    taskID,
+		FromState: models.TaskStatusSubmitted,
+		ToState:   models.TaskStatusQueued,
+		Reason:    "enqueued",
+		Timestamp: time.Now(),
+	})
+
+	srv := newTaskTestServer(repo, newStubPipelineRepo(), &stubProducer{})
+	h := &TaskHandler{server: srv}
+
+	sess := &models.Session{UserID: userID, Role: models.RoleUser, CreatedAt: time.Now()}
+	rec := httptest.NewRecorder()
+	h.Get(rec, taskGetRequest(t, taskID.String(), sess))
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", rec.Code, rec.Body.String())
+	}
+
+	var resp taskDetailResponse
+	if err := json.NewDecoder(rec.Body).Decode(&resp); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+	if resp.Task.ID != taskID {
+		t.Errorf("expected task ID %v, got %v", taskID, resp.Task.ID)
+	}
+	if len(resp.StateHistory) == 0 {
+		t.Error("expected non-empty state_history in response")
+	}
+}
+
+// TestTaskGet_NonOwnerNonAdminReturns403 verifies acceptance criterion 5:
+// a non-owner, non-admin caller receives 403.
+func TestTaskGet_NonOwnerNonAdminReturns403(t *testing.T) {
+	repo := newStubTaskRepo()
+	ownerID := uuid.New()
+	callerID := uuid.New()
+	taskID := uuid.New()
+	repo.tasks[taskID] = &models.Task{
+		ID:     taskID,
+		UserID: ownerID,
+		Status: models.TaskStatusQueued,
+		Input:  map[string]any{},
+	}
+
+	srv := newTaskTestServer(repo, newStubPipelineRepo(), &stubProducer{})
+	h := &TaskHandler{server: srv}
+
+	sess := &models.Session{UserID: callerID, Role: models.RoleUser, CreatedAt: time.Now()}
+	rec := httptest.NewRecorder()
+	h.Get(rec, taskGetRequest(t, taskID.String(), sess))
+
+	if rec.Code != http.StatusForbidden {
+		t.Errorf("expected 403, got %d", rec.Code)
+	}
+}
+
+// TestTaskGet_AdminCanReadAnyTask verifies that an Admin caller receives 200 regardless
+// of task ownership.
+func TestTaskGet_AdminCanReadAnyTask(t *testing.T) {
+	repo := newStubTaskRepo()
+	ownerID := uuid.New()
+	adminID := uuid.New()
+	taskID := uuid.New()
+	repo.tasks[taskID] = &models.Task{
+		ID:     taskID,
+		UserID: ownerID,
+		Status: models.TaskStatusQueued,
+		Input:  map[string]any{},
+	}
+
+	srv := newTaskTestServer(repo, newStubPipelineRepo(), &stubProducer{})
+	h := &TaskHandler{server: srv}
+
+	sess := &models.Session{UserID: adminID, Role: models.RoleAdmin, CreatedAt: time.Now()}
+	rec := httptest.NewRecorder()
+	h.Get(rec, taskGetRequest(t, taskID.String(), sess))
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", rec.Code, rec.Body.String())
+	}
+}
+
+// TestTaskGet_InvalidTaskIDReturns400 verifies that a non-UUID path segment
+// is rejected before any DB lookup.
+func TestTaskGet_InvalidTaskIDReturns400(t *testing.T) {
+	srv := newTaskTestServer(newStubTaskRepo(), newStubPipelineRepo(), &stubProducer{})
+	h := &TaskHandler{server: srv}
+
+	userID := uuid.New()
+	sess := &models.Session{UserID: userID, Role: models.RoleUser, CreatedAt: time.Now()}
+	rec := httptest.NewRecorder()
+	h.Get(rec, taskGetRequest(t, "not-a-uuid", sess))
+
+	if rec.Code != http.StatusBadRequest {
+		t.Errorf("expected 400, got %d", rec.Code)
 	}
 }
 
