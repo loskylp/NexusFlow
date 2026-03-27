@@ -80,6 +80,7 @@ func main() {
 	// Wire TASK-005 dependencies: TaskRepository, PipelineRepository, and queue Producer.
 	taskRepo := db.NewPgTaskRepository(pool)
 	pipelineRepo := db.NewPgPipelineRepository(pool)
+	workerRepo := db.NewPgWorkerRepository(pool)
 	q := queue.NewRedisQueue(redisClient)
 
 	// Seed the initial admin user if no users exist (TASK-003, AC-7).
@@ -110,7 +111,7 @@ func main() {
 		userRepo,
 		taskRepo,
 		pipelineRepo,
-		nil, // workers — wired in TASK-006
+		workerRepo,
 		q,
 		sessionStore,
 		broker,
