@@ -8,14 +8,14 @@
 
 ## Where We Are
 
-Plan Gate v2.1 APPROVED (2026-03-26). Phase: EXECUTION. Layers 1-7 backbone COMPLETE (TASK-001, TASK-002, TASK-004, TASK-003, TASK-006, TASK-005, TASK-013, TASK-007, TASK-042). 9 of 14 tasks complete. TASK-015 (SSE event infrastructure) BUILT -- dispatching Verifier for initial verification.
+Plan Gate v2.1 APPROVED (2026-03-26). Phase: EXECUTION. Layers 1-7 backbone COMPLETE plus TASK-015 (SSE event infrastructure). 10 of 14 tasks complete. Dispatching Builder for TASK-025 (Worker fleet status API).
 
 ## Active Work
 
-**Agent in control:** Verifier (dispatching 2026-03-27)
-**Current task:** TASK-015 -- SSE event infrastructure -- initial verification
-**Waiting for:** Verifier to verify TASK-015 against 7 acceptance criteria
-**Next after TASK-015 verification:** If PASS, route Builder for TASK-025 (Worker fleet status API). If FAIL, iterate Builder on TASK-015.
+**Agent in control:** Builder (dispatching 2026-03-27)
+**Current task:** TASK-025 -- Worker fleet status API
+**Waiting for:** Builder to implement TASK-025 (GET /api/workers endpoint)
+**Next after TASK-025:** Route Verifier for TASK-025 verification. Then TASK-019 (React app shell).
 
 ---
 
@@ -34,12 +34,12 @@ Plan Gate v2.1 APPROVED (2026-03-26). Phase: EXECUTION. Layers 1-7 backbone COMP
 | TASK-042: Demo connectors -- demo source, simulated worker, demo sink | COMPLETE | 1 | PASS, CI green |
 | TASK-019: React app shell with sidebar navigation and auth flow | PENDING | -- | -- |
 | TASK-025: Worker fleet status API | PENDING | -- | -- |
-| TASK-015: SSE event infrastructure | BUILT -- PENDING VERIFICATION | 1 | -- |
+| TASK-015: SSE event infrastructure | COMPLETE | 1 | PASS, CI green |
 | TASK-020: Worker Fleet Dashboard (GUI) | PENDING | -- | -- |
 | TASK-029: DevOps Phase 2 -- staging environment and CD pipeline | PENDING | -- | -- |
 
 **Cycle summary:**
-- Tasks complete: 9 of 14
+- Tasks complete: 10 of 14
 - TASK-042: COMPLETE (2026-03-26) -- Verifier PASS, CI green. Demo connectors (demo source, simulated worker, demo sink) verified. OBS-023 identified: race condition in TASK-005 submit handler.
 - TASK-005: COMPLETE (2026-03-26) -- Verifier PASS (iteration 2), CI green. Wiring omission in `cmd/api/main.go` and plain text 401 fixed in iteration 1; verified PASS on iteration 2. OBS-023 identified during TASK-042 verification: XADD fires before UpdateStatus(queued), causing worker to see task in "submitted" state and fail submitted->assigned transition.
 - TASK-013: COMPLETE (2026-03-26) -- Verifier PASS (iteration 2), CI green. Pipeline CRUD via REST API with all 7 acceptance criteria met.
@@ -96,17 +96,16 @@ Per Manifest and Plan Gate approval, the execution sequence is:
 Note: Sequential execution model (one Builder task at a time). The dependency layers above guide ordering; within a layer, tasks are executed sequentially.
 
 **Remaining execution order:**
-1. TASK-015: SSE event infrastructure (high-risk, Layer 3) -- **BUILT -- PENDING VERIFICATION**
-2. TASK-025: Worker fleet status API (low-risk, Layer 4)
-3. TASK-019: React app shell (Layer 7)
-4. TASK-020: Worker Fleet Dashboard GUI (Layer 8, depends on TASK-019 + TASK-025 + TASK-015)
-5. TASK-029: DevOps Phase 2 (Layer 9, depends on TASK-042)
+1. TASK-025: Worker fleet status API (low-risk, Layer 4) -- **DISPATCHING BUILDER**
+2. TASK-019: React app shell (Layer 7)
+3. TASK-020: Worker Fleet Dashboard GUI (Layer 8, depends on TASK-019 + TASK-025 + TASK-015)
+4. TASK-029: DevOps Phase 2 (Layer 9, depends on TASK-042)
 
 ---
 
 ## Iterate Loop State
 
-No active iterate loop. TASK-005 converged on iteration 2 (PASS). TASK-013 converged on iteration 2 (PASS). TASK-007 converged on iteration 1 (PASS). TASK-042 converged on iteration 1 (PASS). OBS-023 resolved (targeted fix applied). TASK-015 iteration 1: Builder COMPLETE, Verifier dispatching.
+No active iterate loop. TASK-005 converged on iteration 2 (PASS). TASK-013 converged on iteration 2 (PASS). TASK-007 converged on iteration 1 (PASS). TASK-042 converged on iteration 1 (PASS). TASK-015 converged on iteration 1 (PASS). OBS-023 resolved (targeted fix applied).
 
 ---
 
@@ -117,8 +116,8 @@ No active iterate loop. TASK-005 converged on iteration 2 (PASS). TASK-013 conve
 | Auditor passes -- requirements | 2 (audit v2: PASS WITH DEFERRALS; audit v4: PASS WITH DEFERRALS) |
 | Auditor passes -- architecture | 2 (architecture-audit-v1: PASS; architecture-audit-v2: PASS) |
 | Gate rejections this cycle | 0 |
-| Tasks completed | 9 of 14 planned |
-| Average iterations to PASS | 1.22 (9 tasks: 7 at 1 iteration, 2 at 2 iterations) |
+| Tasks completed | 10 of 14 planned |
+| Average iterations to PASS | 1.20 (10 tasks: 8 at 1 iteration, 2 at 2 iterations) |
 | Tasks that hit max iterations | 0 |
 | Escalations to Nexus | 0 |
 | Backward cascade triggered | No |
@@ -148,7 +147,7 @@ No active iterate loop. TASK-005 converged on iteration 2 (PASS). TASK-013 conve
 | OBS-016 | TASK-006 | `markOffline` uses `WorkerStatusDown` ("down") vs plain English "offline" -- ADR-002 defines "down"; code is correct; terminology note for docs | Resolved (no action -- by design) |
 | OBS-017 | TASK-006 | `runConsumptionLoop` blocks on `ctx.Done()` (TASK-007 stub); `InitGroups` creates Redis stream structures before tasks exist -- benign, idempotent via BUSYGROUP | Open -- awareness for TASK-007 |
 | OBS-018 | TASK-006 | Worker Dockerfile binary built with `golang:1.23-alpine` (musl) runs on `alpine:3.20` -- if CI changes to glibc builder, needs `CGO_ENABLED=0` or runtime image change | Open -- awareness for CI changes |
-| OBS-019 | TASK-007 | AC-9 scope boundary: `PublishTaskEvent` verified at worker level; full Pub/Sub delivery (broker -> Redis -> SSE client) deferred to TASK-015 | Open -- pending TASK-015 |
+| OBS-019 | TASK-007 | AC-9 scope boundary: `PublishTaskEvent` verified at worker level; full Pub/Sub delivery (broker -> Redis -> SSE client) deferred to TASK-015 | Resolved (TASK-015 COMPLETE) |
 | OBS-020 | TASK-007 | XACK multi-tag loop: `ackMessage` tries XACK against each tag sequentially; clean fix (adding `StreamTag` to `TaskMessage`) deferred to TASK-004 scope | Open -- awareness for future refactor |
 | OBS-021 | TASK-007 | Seven tests use 2-second timeouts for consumption loop exit; test suite takes ~14s for worker package | Open -- awareness for test performance |
 | OBS-022 | TASK-007 | `applyMappingsToSlice` docstring says empty mappings returns empty map but actual behavior is pass-through; docstring is misleading | Resolved (TASK-042 Builder corrected docstring) |
