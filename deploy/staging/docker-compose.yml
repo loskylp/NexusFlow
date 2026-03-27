@@ -1,0 +1,182 @@
+# NexusFlow staging environment — nexusflow.staging.nxlabs.cc
+#
+# Deploys all core services using pre-built images from the GitHub Container
+# Registry (ghcr.io/loskylp/nexusflow). This file is NOT used for local
+# development — use the root docker-compose.yml for that.
+#
+# Prerequisites on the staging host:
+#   - External Docker network "traefik" exists (managed by nxlabs.cc Traefik)
+#   - External Docker network "postgres" exists (managed by nxlabs.cc PostgreSQL)
+#   - PostgreSQL database provisioned: ssh deploy@nxlabs.cc /opt/postgres/provision.sh nexusflow_staging
+#   - .env file present in this directory with staging credentials
+#
+# Deploy:
+#   docker compose -f deploy/staging/docker-compose.yml up -d
+#
+# Image update (auto via Watchtower, or manual):
+#   docker compose -f deploy/staging/docker-compose.yml pull && docker compose -f deploy/staging/docker-compose.yml up -d
+#
+# See: ADR-005, TASK-029
+
+services:
+
+  api:
+    image: ghcr.io/loskylp/nexusflow/api:${IMAGE_TAG:-latest}
+    restart: unless-stopped
+    environment:
+      - DATABASE_URL=${DATABASE_URL}
+      - REDIS_URL=redis://redis:6379
+      - API_PORT=8080
+      - ENV=staging
+      - SESSION_TTL_HOURS=${SESSION_TTL_HOURS:-24}
+      - HEARTBEAT_INTERVAL_SECONDS=${HEARTBEAT_INTERVAL_SECONDS:-5}
+      - HEARTBEAT_TIMEOUT_SECONDS=${HEARTBEAT_TIMEOUT_SECONDS:-15}
+      - PENDING_SCAN_INTERVAL_SECONDS=${PENDING_SCAN_INTERVAL_SECONDS:-10}
+      - LOG_HOT_RETENTION_HOURS=${LOG_HOT_RETENTION_HOURS:-72}
+      - LOG_COLD_RETENTION_HOURS=${LOG_COLD_RETENTION_HOURS:-720}
+    networks:
+      - traefik
+      - postgres
+      - internal
+    healthcheck:
+      # Sends a raw HTTP GET to /api/health and checks for a "status" JSON field.
+      # Succeeds on both HTTP 200 (all healthy) and HTTP 503 (degraded but alive).
+      test: ["CMD-SHELL", "printf 'GET /api/health HTTP/1.0\\r\\nHost: localhost\\r\\n\\r\\n' | nc -w 3 localhost 8080 | grep -q status"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+    labels:
+      # --- Traefik routing ---
+      # Routes /api/* traffic to the API service over HTTPS with Let's Encrypt TLS.
+      - "traefik.enable=true"
+      - "traefik.http.routers.nexusflow-staging-api.rule=Host(`nexusflow.staging.nxlabs.cc`) && PathPrefix(`/api`)"
+      - "traefik.http.routers.nexusflow-staging-api.tls=true"
+      - "traefik.http.routers.nexusflow-staging-api.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.nexusflow-staging-api.entrypoints=websecure"
+      - "traefik.http.services.nexusflow-staging-api.loadbalancer.server.port=8080"
+      # --- Watchtower auto-redeploy ---
+      # Watchtower polls the registry every 300 s and redeploys when a new image is found.
+      - "com.centurylinklabs.watchtower.enable=true"
+      # --- Uptime Kuma monitoring via AutoKuma labels ---
+      # AutoKuma reads these labels to create/update monitors in Uptime Kuma automatically.
+      - "kuma.nexusflow-staging-api.http.name=NexusFlow Staging API"
+      - "kuma.nexusflow-staging-api.http.url=https://nexusflow.staging.nxlabs.cc/api/health"
+      - "kuma.nexusflow-staging-api.http.group=NexusFlow Staging"
+      - "kuma.nexusflow-staging-api.http.expected_status=200"
+
+  worker:
+    image: ghcr.io/loskylp/nexusflow/worker:${IMAGE_TAG:-latest}
+    restart: unless-stopped
+    environment:
+      - DATABASE_URL=${DATABASE_URL}
+      - REDIS_URL=redis://redis:6379
+      - WORKER_TAGS=${WORKER_TAGS:-demo,etl}
+      - ENV=staging
+      - HEARTBEAT_INTERVAL_SECONDS=${HEARTBEAT_INTERVAL_SECONDS:-5}
+      - HEARTBEAT_TIMEOUT_SECONDS=${HEARTBEAT_TIMEOUT_SECONDS:-15}
+    networks:
+      - postgres
+      - internal
+    labels:
+      # Watchtower monitors and redeploys this service when a new image is pushed.
+      - "com.centurylinklabs.watchtower.enable=true"
+
+  monitor:
+    image: ghcr.io/loskylp/nexusflow/monitor:${IMAGE_TAG:-latest}
+    restart: unless-stopped
+    environment:
+      - DATABASE_URL=${DATABASE_URL}
+      - REDIS_URL=redis://redis:6379
+      - ENV=staging
+      - HEARTBEAT_TIMEOUT_SECONDS=${HEARTBEAT_TIMEOUT_SECONDS:-15}
+      - PENDING_SCAN_INTERVAL_SECONDS=${PENDING_SCAN_INTERVAL_SECONDS:-10}
+    networks:
+      - postgres
+      - internal
+    labels:
+      # Watchtower monitors and redeploys this service when a new image is pushed.
+      - "com.centurylinklabs.watchtower.enable=true"
+
+  web:
+    image: ghcr.io/loskylp/nexusflow/web:${IMAGE_TAG:-latest}
+    restart: unless-stopped
+    networks:
+      - traefik
+    labels:
+      # --- Traefik routing ---
+      # Routes all non-/api traffic to the React frontend served by nginx.
+      # Priority is lower than the API router so /api/* routes take precedence.
+      - "traefik.enable=true"
+      - "traefik.http.routers.nexusflow-staging-web.rule=Host(`nexusflow.staging.nxlabs.cc`)"
+      - "traefik.http.routers.nexusflow-staging-web.tls=true"
+      - "traefik.http.routers.nexusflow-staging-web.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.nexusflow-staging-web.entrypoints=websecure"
+      - "traefik.http.services.nexusflow-staging-web.loadbalancer.server.port=80"
+      # --- Watchtower auto-redeploy ---
+      - "com.centurylinklabs.watchtower.enable=true"
+      # --- Uptime Kuma monitoring ---
+      - "kuma.nexusflow-staging-web.http.name=NexusFlow Staging Web"
+      - "kuma.nexusflow-staging-web.http.url=https://nexusflow.staging.nxlabs.cc/"
+      - "kuma.nexusflow-staging-web.http.group=NexusFlow Staging"
+      - "kuma.nexusflow-staging-web.http.expected_status=200"
+
+  redis:
+    # Service-managed Redis — not shared infrastructure on nxlabs.cc (ADR-005).
+    # AOF + RDB hybrid persistence ensures data survives container restarts (ADR-001, FF-024).
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: >
+      redis-server
+      --appendonly yes
+      --appendfsync everysec
+      --save 900 1
+      --save 300 10
+      --save 60 10000
+    volumes:
+      - redis-data:/data
+    networks:
+      - internal
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  watchtower:
+    # Polls the container registry every 300 s (5 min) and redeploys any service
+    # that has com.centurylinklabs.watchtower.enable=true when a new image is detected.
+    # This satisfies AC-2: Watchtower redeploys within 5 minutes of image push.
+    image: containrrr/watchtower:latest
+    restart: unless-stopped
+    volumes:
+      # Docker socket required for Watchtower to inspect and restart containers.
+      - /var/run/docker.sock:/var/run/docker.sock
+      # Registry credentials for pulling images from ghcr.io (private registry).
+      - /root/.docker/config.json:/config.json:ro
+    environment:
+      # Poll interval: 300 seconds = 5 minutes (satisfies FF-021 / AC-2).
+      - WATCHTOWER_POLL_INTERVAL=300
+      # Only redeploy containers that have the watchtower.enable label.
+      - WATCHTOWER_LABEL_ENABLE=true
+      # Remove old images after a successful update to avoid disk bloat.
+      - WATCHTOWER_CLEANUP=true
+      # Log level for debugging deployments.
+      - WATCHTOWER_LOG_LEVEL=info
+    networks:
+      - internal
+
+volumes:
+  # Persists Redis data across container restarts (ADR-001, FF-024).
+  redis-data:
+
+networks:
+  # External network managed by nxlabs.cc Traefik — provides HTTPS ingress.
+  traefik:
+    external: true
+  # External network managed by nxlabs.cc PostgreSQL — provides DB connectivity.
+  postgres:
+    external: true
+  # Internal network for service-to-service communication; not exposed externally.
+  internal:
+    driver: bridge

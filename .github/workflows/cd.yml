@@ -1,0 +1,122 @@
+# NexusFlow CD pipeline — builds and pushes Docker images to GitHub Container Registry.
+#
+# Triggered by pushing a tag matching demo/v* (e.g. demo/v1.0, demo/v1.2).
+# After images are pushed, Watchtower on the staging host detects them within
+# 5 minutes and redeploys automatically (ADR-005, FF-021).
+#
+# Image naming:
+#   ghcr.io/loskylp/nexusflow/api:<version>
+#   ghcr.io/loskylp/nexusflow/worker:<version>
+#   ghcr.io/loskylp/nexusflow/monitor:<version>
+#   ghcr.io/loskylp/nexusflow/web:<version>
+#
+# Where <version> is the tag with "demo/" stripped (e.g. demo/v1.0 -> v1.0).
+# Images are also tagged "latest" so Watchtower's default poll catches them.
+#
+# See: ADR-005, TASK-029
+
+name: CD
+
+on:
+  push:
+    tags:
+      # Triggers on tags of the form demo/v1.0, demo/v1.2, etc.
+      # This is the signal that a walking skeleton is ready for staging deployment.
+      - 'demo/v*'
+
+jobs:
+  build-and-push:
+    name: Build and Push Docker Images
+    runs-on: ubuntu-latest
+    # Required for writing to the GitHub Container Registry.
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Extract version from tag
+        id: version
+        # Strips the "demo/" prefix from the tag so "demo/v1.0" becomes "v1.0".
+        # The version is used to tag images in the registry.
+        run: |
+          TAG="${GITHUB_REF_NAME}"
+          VERSION="${TAG#demo/}"
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "Building images for version: ${VERSION}"
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Docker Buildx
+        # Buildx provides multi-platform builds and improved caching.
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and push API image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: Dockerfile.api
+          push: true
+          # Tag with the version extracted from the git tag AND "latest".
+          # "latest" tag allows Watchtower to pick up the newest image automatically.
+          tags: |
+            ghcr.io/loskylp/nexusflow/api:${{ steps.version.outputs.version }}
+            ghcr.io/loskylp/nexusflow/api:latest
+          # Use GitHub Actions cache to avoid rebuilding unchanged layers.
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Build and push Worker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: Dockerfile.worker
+          push: true
+          tags: |
+            ghcr.io/loskylp/nexusflow/worker:${{ steps.version.outputs.version }}
+            ghcr.io/loskylp/nexusflow/worker:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Build and push Monitor image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: Dockerfile.monitor
+          push: true
+          tags: |
+            ghcr.io/loskylp/nexusflow/monitor:${{ steps.version.outputs.version }}
+            ghcr.io/loskylp/nexusflow/monitor:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Build and push Web image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: Dockerfile.web
+          push: true
+          tags: |
+            ghcr.io/loskylp/nexusflow/web:${{ steps.version.outputs.version }}
+            ghcr.io/loskylp/nexusflow/web:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Log pushed image tags
+        # Records the image digest for traceability (supports FF-021 image SHA consistency check).
+        run: |
+          echo "Images pushed to ghcr.io/loskylp/nexusflow:"
+          echo "  api:${{ steps.version.outputs.version }}"
+          echo "  worker:${{ steps.version.outputs.version }}"
+          echo "  monitor:${{ steps.version.outputs.version }}"
+          echo "  web:${{ steps.version.outputs.version }}"
+          echo ""
+          echo "Watchtower on staging will detect new images within 5 minutes."
+          echo "Staging URL: https://nexusflow.staging.nxlabs.cc"
