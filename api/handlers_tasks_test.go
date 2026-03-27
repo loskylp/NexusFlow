@@ -654,6 +654,78 @@ func TestSubmit_InvalidPipelineIDFormatReturns400(t *testing.T) {
 	}
 }
 
+// orderingProducer is a queue.Producer spy that records the task's status in the
+// TaskRepository at the moment Enqueue is called. This lets tests assert that
+// UpdateStatus(queued) precedes Enqueue — the fix for OBS-023.
+type orderingProducer struct {
+	tasks          *stubTaskRepo
+	statusAtEnqueue models.TaskStatus
+	enqueued        []*queue.ProducerMessage
+}
+
+func (p *orderingProducer) Enqueue(_ context.Context, msg *queue.ProducerMessage) ([]string, error) {
+	// Snapshot the task's current status from the repository at the instant of enqueue.
+	if t, ok := p.tasks.tasks[msg.Task.ID]; ok {
+		p.statusAtEnqueue = t.Status
+	}
+	p.enqueued = append(p.enqueued, msg)
+	return []string{"0-1"}, nil
+}
+
+func (p *orderingProducer) EnqueueDeadLetter(_ context.Context, _ string, _ string) error {
+	return nil
+}
+
+// Compile-time assertion that orderingProducer satisfies queue.Producer.
+var _ queue.Producer = (*orderingProducer)(nil)
+
+// TestSubmit_StatusQueuedBeforeEnqueue verifies OBS-023 is fixed:
+// UpdateStatus(queued) must complete before Enqueue is called so that a fast
+// worker picking up the task from the Redis stream finds it already in "queued"
+// state and can make the queued→assigned transition without error.
+func TestSubmit_StatusQueuedBeforeEnqueue(t *testing.T) {
+	tasks := newStubTaskRepo()
+	pipelines := newStubPipelineRepo()
+
+	// The spy producer reads back the task status from the repo at enqueue time.
+	spy := &orderingProducer{tasks: tasks}
+
+	userID := uuid.New()
+	pipeline := validPipeline(userID)
+	pipelines.addPipeline(pipeline)
+
+	sess := &models.Session{UserID: userID, Role: models.RoleUser, CreatedAt: time.Now()}
+	srv := &Server{
+		tasks:     tasks,
+		pipelines: pipelines,
+		producer:  spy,
+	}
+	h := &TaskHandler{server: srv}
+
+	reqBody := map[string]any{
+		"pipelineId": pipeline.ID.String(),
+		"input":      map[string]any{},
+		"tags":       []string{"etl"},
+	}
+	rec := httptest.NewRecorder()
+	h.Submit(rec, taskSubmitRequest(t, reqBody, sess))
+
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("expected 201, got %d: %s", rec.Code, rec.Body.String())
+	}
+
+	if len(spy.enqueued) == 0 {
+		t.Fatal("expected producer.Enqueue to be called")
+	}
+
+	// The status captured inside Enqueue must already be "queued".
+	// Before the OBS-023 fix it would be "submitted".
+	if spy.statusAtEnqueue != models.TaskStatusQueued {
+		t.Errorf("expected task status %q at enqueue time, got %q — OBS-023 not fixed",
+			models.TaskStatusQueued, spy.statusAtEnqueue)
+	}
+}
+
 // Compile-time assertion that stubTaskRepo satisfies db.TaskRepository.
 var _ db.TaskRepository = (*stubTaskRepo)(nil)
 

@@ -7,6 +7,7 @@ package api
 import (
 	"net/http"
 
+	"github.com/go-chi/chi/v5"
 	"github.com/nxlabs/nexusflow/internal/auth"
 )
 
@@ -22,36 +23,33 @@ type SSEHandler struct {
 // User role: own tasks only. Admin role: all tasks.
 //
 // SSE event types published on this stream:
-//   task:created, task:state-changed, task:completed, task:failed
+//
+//	task:created, task:state-changed, task:completed, task:failed
 //
 // Responses:
-//   200 text/event-stream: streaming SSE connection (blocks until client disconnects)
-//   401 Unauthorized:      no valid session
 //
-// Preconditions:
-//   - Auth middleware has populated session in context.
-//   - Response writer implements http.Flusher; returns 500 if it does not.
+//	200 text/event-stream: streaming SSE connection (blocks until client disconnects)
+//	401 Unauthorized:      no valid session
+//	500 Internal:          response writer does not support streaming
 func (h *SSEHandler) Tasks(w http.ResponseWriter, r *http.Request) {
 	session := auth.SessionFromContext(r.Context())
-	// TODO: Implement in TASK-015 — delegate to h.server.broker.ServeTaskEvents
-	_ = session
-	panic("not implemented")
+	h.server.broker.ServeTaskEvents(w, r, session)
 }
 
 // Workers handles GET /events/workers.
 // Opens an SSE stream for worker fleet status changes. Available to all authenticated users.
 //
 // SSE event types published on this stream:
-//   worker:registered, worker:heartbeat, worker:down
+//
+//	worker:registered, worker:heartbeat, worker:down
 //
 // Responses:
-//   200 text/event-stream: streaming SSE connection
-//   401 Unauthorized:      no valid session
+//
+//	200 text/event-stream: streaming SSE connection
+//	401 Unauthorized:      no valid session
 func (h *SSEHandler) Workers(w http.ResponseWriter, r *http.Request) {
 	session := auth.SessionFromContext(r.Context())
-	// TODO: Implement in TASK-015 — delegate to h.server.broker.ServeWorkerEvents
-	_ = session
-	panic("not implemented")
+	h.server.broker.ServeWorkerEvents(w, r, session)
 }
 
 // Logs handles GET /events/tasks/{id}/logs.
@@ -59,18 +57,18 @@ func (h *SSEHandler) Workers(w http.ResponseWriter, r *http.Request) {
 // Supports Last-Event-ID header for reconnection replay (ADR-007).
 //
 // SSE event types:
-//   log:line   — { taskId, line, level, timestamp, id }
+//
+//	log:line   — { taskId, line, level, timestamp, id }
 //
 // Responses:
-//   200 text/event-stream: streaming SSE connection
-//   401 Unauthorized:      no valid session
-//   403 Forbidden:         caller is not task owner or Admin
-//   404 Not Found:         task does not exist
+//
+//	200 text/event-stream: streaming SSE connection
+//	401 Unauthorized:      no valid session
+//	403 Forbidden:         caller is not task owner or Admin
 func (h *SSEHandler) Logs(w http.ResponseWriter, r *http.Request) {
 	session := auth.SessionFromContext(r.Context())
-	// TODO: Implement in TASK-015 — extract taskID from chi.URLParam, delegate to h.server.broker.ServeLogEvents
-	_ = session
-	panic("not implemented")
+	taskID := chi.URLParam(r, "id")
+	h.server.broker.ServeLogEvents(w, r, session, taskID)
 }
 
 // Sink handles GET /events/sink/{taskId}.
@@ -78,17 +76,17 @@ func (h *SSEHandler) Logs(w http.ResponseWriter, r *http.Request) {
 // Only available to task owner or Admin.
 //
 // SSE event types:
-//   sink:before-snapshot  — { taskId, data, capturedAt }
-//   sink:after-result     — { taskId, data, capturedAt }
+//
+//	sink:before-snapshot  — { taskId, data, capturedAt }
+//	sink:after-result     — { taskId, data, capturedAt }
 //
 // Responses:
-//   200 text/event-stream: streaming SSE connection
-//   401 Unauthorized:      no valid session
-//   403 Forbidden:         caller is not task owner or Admin
-//   404 Not Found:         task does not exist
+//
+//	200 text/event-stream: streaming SSE connection
+//	401 Unauthorized:      no valid session
+//	403 Forbidden:         caller is not task owner or Admin
 func (h *SSEHandler) Sink(w http.ResponseWriter, r *http.Request) {
 	session := auth.SessionFromContext(r.Context())
-	// TODO: Implement in TASK-015 — extract taskID, delegate to h.server.broker.ServeSinkEvents
-	_ = session
-	panic("not implemented")
+	taskID := chi.URLParam(r, "taskId")
+	h.server.broker.ServeSinkEvents(w, r, session, taskID)
 }

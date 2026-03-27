@@ -47,7 +47,10 @@ type errorResponse struct {
 
 // Submit handles POST /api/tasks.
 // Validates the pipeline reference, inserts the task into PostgreSQL (status: submitted),
-// enqueues it in the appropriate Redis stream (status: queued), and returns 201.
+// transitions it to "queued" in PostgreSQL, then publishes it to the Redis stream.
+// The status is written before enqueueing so that a worker picking up the message
+// always finds the task in "queued" state and can make the queued→assigned transition
+// without error (fixes OBS-023).
 //
 // Request body:
 //
@@ -71,7 +74,8 @@ type errorResponse struct {
 //
 // Postconditions:
 //   - On 201: task exists in PostgreSQL with status "queued"; task message is in queue:{tag}.
-//   - State transition submitted -> queued is recorded in task_state_log.
+//   - State transition submitted -> queued is recorded in task_state_log before Enqueue.
+//   - If Enqueue fails after UpdateStatus, task remains in "queued" (recoverable); 500 returned.
 //   - Default RetryConfig applied when not provided in request body.
 func (h *TaskHandler) Submit(w http.ResponseWriter, r *http.Request) {
 	sess := auth.SessionFromContext(r.Context())
@@ -143,18 +147,26 @@ func (h *TaskHandler) Submit(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Mark the task queued in PostgreSQL before publishing to Redis.
+	// This eliminates the race where a fast worker picks up the task while it is
+	// still in "submitted" state and cannot make the submitted→assigned transition.
+	// If UpdateStatus fails, we return 500 without enqueueing — the task remains
+	// in "submitted" and can be retried or inspected by an operator.
+	if err := h.server.tasks.UpdateStatus(r.Context(), created.ID, models.TaskStatusQueued, "enqueued to Redis stream", nil); err != nil {
+		log.Printf("task.Submit: UpdateStatus to queued for task %v: %v", created.ID, err)
+		writeError(w, http.StatusInternalServerError, "internal error")
+		return
+	}
+
+	// Enqueue after the status is durable. If this fails the task stays in "queued"
+	// in PostgreSQL, which is a recoverable state — a separate reconciler or operator
+	// can re-enqueue it without losing the record.
 	_, err = h.server.producer.Enqueue(r.Context(), &queue.ProducerMessage{
 		Task: created,
 		Tags: req.Tags,
 	})
 	if err != nil {
 		log.Printf("task.Submit: Enqueue task %v: %v", created.ID, err)
-		writeError(w, http.StatusInternalServerError, "internal error")
-		return
-	}
-
-	if err := h.server.tasks.UpdateStatus(r.Context(), created.ID, models.TaskStatusQueued, "enqueued to Redis stream", nil); err != nil {
-		log.Printf("task.Submit: UpdateStatus to queued for task %v: %v", created.ID, err)
 		writeError(w, http.StatusInternalServerError, "internal error")
 		return
 	}

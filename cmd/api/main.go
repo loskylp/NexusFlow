@@ -9,10 +9,11 @@
 //  4. Construct SessionStore and UserRepository (TASK-003)
 //  5. Seed admin user if no users exist (TASK-003)
 //  6. Construct TaskRepository, PipelineRepository, and RedisQueue Producer (TASK-005)
-//  7. Build API server (api.NewServer) with all dependencies wired
-//  8. Start HTTP server with graceful shutdown on SIGTERM/SIGINT
+//  7. Construct RedisBroker and start its goroutine (TASK-015)
+//  8. Build API server (api.NewServer) with all dependencies wired
+//  9. Start HTTP server with graceful shutdown on SIGTERM/SIGINT
 //
-// See: ADR-004, ADR-005, ADR-006, TASK-001, TASK-002, TASK-003
+// See: ADR-004, ADR-005, ADR-006, ADR-007, TASK-001, TASK-002, TASK-003, TASK-015
 package main
 
 import (
@@ -32,6 +33,7 @@ import (
 	"github.com/nxlabs/nexusflow/internal/db"
 	"github.com/nxlabs/nexusflow/internal/models"
 	"github.com/nxlabs/nexusflow/internal/queue"
+	"github.com/nxlabs/nexusflow/internal/sse"
 	"github.com/redis/go-redis/v9"
 )
 
@@ -87,6 +89,20 @@ func main() {
 	}
 	seedCancel()
 
+	// Construct the SSE RedisBroker (TASK-015, ADR-007).
+	// The broker subscribes to Redis Pub/Sub patterns and fans events to connected SSE clients.
+	// Its goroutine is tied to the main context so it shuts down cleanly with the server.
+	mainCtx, mainCancel := context.WithCancel(context.Background())
+	defer mainCancel()
+
+	broker := sse.NewRedisBroker(redisClient).WithTaskRepo(taskRepo)
+	go func() {
+		if err := broker.Start(mainCtx); err != nil {
+			log.Printf("api: SSE broker exited: %v", err)
+		}
+	}()
+	log.Printf("api: SSE broker started")
+
 	srv := api.NewServer(
 		cfg,
 		pool,
@@ -97,7 +113,7 @@ func main() {
 		nil, // workers — wired in TASK-006
 		q,
 		sessionStore,
-		nil, // broker — wired in TASK-015
+		broker,
 	)
 
 	addr := fmt.Sprintf(":%d", cfg.APIPort)
