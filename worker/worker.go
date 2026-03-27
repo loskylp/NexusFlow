@@ -621,14 +621,18 @@ func (w *Worker) ackMessage(ctx context.Context, message *queue.TaskMessage) {
 
 // applyMappingsToSlice applies ApplySchemaMapping to each record in a slice.
 // Returns a new slice of renamed records. Fails fast on the first mapping error.
+// When mappings is empty, the original slice is returned unchanged so that all
+// fields from the preceding phase are passed through to the next phase without
+// any renaming.
 //
 // Args:
 //
 //	records:  The output records from the preceding phase.
-//	mappings: The schema mappings to apply.
+//	mappings: The schema mappings to apply. Empty means pass-through.
 //
 // Returns:
-//   - A new slice of mapped records. Empty when mappings is empty: each record becomes {}.
+//   - The original records slice unchanged when mappings is empty (pass-through).
+//   - A new slice of mapped records (each containing only the mapped fields) when mappings is non-empty.
 //   - An error if any record has a missing source field.
 func (w *Worker) applyMappingsToSlice(records []map[string]any, mappings []models.SchemaMapping) ([]map[string]any, error) {
 	if len(mappings) == 0 {

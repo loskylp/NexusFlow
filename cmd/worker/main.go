@@ -86,10 +86,11 @@ func main() {
 	pipelineRepo := db.NewPgPipelineRepository(pool)
 	redisQueue := queue.NewRedisQueue(redisClient)
 
-	// Build connector registry. Demo connectors are implemented in TASK-042.
-	// The registry is constructed now (empty) so the Worker starts cleanly;
-	// tasks with unregistered connector types will be marked "failed" at execution time.
+	// Build connector registry and register demo connectors (TASK-042).
+	// All three demo connector types ("demo") are registered so pipelines using
+	// connector type "demo" execute end-to-end through the walking skeleton.
 	connectorRegistry := workerPkg.NewDefaultConnectorRegistry()
+	workerPkg.RegisterDemoConnectors(connectorRegistry)
 
 	// Construct the worker.
 	// broker is nil until TASK-015 (SSE infrastructure) is implemented.

@@ -7,6 +7,11 @@ package worker
 
 import (
 	"context"
+	"fmt"
+	"log"
+	"strings"
+	"sync"
+	"time"
 
 	"github.com/nxlabs/nexusflow/internal/models"
 )
@@ -216,66 +221,217 @@ type connectorError struct{ msg string }
 
 func (e *connectorError) Error() string { return e.msg }
 
-// --- Demo connectors (implemented in TASK-042) ---
+// --- Demo connectors (TASK-042) ---
 
-// DemoDataSource is an in-memory DataSource that returns deterministic sample data.
-// Enables end-to-end walking skeleton demonstration without external infrastructure.
+// defaultDemoRecordCount is the number of sample records DemoDataSource produces
+// when the "count" config key is absent or zero.
+const defaultDemoRecordCount = 5
+
+// DemoDataSource is an in-memory DataSource that produces deterministic sample data.
+// It does not contact any external infrastructure; all records are synthesised from
+// a fixed pattern indexed by record position.
+//
+// Config keys (all optional):
+//   - "count" (float64): number of records to produce. Defaults to 5.
+//
+// Output schema: each record has three fields — "id" (int), "name" (string), "value" (int).
+// The field values are deterministic: name = "record-{i}", value = i*10, id = i+1.
+//
 // See: TASK-042
 type DemoDataSource struct{}
 
 // Type implements DataSourceConnector.Type.
+// Returns "demo" — the connector type string used in pipeline DataSourceConfig.
 func (d *DemoDataSource) Type() string { return "demo" }
 
-// Fetch implements DataSourceConnector.Fetch.
-// Returns a fixed set of sample records regardless of config or input.
+// Fetch produces a slice of deterministic sample records.
+// Record count is controlled by config["count"] (float64). Defaults to 5.
+// The same config always produces identical output (deterministic).
+//
+// Preconditions:
+//   - ctx must not be cancelled before Fetch is called.
+//
+// Postconditions:
+//   - On success: returns a non-nil slice of length == count.
+//   - Records are not shared; callers may mutate them freely.
 func (d *DemoDataSource) Fetch(ctx context.Context, config map[string]any, input map[string]any) ([]map[string]any, error) {
-	// TODO: Implement in TASK-042
-	panic("not implemented")
+	count := defaultDemoRecordCount
+	if v, ok := config["count"]; ok {
+		if n, ok := v.(float64); ok && n > 0 {
+			count = int(n)
+		}
+	}
+
+	records := make([]map[string]any, count)
+	for i := 0; i < count; i++ {
+		records[i] = map[string]any{
+			"id":    i + 1,
+			"name":  fmt.Sprintf("record-%d", i),
+			"value": i * 10,
+		}
+	}
+	return records, nil
 }
 
-// DemoProcessConnector is a pass-through Process connector for the walking skeleton.
-// Applies no transformation; returns records unchanged.
+// DemoProcessConnector is the walking skeleton Process connector.
+// It adds a "processed" boolean flag to every record and, when configured,
+// uppercases the string value of a named field.
+//
+// Config keys (all optional):
+//   - "uppercase_field" (string): name of the field whose string value is uppercased.
+//
+// The connector does not mutate input records; it produces new record maps.
+//
 // See: TASK-042
 type DemoProcessConnector struct{}
 
 // Type implements ProcessConnector.Type.
+// Returns "demo" — the connector type string used in pipeline ProcessConfig.
 func (d *DemoProcessConnector) Type() string { return "demo" }
 
-// Transform implements ProcessConnector.Transform.
-// Pass-through: returns records unchanged.
+// Transform applies the demo process logic to each record.
+// Adds "processed": true to every output record.
+// When config["uppercase_field"] is set, uppercases the named field's string value.
+// Returns an empty slice when records is empty.
+// Does not mutate input records.
+//
+// Preconditions:
+//   - records is non-nil (may be empty).
+//
+// Postconditions:
+//   - On success: len(output) == len(records).
+//   - Each output record contains all fields from the input plus "processed": true.
 func (d *DemoProcessConnector) Transform(ctx context.Context, config map[string]any, records []map[string]any) ([]map[string]any, error) {
-	// TODO: Implement in TASK-042
-	panic("not implemented")
+	uppercaseField, _ := config["uppercase_field"].(string)
+
+	result := make([]map[string]any, len(records))
+	for i, rec := range records {
+		// Build a new map so the input is not mutated.
+		out := make(map[string]any, len(rec)+1)
+		for k, v := range rec {
+			out[k] = v
+		}
+		out["processed"] = true
+		if uppercaseField != "" {
+			if s, ok := out[uppercaseField].(string); ok {
+				out[uppercaseField] = strings.ToUpper(s)
+			}
+		}
+		result[i] = out
+	}
+	return result, nil
 }
 
-// DemoSinkConnector logs records to stdout and records them in an in-memory store.
-// Satisfies atomicity by writing to the in-memory store only on success.
-// See: TASK-042
+// DemoSinkConnector writes processed records to an in-memory store and logs each
+// committed write to stdout. It satisfies the Sink atomicity requirement (ADR-009)
+// by committing to the in-memory map only after all preconditions pass.
+//
+// Idempotency (ADR-003): a second Write call with the same executionID returns
+// ErrAlreadyApplied without modifying the store.
+//
+// The store is safe for concurrent access.
+//
+// See: TASK-042, ADR-003, ADR-009
 type DemoSinkConnector struct {
-	// store is the in-memory record of committed writes, keyed by executionID.
-	store map[string][]map[string]any //lint:ignore U1000 scaffold stub — wired in TASK-042
+	mu    sync.Mutex
+	store map[string]logEntry // keyed by executionID
+}
+
+// NewDemoSinkConnector constructs a DemoSinkConnector with an initialised store.
+// The caller is responsible for registering the returned connector in the ConnectorRegistry.
+func NewDemoSinkConnector() *DemoSinkConnector {
+	return &DemoSinkConnector{
+		store: make(map[string]logEntry),
+	}
 }
 
 // Type implements SinkConnector.Type.
+// Returns "demo" — the connector type string used in pipeline SinkConfig.
 func (d *DemoSinkConnector) Type() string { return "demo" }
 
-// Snapshot implements SinkConnector.Snapshot.
-// Returns the current contents of the in-memory store for the given taskID scope.
+// Snapshot returns the current state of the in-memory store as a summary map.
+// The summary contains "record_count" (total records across all executionIDs) and
+// "execution_count" (number of distinct executionIDs committed).
+// taskID is accepted for interface compliance but not used to scope the snapshot,
+// since the demo store is not partitioned by task.
+//
+// Postconditions:
+//   - Returns a non-nil map. Never returns an error.
 func (d *DemoSinkConnector) Snapshot(ctx context.Context, config map[string]any, taskID string) (map[string]any, error) {
-	// TODO: Implement in TASK-042
-	panic("not implemented")
+	d.mu.Lock()
+	defer d.mu.Unlock()
+
+	total := 0
+	for _, e := range d.store {
+		total += len(e.Records)
+	}
+	return map[string]any{
+		"record_count":    total,
+		"execution_count": len(d.store),
+	}, nil
 }
 
-// Write implements SinkConnector.Write.
-// Atomically appends records to the in-memory store. Returns ErrAlreadyApplied if
-// the executionID is already present (idempotency guard, ADR-003).
+// Write commits records to the in-memory store under the given executionID.
+// Returns ErrAlreadyApplied without modifying the store when executionID is already
+// present (idempotency guard, ADR-003).
+// Logs each commit to stdout for demo observability.
+//
+// Preconditions:
+//   - executionID is non-empty.
+//
+// Postconditions:
+//   - On nil: records are in the store under executionID.
+//   - On ErrAlreadyApplied: store is unchanged.
 func (d *DemoSinkConnector) Write(ctx context.Context, config map[string]any, records []map[string]any, executionID string) error {
-	// TODO: Implement in TASK-042
-	panic("not implemented")
+	d.mu.Lock()
+	defer d.mu.Unlock()
+
+	if _, exists := d.store[executionID]; exists {
+		return ErrAlreadyApplied
+	}
+
+	// Deep-copy records so the store is not affected by subsequent mutations.
+	stored := make([]map[string]any, len(records))
+	for i, r := range records {
+		cp := make(map[string]any, len(r))
+		for k, v := range r {
+			cp[k] = v
+		}
+		stored[i] = cp
+	}
+
+	d.store[executionID] = logEntry{
+		ExecutionID: executionID,
+		Records:     stored,
+		CommittedAt: time.Now().UTC().Format(time.RFC3339),
+	}
+
+	log.Printf("demo-sink: committed %d record(s) for executionID=%q", len(records), executionID)
+	return nil
 }
 
-// LogEntry is what the DemoSinkConnector records for each committed write,
-// viewable via the Sink Inspector.
+// logEntry is the in-memory record of a single committed Sink write.
+// Stored by DemoSinkConnector keyed by executionID.
+type logEntry struct {
+	ExecutionID string
+	Records     []map[string]any
+	CommittedAt string
+}
+
+// RegisterDemoConnectors registers the three demo connector implementations
+// (DemoDataSource, DemoProcessConnector, DemoSinkConnector) in the given registry.
+// Called at worker startup to enable pipelines that use connector type "demo".
+// Panics on duplicate registration (fail-fast: calling this twice is a startup bug).
+//
+// See: TASK-042, cmd/worker/main.go
+func RegisterDemoConnectors(reg *DefaultConnectorRegistry) {
+	reg.Register("datasource", &DemoDataSource{})
+	reg.Register("process", &DemoProcessConnector{})
+	reg.Register("sink", NewDemoSinkConnector())
+}
+
+// LogEntry is the public representation of a committed DemoSinkConnector write,
+// exposed for the Sink Inspector (ADR-009, TASK-033).
 type LogEntry struct {
 	ExecutionID string
 	Records     []map[string]any
