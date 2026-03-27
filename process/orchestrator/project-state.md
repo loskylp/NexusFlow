@@ -8,14 +8,14 @@
 
 ## Where We Are
 
-Plan Gate v2.1 APPROVED (2026-03-26). Phase: EXECUTION. Layers 1-7 backbone COMPLETE plus TASK-015 (SSE event infrastructure). 10 of 14 tasks complete. TASK-025 (Worker fleet status API) BUILT -- dispatching Verifier for initial verification.
+Plan Gate v2.1 APPROVED (2026-03-26). Phase: EXECUTION. 11 of 14 tasks complete. TASK-025 (Worker fleet status API) verified PASS (iteration 2). Dispatching Builder for TASK-019 (React app shell with sidebar navigation and auth flow).
 
 ## Active Work
 
-**Agent in control:** Verifier (dispatching 2026-03-27)
-**Current task:** TASK-025 -- Worker fleet status API (VERIFICATION)
-**Waiting for:** Verifier to verify TASK-025 (GET /api/workers endpoint)
-**Next after TASK-025 verification:** If PASS, route Builder for TASK-019 (React app shell). If FAIL, route Builder for TASK-025 iteration 2.
+**Agent in control:** Builder (dispatching 2026-03-27)
+**Current task:** TASK-019 -- React app shell with sidebar navigation and auth flow (BUILD)
+**Waiting for:** Builder to implement TASK-019
+**Next after TASK-019 build:** Route Verifier for TASK-019 initial verification (Pre-staging mode)
 
 ---
 
@@ -32,14 +32,15 @@ Plan Gate v2.1 APPROVED (2026-03-26). Phase: EXECUTION. Layers 1-7 backbone COMP
 | TASK-013: Pipeline CRUD via REST API | COMPLETE | 2 | PASS (iteration 2) |
 | TASK-007: Tag-based task assignment and pipeline execution | COMPLETE | 1 | PASS (9/9 acceptance, 22 tests) |
 | TASK-042: Demo connectors -- demo source, simulated worker, demo sink | COMPLETE | 1 | PASS, CI green |
-| TASK-019: React app shell with sidebar navigation and auth flow | PENDING | -- | -- |
-| TASK-025: Worker fleet status API | BUILT | -- | PENDING VERIFICATION |
+| TASK-019: React app shell with sidebar navigation and auth flow | IN PROGRESS | -- | -- |
+| TASK-025: Worker fleet status API | COMPLETE | 2 | PASS (iteration 2) |
 | TASK-015: SSE event infrastructure | COMPLETE | 1 | PASS, CI green |
 | TASK-020: Worker Fleet Dashboard (GUI) | PENDING | -- | -- |
 | TASK-029: DevOps Phase 2 -- staging environment and CD pipeline | PENDING | -- | -- |
 
 **Cycle summary:**
-- Tasks complete: 10 of 14
+- Tasks complete: 11 of 14
+- TASK-025: COMPLETE (2026-03-27) -- Verifier PASS (iteration 2), CI green. Worker fleet status API (GET /api/workers) verified.
 - TASK-042: COMPLETE (2026-03-26) -- Verifier PASS, CI green. Demo connectors (demo source, simulated worker, demo sink) verified. OBS-023 identified: race condition in TASK-005 submit handler.
 - TASK-005: COMPLETE (2026-03-26) -- Verifier PASS (iteration 2), CI green. Wiring omission in `cmd/api/main.go` and plain text 401 fixed in iteration 1; verified PASS on iteration 2. OBS-023 identified during TASK-042 verification: XADD fires before UpdateStatus(queued), causing worker to see task in "submitted" state and fail submitted->assigned transition.
 - TASK-013: COMPLETE (2026-03-26) -- Verifier PASS (iteration 2), CI green. Pipeline CRUD via REST API with all 7 acceptance criteria met.
@@ -96,16 +97,15 @@ Per Manifest and Plan Gate approval, the execution sequence is:
 Note: Sequential execution model (one Builder task at a time). The dependency layers above guide ordering; within a layer, tasks are executed sequentially.
 
 **Remaining execution order:**
-1. TASK-025: Worker fleet status API (low-risk, Layer 4) -- **DISPATCHING VERIFIER**
-2. TASK-019: React app shell (Layer 7)
-3. TASK-020: Worker Fleet Dashboard GUI (Layer 8, depends on TASK-019 + TASK-025 + TASK-015)
-4. TASK-029: DevOps Phase 2 (Layer 9, depends on TASK-042)
+1. TASK-019: React app shell (Layer 7) -- **DISPATCHING BUILDER**
+2. TASK-020: Worker Fleet Dashboard GUI (Layer 8, depends on TASK-019 + TASK-025 + TASK-015)
+3. TASK-029: DevOps Phase 2 (Layer 9, depends on TASK-042)
 
 ---
 
 ## Iterate Loop State
 
-No active iterate loop. TASK-005 converged on iteration 2 (PASS). TASK-013 converged on iteration 2 (PASS). TASK-007 converged on iteration 1 (PASS). TASK-042 converged on iteration 1 (PASS). TASK-015 converged on iteration 1 (PASS). OBS-023 resolved (targeted fix applied).
+No active iterate loop. TASK-005 converged on iteration 2 (PASS). TASK-013 converged on iteration 2 (PASS). TASK-007 converged on iteration 1 (PASS). TASK-042 converged on iteration 1 (PASS). TASK-015 converged on iteration 1 (PASS). TASK-025 converged on iteration 2 (PASS). OBS-023 resolved (targeted fix applied).
 
 ---
 
@@ -116,8 +116,8 @@ No active iterate loop. TASK-005 converged on iteration 2 (PASS). TASK-013 conve
 | Auditor passes -- requirements | 2 (audit v2: PASS WITH DEFERRALS; audit v4: PASS WITH DEFERRALS) |
 | Auditor passes -- architecture | 2 (architecture-audit-v1: PASS; architecture-audit-v2: PASS) |
 | Gate rejections this cycle | 0 |
-| Tasks completed | 10 of 14 planned |
-| Average iterations to PASS | 1.20 (10 tasks: 8 at 1 iteration, 2 at 2 iterations) |
+| Tasks completed | 11 of 14 planned |
+| Average iterations to PASS | 1.27 (11 tasks: 8 at 1 iteration, 3 at 2 iterations) |
 | Tasks that hit max iterations | 0 |
 | Escalations to Nexus | 0 |
 | Backward cascade triggered | No |
