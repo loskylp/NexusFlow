@@ -8,14 +8,14 @@
 
 ## Where We Are
 
-Plan Gate v2.1 APPROVED (2026-03-26). Phase: EXECUTION. Layers 1-7 backbone COMPLETE plus TASK-015 (SSE event infrastructure). 10 of 14 tasks complete. Dispatching Builder for TASK-025 (Worker fleet status API).
+Plan Gate v2.1 APPROVED (2026-03-26). Phase: EXECUTION. Layers 1-7 backbone COMPLETE plus TASK-015 (SSE event infrastructure). 10 of 14 tasks complete. TASK-025 (Worker fleet status API) BUILT -- dispatching Verifier for initial verification.
 
 ## Active Work
 
-**Agent in control:** Builder (dispatching 2026-03-27)
-**Current task:** TASK-025 -- Worker fleet status API
-**Waiting for:** Builder to implement TASK-025 (GET /api/workers endpoint)
-**Next after TASK-025:** Route Verifier for TASK-025 verification. Then TASK-019 (React app shell).
+**Agent in control:** Verifier (dispatching 2026-03-27)
+**Current task:** TASK-025 -- Worker fleet status API (VERIFICATION)
+**Waiting for:** Verifier to verify TASK-025 (GET /api/workers endpoint)
+**Next after TASK-025 verification:** If PASS, route Builder for TASK-019 (React app shell). If FAIL, route Builder for TASK-025 iteration 2.
 
 ---
 
@@ -33,7 +33,7 @@ Plan Gate v2.1 APPROVED (2026-03-26). Phase: EXECUTION. Layers 1-7 backbone COMP
 | TASK-007: Tag-based task assignment and pipeline execution | COMPLETE | 1 | PASS (9/9 acceptance, 22 tests) |
 | TASK-042: Demo connectors -- demo source, simulated worker, demo sink | COMPLETE | 1 | PASS, CI green |
 | TASK-019: React app shell with sidebar navigation and auth flow | PENDING | -- | -- |
-| TASK-025: Worker fleet status API | PENDING | -- | -- |
+| TASK-025: Worker fleet status API | BUILT | -- | PENDING VERIFICATION |
 | TASK-015: SSE event infrastructure | COMPLETE | 1 | PASS, CI green |
 | TASK-020: Worker Fleet Dashboard (GUI) | PENDING | -- | -- |
 | TASK-029: DevOps Phase 2 -- staging environment and CD pipeline | PENDING | -- | -- |
@@ -96,7 +96,7 @@ Per Manifest and Plan Gate approval, the execution sequence is:
 Note: Sequential execution model (one Builder task at a time). The dependency layers above guide ordering; within a layer, tasks are executed sequentially.
 
 **Remaining execution order:**
-1. TASK-025: Worker fleet status API (low-risk, Layer 4) -- **DISPATCHING BUILDER**
+1. TASK-025: Worker fleet status API (low-risk, Layer 4) -- **DISPATCHING VERIFIER**
 2. TASK-019: React app shell (Layer 7)
 3. TASK-020: Worker Fleet Dashboard GUI (Layer 8, depends on TASK-019 + TASK-025 + TASK-015)
 4. TASK-029: DevOps Phase 2 (Layer 9, depends on TASK-042)
