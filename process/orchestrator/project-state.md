@@ -8,14 +8,14 @@
 
 ## Where We Are
 
-Plan Gate v2.1 APPROVED (2026-03-26). Phase: EXECUTION. 12 of 14 tasks complete. TASK-020 (Worker Fleet Dashboard GUI) built by Builder (2026-03-27). Dispatching Verifier for TASK-020 initial verification (Pre-staging mode).
+Plan Gate v2.1 APPROVED (2026-03-26). Phase: EXECUTION. 13 of 14 tasks complete. TASK-020 (Worker Fleet Dashboard GUI) verified PASS by Verifier (2026-03-27), CI green. Dispatching Builder for TASK-029 (DevOps Phase 2 -- staging environment and CD pipeline), the final Cycle 1 task.
 
 ## Active Work
 
-**Agent in control:** Verifier (dispatching 2026-03-27)
-**Current task:** TASK-020 -- Worker Fleet Dashboard GUI (VERIFICATION)
-**Waiting for:** Verifier to verify TASK-020 against 8 acceptance criteria
-**Next after TASK-020 verification:** If PASS, proceed to TASK-029 (DevOps Phase 2 -- Builder). If FAIL, dispatch Builder for TASK-020 iteration 2.
+**Agent in control:** Builder (dispatching 2026-03-27)
+**Current task:** TASK-029 -- DevOps Phase 2: staging environment and CD pipeline (BUILD)
+**Waiting for:** Builder to implement TASK-029 (staging environment on nxlabs.cc, CD pipeline with Watchtower, Traefik TLS, Uptime Kuma)
+**Next after TASK-029 build:** Dispatch Verifier for TASK-029 verification (Full mode -- TASK-029 is DevOps Phase 2 itself). If PASS, dispatch Sentinel for cycle-level security review, then prepare Demo Sign-off Briefing.
 
 ---
 
@@ -35,11 +35,12 @@ Plan Gate v2.1 APPROVED (2026-03-26). Phase: EXECUTION. 12 of 14 tasks complete.
 | TASK-019: React app shell with sidebar navigation and auth flow | COMPLETE | 1 | PASS, CI green |
 | TASK-025: Worker fleet status API | COMPLETE | 2 | PASS (iteration 2) |
 | TASK-015: SSE event infrastructure | COMPLETE | 1 | PASS, CI green |
-| TASK-020: Worker Fleet Dashboard (GUI) | BUILT -- PENDING VERIFICATION | 1 | -- |
+| TASK-020: Worker Fleet Dashboard (GUI) | COMPLETE | 1 | PASS, CI green |
 | TASK-029: DevOps Phase 2 -- staging environment and CD pipeline | PENDING | -- | -- |
 
 **Cycle summary:**
-- Tasks complete: 12 of 14
+- Tasks complete: 13 of 14
+- TASK-020: COMPLETE (2026-03-27) -- Verifier PASS, CI green. Worker Fleet Dashboard GUI verified.
 - TASK-019: COMPLETE (2026-03-27) -- Verifier PASS, CI green. React app shell with sidebar navigation and auth flow verified.
 - TASK-025: COMPLETE (2026-03-27) -- Verifier PASS (iteration 2), CI green. Worker fleet status API (GET /api/workers) verified.
 - TASK-042: COMPLETE (2026-03-26) -- Verifier PASS, CI green. Demo connectors (demo source, simulated worker, demo sink) verified. OBS-023 identified: race condition in TASK-005 submit handler.
@@ -98,14 +99,13 @@ Per Manifest and Plan Gate approval, the execution sequence is:
 Note: Sequential execution model (one Builder task at a time). The dependency layers above guide ordering; within a layer, tasks are executed sequentially.
 
 **Remaining execution order:**
-1. TASK-020: Worker Fleet Dashboard GUI (Layer 8, depends on TASK-019 + TASK-025 + TASK-015) -- **BUILT, DISPATCHING VERIFIER**
-2. TASK-029: DevOps Phase 2 (Layer 9, depends on TASK-042)
+1. TASK-029: DevOps Phase 2 (Layer 9, depends on TASK-042) -- **DISPATCHING BUILDER**
 
 ---
 
 ## Iterate Loop State
 
-No active iterate loop. TASK-005 converged on iteration 2 (PASS). TASK-013 converged on iteration 2 (PASS). TASK-007 converged on iteration 1 (PASS). TASK-042 converged on iteration 1 (PASS). TASK-015 converged on iteration 1 (PASS). TASK-025 converged on iteration 2 (PASS). OBS-023 resolved (targeted fix applied).
+No active iterate loop. TASK-005 converged on iteration 2 (PASS). TASK-013 converged on iteration 2 (PASS). TASK-007 converged on iteration 1 (PASS). TASK-042 converged on iteration 1 (PASS). TASK-015 converged on iteration 1 (PASS). TASK-025 converged on iteration 2 (PASS). TASK-020 converged on iteration 1 (PASS). OBS-023 resolved (targeted fix applied).
 
 ---
 
@@ -116,8 +116,8 @@ No active iterate loop. TASK-005 converged on iteration 2 (PASS). TASK-013 conve
 | Auditor passes -- requirements | 2 (audit v2: PASS WITH DEFERRALS; audit v4: PASS WITH DEFERRALS) |
 | Auditor passes -- architecture | 2 (architecture-audit-v1: PASS; architecture-audit-v2: PASS) |
 | Gate rejections this cycle | 0 |
-| Tasks completed | 12 of 14 planned |
-| Average iterations to PASS | 1.25 (12 tasks: 9 at 1 iteration, 3 at 2 iterations) |
+| Tasks completed | 13 of 14 planned |
+| Average iterations to PASS | 1.23 (13 tasks: 10 at 1 iteration, 3 at 2 iterations) |
 | Tasks that hit max iterations | 0 |
 | Escalations to Nexus | 0 |
 | Backward cascade triggered | No |
