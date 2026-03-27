@@ -8,14 +8,14 @@
 
 ## Where We Are
 
-Plan Gate v2.1 APPROVED (2026-03-26). Phase: CYCLE 1 COMPLETE -- awaiting Nexus Demo Sign-off. All 14 of 14 Cycle 1 tasks verified PASS. CI green. TASK-029 (DevOps Phase 2) verified PASS (2026-03-27, 68/68 acceptance). Sentinel cycle-level security review pending -- must be dispatched before Demo Sign-off Briefing is finalized.
+Plan Gate v2.1 APPROVED (2026-03-26). Phase: CYCLE 1 COMPLETE -- staging provisioning in progress before Demo Sign-off. All 14 of 14 Cycle 1 tasks verified PASS. CI green. TASK-029 (DevOps Phase 2) verified PASS (2026-03-27, 68/68 acceptance). Sentinel cycle-level security review: PASS WITH CONDITIONS (2026-03-27). Nexus directed: staging environment must be provisioned and smoke-tested before Demo Sign-off. DevOps dispatched for staging provisioning (2026-03-27).
 
 ## Active Work
 
-**Agent in control:** Orchestrator
-**Current task:** Cycle 1 completion -- preparing Demo Sign-off
-**Waiting for:** Sentinel cycle-level security review (required by Manifest v1, Critical profile), then Nexus Demo Sign-off
-**Blocker:** Sentinel has not been invoked for the cycle-level security review. Per Manifest and Orchestrator responsibilities, Sentinel must complete before Demo Sign-off can be presented.
+**Agent in control:** DevOps
+**Current task:** Staging environment provisioning and smoke testing -- Nexus-directed pre-Demo requirement
+**Waiting for:** DevOps to (1) tag and push demo/v0.1 to trigger CD pipeline, (2) provision staging environment on nxlabs.cc, (3) run smoke tests (health, login, create pipeline, submit task, verify worker processing), (4) report results
+**Blocker:** Staging environment not yet provisioned. TASK-029 produced configuration files but the actual environment was never stood up. Must be operational and smoke-tested before Demo Sign-off can proceed.
 
 ---
 
@@ -49,7 +49,7 @@ Plan Gate v2.1 APPROVED (2026-03-26). Phase: CYCLE 1 COMPLETE -- awaiting Nexus 
 - TASK-013: COMPLETE (2026-03-26) -- Verifier PASS (iteration 2), CI green. Pipeline CRUD via REST API with all 7 acceptance criteria met.
 - TASK-007: COMPLETE (2026-03-26) -- Verifier PASS (9/9 acceptance, 22 tests), CI green. Tag-based task assignment, pipeline execution (DataSource/Process/Sink), schema mapping, state transitions, SSE event emission. 4 non-blocking observations recorded (OBS-019 through OBS-022).
 - Requirements satisfied this cycle: REQ-019 (TASK-003 delivers auth -- first direct requirement deliverable)
-- Sentinel: PENDING -- cycle-level security review required before Demo Sign-off (Critical profile)
+- Sentinel: COMPLETE (2026-03-27) -- PASS WITH CONDITIONS. No Critical findings. 3 HIGH (SEC-001, SEC-002, SEC-003) must be tracked for remediation before Go-Live. Does not block Demo Sign-off.
 - Scaffolder: COMPLETE (2026-03-26, 57 files, manifest at process/scaffolder/scaffold-manifest.md)
 - TASK-001: COMPLETE (2026-03-26) -- Verifier PASS, CI green. Note: staticcheck U1000 errors on 30 scaffold stubs required a fix commit (1687c64, added lint:ignore directives) before CI passed on second run.
 - TASK-002: COMPLETE (2026-03-26) -- Verifier PASS (95/95 acceptance, 7/7 integration), CI green (run 23606734063). OBS-003 resolved (health endpoint 200 with postgres). 4 non-blocking observations recorded.
@@ -100,7 +100,7 @@ Per Manifest and Plan Gate approval, the execution sequence is:
 Note: Sequential execution model (one Builder task at a time). The dependency layers above guide ordering; within a layer, tasks are executed sequentially.
 
 **Remaining execution order:**
-ALL 14 TASKS COMPLETE. Awaiting Sentinel cycle-level review, then Demo Sign-off.
+ALL 14 TASKS COMPLETE. Sentinel COMPLETE (PASS WITH CONDITIONS). DevOps staging provisioning and smoke testing in progress. Then Demo Sign-off.
 
 ---
 
