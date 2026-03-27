@@ -8,14 +8,14 @@
 
 ## Where We Are
 
-Plan Gate v2.1 APPROVED (2026-03-26). Phase: EXECUTION. 12 of 14 tasks complete. TASK-019 (React app shell) verified PASS, CI green (2026-03-27). Dispatching Builder for TASK-020 (Worker Fleet Dashboard GUI).
+Plan Gate v2.1 APPROVED (2026-03-26). Phase: EXECUTION. 12 of 14 tasks complete. TASK-020 (Worker Fleet Dashboard GUI) built by Builder (2026-03-27). Dispatching Verifier for TASK-020 initial verification (Pre-staging mode).
 
 ## Active Work
 
-**Agent in control:** Builder (dispatching 2026-03-27)
-**Current task:** TASK-020 -- Worker Fleet Dashboard GUI (BUILD)
-**Waiting for:** Builder to implement TASK-020
-**Next after TASK-020 build:** Dispatch Verifier for TASK-020 initial verification (Pre-staging mode). If PASS, proceed to TASK-029 (DevOps Phase 2). If FAIL, dispatch Builder for TASK-020 iteration 2.
+**Agent in control:** Verifier (dispatching 2026-03-27)
+**Current task:** TASK-020 -- Worker Fleet Dashboard GUI (VERIFICATION)
+**Waiting for:** Verifier to verify TASK-020 against 8 acceptance criteria
+**Next after TASK-020 verification:** If PASS, proceed to TASK-029 (DevOps Phase 2 -- Builder). If FAIL, dispatch Builder for TASK-020 iteration 2.
 
 ---
 
@@ -35,7 +35,7 @@ Plan Gate v2.1 APPROVED (2026-03-26). Phase: EXECUTION. 12 of 14 tasks complete.
 | TASK-019: React app shell with sidebar navigation and auth flow | COMPLETE | 1 | PASS, CI green |
 | TASK-025: Worker fleet status API | COMPLETE | 2 | PASS (iteration 2) |
 | TASK-015: SSE event infrastructure | COMPLETE | 1 | PASS, CI green |
-| TASK-020: Worker Fleet Dashboard (GUI) | PENDING | -- | -- |
+| TASK-020: Worker Fleet Dashboard (GUI) | BUILT -- PENDING VERIFICATION | 1 | -- |
 | TASK-029: DevOps Phase 2 -- staging environment and CD pipeline | PENDING | -- | -- |
 
 **Cycle summary:**
@@ -98,7 +98,7 @@ Per Manifest and Plan Gate approval, the execution sequence is:
 Note: Sequential execution model (one Builder task at a time). The dependency layers above guide ordering; within a layer, tasks are executed sequentially.
 
 **Remaining execution order:**
-1. TASK-020: Worker Fleet Dashboard GUI (Layer 8, depends on TASK-019 + TASK-025 + TASK-015) -- **DISPATCHING BUILDER**
+1. TASK-020: Worker Fleet Dashboard GUI (Layer 8, depends on TASK-019 + TASK-025 + TASK-015) -- **BUILT, DISPATCHING VERIFIER**
 2. TASK-029: DevOps Phase 2 (Layer 9, depends on TASK-042)
 
 ---
