@@ -147,7 +147,8 @@ services:
     # Polls the container registry every 300 s (5 min) and redeploys any service
     # that has com.centurylinklabs.watchtower.enable=true when a new image is detected.
     # This satisfies AC-2: Watchtower redeploys within 5 minutes of image push.
-    image: containrrr/watchtower:latest
+    # Pin to 1.7.1 — "latest" tag ships Docker client API v1.25, below the host minimum (1.40).
+    image: containrrr/watchtower:1.7.1
     restart: unless-stopped
     volumes:
       # Docker socket required for Watchtower to inspect and restart containers.
