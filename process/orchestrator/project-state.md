@@ -8,14 +8,14 @@
 
 ## Where We Are
 
-Plan Gate v2.1 APPROVED (2026-03-26). Phase: EXECUTION. 13 of 14 tasks complete. TASK-029 (DevOps Phase 2 -- staging environment and CD pipeline) BUILT by Builder (2026-03-27). Dispatching Verifier for TASK-029 verification. This is the final Cycle 1 task -- after Verifier PASS, Sentinel cycle-level review, then Demo Sign-off.
+Plan Gate v2.1 APPROVED (2026-03-26). Phase: CYCLE 1 COMPLETE -- awaiting Nexus Demo Sign-off. All 14 of 14 Cycle 1 tasks verified PASS. CI green. TASK-029 (DevOps Phase 2) verified PASS (2026-03-27, 68/68 acceptance). Sentinel cycle-level security review pending -- must be dispatched before Demo Sign-off Briefing is finalized.
 
 ## Active Work
 
-**Agent in control:** Verifier (dispatching 2026-03-27)
-**Current task:** TASK-029 -- DevOps Phase 2: staging environment and CD pipeline (VERIFICATION)
-**Waiting for:** Verifier to verify TASK-029 (staging docker-compose, CD workflow, Makefile targets, Uptime Kuma labels, Traefik TLS config)
-**Next after TASK-029 verification:** If PASS, dispatch Sentinel for cycle-level security review. After Sentinel, prepare Demo Sign-off Briefing.
+**Agent in control:** Orchestrator
+**Current task:** Cycle 1 completion -- preparing Demo Sign-off
+**Waiting for:** Sentinel cycle-level security review (required by Manifest v1, Critical profile), then Nexus Demo Sign-off
+**Blocker:** Sentinel has not been invoked for the cycle-level security review. Per Manifest and Orchestrator responsibilities, Sentinel must complete before Demo Sign-off can be presented.
 
 ---
 
@@ -36,10 +36,11 @@ Plan Gate v2.1 APPROVED (2026-03-26). Phase: EXECUTION. 13 of 14 tasks complete.
 | TASK-025: Worker fleet status API | COMPLETE | 2 | PASS (iteration 2) |
 | TASK-015: SSE event infrastructure | COMPLETE | 1 | PASS, CI green |
 | TASK-020: Worker Fleet Dashboard (GUI) | COMPLETE | 1 | PASS, CI green |
-| TASK-029: DevOps Phase 2 -- staging environment and CD pipeline | BUILT | -- | PENDING VERIFICATION |
+| TASK-029: DevOps Phase 2 -- staging environment and CD pipeline | COMPLETE | 1 | PASS (68/68 acceptance) |
 
 **Cycle summary:**
-- Tasks complete: 13 of 14
+- Tasks complete: 14 of 14
+- TASK-029: COMPLETE (2026-03-27) -- Verifier PASS (68/68 acceptance), CI green. Staging docker-compose, CD workflow (demo/vN.N tags), Watchtower auto-redeploy, Traefik TLS, Uptime Kuma monitoring labels. 5 non-blocking observations (OBS-024 through OBS-028).
 - TASK-020: COMPLETE (2026-03-27) -- Verifier PASS, CI green. Worker Fleet Dashboard GUI verified.
 - TASK-019: COMPLETE (2026-03-27) -- Verifier PASS, CI green. React app shell with sidebar navigation and auth flow verified.
 - TASK-025: COMPLETE (2026-03-27) -- Verifier PASS (iteration 2), CI green. Worker fleet status API (GET /api/workers) verified.
@@ -48,7 +49,7 @@ Plan Gate v2.1 APPROVED (2026-03-26). Phase: EXECUTION. 13 of 14 tasks complete.
 - TASK-013: COMPLETE (2026-03-26) -- Verifier PASS (iteration 2), CI green. Pipeline CRUD via REST API with all 7 acceptance criteria met.
 - TASK-007: COMPLETE (2026-03-26) -- Verifier PASS (9/9 acceptance, 22 tests), CI green. Tag-based task assignment, pipeline execution (DataSource/Process/Sink), schema mapping, state transitions, SSE event emission. 4 non-blocking observations recorded (OBS-019 through OBS-022).
 - Requirements satisfied this cycle: REQ-019 (TASK-003 delivers auth -- first direct requirement deliverable)
-- Sentinel: Not invoked
+- Sentinel: PENDING -- cycle-level security review required before Demo Sign-off (Critical profile)
 - Scaffolder: COMPLETE (2026-03-26, 57 files, manifest at process/scaffolder/scaffold-manifest.md)
 - TASK-001: COMPLETE (2026-03-26) -- Verifier PASS, CI green. Note: staticcheck U1000 errors on 30 scaffold stubs required a fix commit (1687c64, added lint:ignore directives) before CI passed on second run.
 - TASK-002: COMPLETE (2026-03-26) -- Verifier PASS (95/95 acceptance, 7/7 integration), CI green (run 23606734063). OBS-003 resolved (health endpoint 200 with postgres). 4 non-blocking observations recorded.
@@ -99,7 +100,7 @@ Per Manifest and Plan Gate approval, the execution sequence is:
 Note: Sequential execution model (one Builder task at a time). The dependency layers above guide ordering; within a layer, tasks are executed sequentially.
 
 **Remaining execution order:**
-1. TASK-029: DevOps Phase 2 (Layer 9) -- **BUILT, DISPATCHING VERIFIER**
+ALL 14 TASKS COMPLETE. Awaiting Sentinel cycle-level review, then Demo Sign-off.
 
 ---
 
@@ -116,8 +117,8 @@ No active iterate loop. TASK-005 converged on iteration 2 (PASS). TASK-013 conve
 | Auditor passes -- requirements | 2 (audit v2: PASS WITH DEFERRALS; audit v4: PASS WITH DEFERRALS) |
 | Auditor passes -- architecture | 2 (architecture-audit-v1: PASS; architecture-audit-v2: PASS) |
 | Gate rejections this cycle | 0 |
-| Tasks completed | 13 of 14 planned |
-| Average iterations to PASS | 1.23 (13 tasks: 10 at 1 iteration, 3 at 2 iterations) |
+| Tasks completed | 14 of 14 planned |
+| Average iterations to PASS | 1.21 (14 tasks: 11 at 1 iteration, 3 at 2 iterations) |
 | Tasks that hit max iterations | 0 |
 | Escalations to Nexus | 0 |
 | Backward cascade triggered | No |
@@ -152,6 +153,11 @@ No active iterate loop. TASK-005 converged on iteration 2 (PASS). TASK-013 conve
 | OBS-021 | TASK-007 | Seven tests use 2-second timeouts for consumption loop exit; test suite takes ~14s for worker package | Open -- awareness for test performance |
 | OBS-022 | TASK-007 | `applyMappingsToSlice` docstring says empty mappings returns empty map but actual behavior is pass-through; docstring is misleading | Resolved (TASK-042 Builder corrected docstring) |
 | OBS-023 | TASK-042 | Race condition in TASK-005 submit handler: XADD fires before UpdateStatus(queued) completes, causing worker to see task in "submitted" state and fail submitted->assigned transition. Fix: call UpdateStatus(queued) before Enqueue. | **Resolved** (2026-03-26) |
+| OBS-024 | TASK-029 | Watchtower docker.sock mount gives root-equivalent Docker daemon access on staging host -- accepted risk for staging, document in TASK-036 operational runbook | Open -- awareness for TASK-036 |
+| OBS-025 | TASK-029 | Watchtower mounts /root/.docker/config.json for ghcr.io auth -- consider making packages public to simplify | Open -- evaluate before first staging deploy |
+| OBS-026 | TASK-029 | IMAGE_TAG and Watchtower interplay documented in handoff notes but not inline in .env.example comments | Open -- minor documentation improvement |
+| OBS-027 | TASK-029 | WATCHTOWER_CLEANUP=true removes old images after redeploy -- confirmed intentional for staging disk management | Resolved (no action -- by design) |
+| OBS-028 | TASK-029 | Worker service correctly excluded from traefik network (no external HTTP surface) -- consistent with ADR-005 | Resolved (no action -- by design) |
 
 ---
 
