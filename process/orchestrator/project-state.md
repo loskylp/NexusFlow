@@ -8,14 +8,14 @@
 
 ## Where We Are
 
-Plan Gate v2.1 APPROVED (2026-03-26). Phase: EXECUTION. Layers 1-5 COMPLETE (TASK-001, TASK-002, TASK-004, TASK-003, TASK-006, TASK-005, TASK-013, TASK-007). 8 of 14 tasks complete. Layer 6: dispatching Builder for TASK-042 (demo connectors). Remaining tasks: TASK-042, TASK-015, TASK-025, TASK-019, TASK-020, TASK-029.
+Plan Gate v2.1 APPROVED (2026-03-26). Phase: EXECUTION. Layers 1-6 COMPLETE (TASK-001, TASK-002, TASK-004, TASK-003, TASK-006, TASK-005, TASK-013, TASK-007, TASK-042). 8 of 14 tasks complete, TASK-042 BUILT and pending verification. Dispatching Verifier for TASK-042. Remaining tasks after TASK-042: TASK-015, TASK-025, TASK-019, TASK-020, TASK-029.
 
 ## Active Work
 
-**Agent in control:** Builder (dispatching 2026-03-26)
-**Current task:** TASK-042 -- Demo connectors (demo source, simulated worker, demo sink)
-**Waiting for:** Builder to implement TASK-042
-**Next after Builder:** Verifier (Pre-staging mode) for TASK-042 verification. Then TASK-015 or TASK-025 or TASK-019 (all unblocked).
+**Agent in control:** Verifier (dispatching 2026-03-26)
+**Current task:** TASK-042 -- Demo connectors (demo source, simulated worker, demo sink) -- BUILT, PENDING VERIFICATION
+**Waiting for:** Verifier to verify TASK-042
+**Next after Verifier:** If PASS: next unblocked tasks are TASK-015, TASK-025, TASK-019 (all unblocked by Layer 3/4/7 dependencies). TASK-029 also unblocked (depends on TASK-001 + TASK-042). If FAIL: iterate loop with Builder.
 
 ---
 
@@ -31,7 +31,7 @@ Plan Gate v2.1 APPROVED (2026-03-26). Phase: EXECUTION. Layers 1-5 COMPLETE (TAS
 | TASK-005: Task submission via REST API | COMPLETE | 2 | PASS (iteration 2) |
 | TASK-013: Pipeline CRUD via REST API | COMPLETE | 2 | PASS (iteration 2) |
 | TASK-007: Tag-based task assignment and pipeline execution | COMPLETE | 1 | PASS (9/9 acceptance, 22 tests) |
-| TASK-042: Demo connectors -- demo source, simulated worker, demo sink | PENDING | -- | -- |
+| TASK-042: Demo connectors -- demo source, simulated worker, demo sink | BUILT -- PENDING VERIFICATION | -- | -- |
 | TASK-019: React app shell with sidebar navigation and auth flow | PENDING | -- | -- |
 | TASK-025: Worker fleet status API | PENDING | -- | -- |
 | TASK-015: SSE event infrastructure | PENDING | -- | -- |
@@ -98,7 +98,7 @@ Note: Sequential execution model (one Builder task at a time). The dependency la
 
 ## Iterate Loop State
 
-No active iterate loop. TASK-005 converged on iteration 2 (PASS). TASK-013 converged on iteration 2 (PASS). TASK-007 converged on iteration 1 (PASS). Dispatching Builder for TASK-042.
+No active iterate loop. TASK-005 converged on iteration 2 (PASS). TASK-013 converged on iteration 2 (PASS). TASK-007 converged on iteration 1 (PASS). TASK-042 BUILT -- dispatching Verifier for initial verification.
 
 ---
 
@@ -143,7 +143,7 @@ No active iterate loop. TASK-005 converged on iteration 2 (PASS). TASK-013 conve
 | OBS-019 | TASK-007 | AC-9 scope boundary: `PublishTaskEvent` verified at worker level; full Pub/Sub delivery (broker -> Redis -> SSE client) deferred to TASK-015 | Open -- pending TASK-015 |
 | OBS-020 | TASK-007 | XACK multi-tag loop: `ackMessage` tries XACK against each tag sequentially; clean fix (adding `StreamTag` to `TaskMessage`) deferred to TASK-004 scope | Open -- awareness for future refactor |
 | OBS-021 | TASK-007 | Seven tests use 2-second timeouts for consumption loop exit; test suite takes ~14s for worker package | Open -- awareness for test performance |
-| OBS-022 | TASK-007 | `applyMappingsToSlice` docstring says empty mappings returns empty map but actual behavior is pass-through; docstring is misleading | Open -- Builder should correct comment |
+| OBS-022 | TASK-007 | `applyMappingsToSlice` docstring says empty mappings returns empty map but actual behavior is pass-through; docstring is misleading | Resolved (TASK-042 Builder corrected docstring) |
 
 ---
 
