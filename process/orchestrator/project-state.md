@@ -8,14 +8,14 @@
 
 ## Where We Are
 
-Plan Gate v2.1 APPROVED (2026-03-26). Phase: EXECUTION. Layers 1-6 COMPLETE (TASK-001, TASK-002, TASK-004, TASK-003, TASK-006, TASK-005, TASK-013, TASK-007, TASK-042). 8 of 14 tasks complete, TASK-042 BUILT and pending verification. Dispatching Verifier for TASK-042. Remaining tasks after TASK-042: TASK-015, TASK-025, TASK-019, TASK-020, TASK-029.
+Plan Gate v2.1 APPROVED (2026-03-26). Phase: EXECUTION. Layers 1-7 backbone COMPLETE (TASK-001, TASK-002, TASK-004, TASK-003, TASK-006, TASK-005, TASK-013, TASK-007, TASK-042). 9 of 14 tasks complete. OBS-023 (race condition in TASK-005 submit handler) identified during TASK-042 verification -- fixing before proceeding to TASK-015. Dispatching Builder for OBS-023 fix on TASK-005.
 
 ## Active Work
 
-**Agent in control:** Verifier (dispatching 2026-03-26)
-**Current task:** TASK-042 -- Demo connectors (demo source, simulated worker, demo sink) -- BUILT, PENDING VERIFICATION
-**Waiting for:** Verifier to verify TASK-042
-**Next after Verifier:** If PASS: next unblocked tasks are TASK-015, TASK-025, TASK-019 (all unblocked by Layer 3/4/7 dependencies). TASK-029 also unblocked (depends on TASK-001 + TASK-042). If FAIL: iterate loop with Builder.
+**Agent in control:** Builder (dispatching 2026-03-26)
+**Current task:** OBS-023 fix -- TASK-005 race condition (XADD fires before UpdateStatus(queued); reorder to call UpdateStatus(queued) before Enqueue)
+**Waiting for:** Builder to apply OBS-023 fix, then Verifier to re-verify TASK-005
+**Next after OBS-023 fix:** TASK-015 (SSE event infrastructure) -- high-risk, high-value, unblocks TASK-020
 
 ---
 
@@ -28,10 +28,10 @@ Plan Gate v2.1 APPROVED (2026-03-26). Phase: EXECUTION. Layers 1-6 COMPLETE (TAS
 | TASK-004: Redis Streams queue infrastructure | COMPLETE | 1 | PASS (16/16 acceptance, p95=0.12ms) |
 | TASK-003: Authentication and session management | COMPLETE | 1 | PASS (24/24 acceptance, 55 unit tests) |
 | TASK-006: Worker self-registration and heartbeat | COMPLETE | 1 | PASS (14/14 acceptance, 35 unit tests) |
-| TASK-005: Task submission via REST API | COMPLETE | 2 | PASS (iteration 2) |
+| TASK-005: Task submission via REST API | COMPLETE (OBS-023 fix in progress) | 2 | PASS (iteration 2) -- OBS-023 race condition fix dispatched |
 | TASK-013: Pipeline CRUD via REST API | COMPLETE | 2 | PASS (iteration 2) |
 | TASK-007: Tag-based task assignment and pipeline execution | COMPLETE | 1 | PASS (9/9 acceptance, 22 tests) |
-| TASK-042: Demo connectors -- demo source, simulated worker, demo sink | BUILT -- PENDING VERIFICATION | -- | -- |
+| TASK-042: Demo connectors -- demo source, simulated worker, demo sink | COMPLETE | 1 | PASS, CI green |
 | TASK-019: React app shell with sidebar navigation and auth flow | PENDING | -- | -- |
 | TASK-025: Worker fleet status API | PENDING | -- | -- |
 | TASK-015: SSE event infrastructure | PENDING | -- | -- |
@@ -39,8 +39,9 @@ Plan Gate v2.1 APPROVED (2026-03-26). Phase: EXECUTION. Layers 1-6 COMPLETE (TAS
 | TASK-029: DevOps Phase 2 -- staging environment and CD pipeline | PENDING | -- | -- |
 
 **Cycle summary:**
-- Tasks complete: 8 of 14
-- TASK-005: COMPLETE (2026-03-26) -- Verifier PASS (iteration 2), CI green. Wiring omission in `cmd/api/main.go` and plain text 401 fixed in iteration 1; verified PASS on iteration 2.
+- Tasks complete: 9 of 14
+- TASK-042: COMPLETE (2026-03-26) -- Verifier PASS, CI green. Demo connectors (demo source, simulated worker, demo sink) verified. OBS-023 identified: race condition in TASK-005 submit handler.
+- TASK-005: COMPLETE (2026-03-26) -- Verifier PASS (iteration 2), CI green. Wiring omission in `cmd/api/main.go` and plain text 401 fixed in iteration 1; verified PASS on iteration 2. OBS-023 identified during TASK-042 verification: XADD fires before UpdateStatus(queued), causing worker to see task in "submitted" state and fail submitted->assigned transition.
 - TASK-013: COMPLETE (2026-03-26) -- Verifier PASS (iteration 2), CI green. Pipeline CRUD via REST API with all 7 acceptance criteria met.
 - TASK-007: COMPLETE (2026-03-26) -- Verifier PASS (9/9 acceptance, 22 tests), CI green. Tag-based task assignment, pipeline execution (DataSource/Process/Sink), schema mapping, state transitions, SSE event emission. 4 non-blocking observations recorded (OBS-019 through OBS-022).
 - Requirements satisfied this cycle: REQ-019 (TASK-003 delivers auth -- first direct requirement deliverable)
@@ -94,11 +95,19 @@ Per Manifest and Plan Gate approval, the execution sequence is:
 
 Note: Sequential execution model (one Builder task at a time). The dependency layers above guide ordering; within a layer, tasks are executed sequentially.
 
+**Remaining execution order (after OBS-023 fix):**
+1. OBS-023 fix on TASK-005 (in progress) -> Verifier re-verify TASK-005
+2. TASK-015: SSE event infrastructure (high-risk, Layer 3)
+3. TASK-025: Worker fleet status API (low-risk, Layer 4)
+4. TASK-019: React app shell (Layer 7)
+5. TASK-020: Worker Fleet Dashboard GUI (Layer 8, depends on TASK-019 + TASK-025 + TASK-015)
+6. TASK-029: DevOps Phase 2 (Layer 9, depends on TASK-042)
+
 ---
 
 ## Iterate Loop State
 
-No active iterate loop. TASK-005 converged on iteration 2 (PASS). TASK-013 converged on iteration 2 (PASS). TASK-007 converged on iteration 1 (PASS). TASK-042 BUILT -- dispatching Verifier for initial verification.
+No active iterate loop. TASK-005 converged on iteration 2 (PASS). TASK-013 converged on iteration 2 (PASS). TASK-007 converged on iteration 1 (PASS). TASK-042 converged on iteration 1 (PASS). OBS-023 targeted fix dispatched to Builder (not a full iterate loop -- this is a reliability patch).
 
 ---
 
@@ -109,8 +118,8 @@ No active iterate loop. TASK-005 converged on iteration 2 (PASS). TASK-013 conve
 | Auditor passes -- requirements | 2 (audit v2: PASS WITH DEFERRALS; audit v4: PASS WITH DEFERRALS) |
 | Auditor passes -- architecture | 2 (architecture-audit-v1: PASS; architecture-audit-v2: PASS) |
 | Gate rejections this cycle | 0 |
-| Tasks completed | 8 of 14 planned |
-| Average iterations to PASS | 1.25 (8 tasks: 6 at 1 iteration, 2 at 2 iterations) |
+| Tasks completed | 9 of 14 planned |
+| Average iterations to PASS | 1.22 (9 tasks: 7 at 1 iteration, 2 at 2 iterations) |
 | Tasks that hit max iterations | 0 |
 | Escalations to Nexus | 0 |
 | Backward cascade triggered | No |
@@ -144,6 +153,7 @@ No active iterate loop. TASK-005 converged on iteration 2 (PASS). TASK-013 conve
 | OBS-020 | TASK-007 | XACK multi-tag loop: `ackMessage` tries XACK against each tag sequentially; clean fix (adding `StreamTag` to `TaskMessage`) deferred to TASK-004 scope | Open -- awareness for future refactor |
 | OBS-021 | TASK-007 | Seven tests use 2-second timeouts for consumption loop exit; test suite takes ~14s for worker package | Open -- awareness for test performance |
 | OBS-022 | TASK-007 | `applyMappingsToSlice` docstring says empty mappings returns empty map but actual behavior is pass-through; docstring is misleading | Resolved (TASK-042 Builder corrected docstring) |
+| OBS-023 | TASK-042 | Race condition in TASK-005 submit handler: XADD fires before UpdateStatus(queued) completes, causing worker to see task in "submitted" state and fail submitted->assigned transition. Fix: call UpdateStatus(queued) before Enqueue. | **In progress -- Builder dispatched for fix** |
 
 ---
 
@@ -209,7 +219,7 @@ No active iterate loop. TASK-005 converged on iteration 2 (PASS). TASK-013 conve
 **Trigger:** Nexus-directed changes at Architecture Gate
 **Changes:**
 - ADR-004 (Technology Stack): Go replaces Node.js/TypeScript for all backend services; pgx+sqlc replaces Prisma; go-redis replaces ioredis
-- ADR-005 (Deployment Model): completely rewritten for nxlabs.cc (187.124.233.130); Traefik, Watchtower, shared PostgreSQL, Uptime Kuma
+- ADR-005 (Deployment Model): completely rewritten for nxlabs.cc (187.124.233.130); Traefik, Watchtower, shared PostgreSQL, service-managed Redis (ADR-005)
 - ADR-006 (Auth): updated for Go session middleware (gorilla/sessions or scs)
 - ADR-007 (Real-time): updated for Go SSE implementation
 - ADR-008 (Data Model): updated for golang-migrate + sqlc replacing Prisma
