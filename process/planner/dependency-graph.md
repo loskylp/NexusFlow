@@ -1,5 +1,5 @@
 # Dependency Graph -- NexusFlow Task Plan
-**Version:** 2.1 | **Date:** 2026-03-26
+**Version:** 2.2 | **Date:** 2026-03-27
 
 ## Cycle 1 -- MVP Walking Skeleton
 
@@ -62,6 +62,12 @@ flowchart TD
     T025 --> T020
     T015 --> T020
 
+    T008["TASK-008<br/>Task Lifecycle<br/>Query API"]:::backend
+
+    T002 --> T008
+    T003 --> T008
+    T005 --> T008
+
     T029["TASK-029<br/>DevOps Phase 2<br/>Staging + CD"]:::infra
 
     T001 --> T029
@@ -85,7 +91,6 @@ flowchart TD
     T018["TASK-018<br/>Sink Atomicity +<br/>Idempotency"]:::p1
     T016["TASK-016<br/>Log Production +<br/>Dual Storage"]:::backend
     T017["TASK-017<br/>Admin User<br/>Management"]:::backend
-    T008["TASK-008<br/>Task Lifecycle<br/>Query API"]:::backend
     T026["TASK-026<br/>Schema Validation<br/>Design-time"]:::backend
 
     C1 --> T009
@@ -94,7 +99,6 @@ flowchart TD
     C1 --> T018
     C1 --> T016
     C1 --> T017
-    C1 --> T008
     C1 --> T026
 
     T009 --> T010
@@ -210,6 +214,6 @@ This chain produces the walking skeleton: an admin can log in, create a demo pip
 Cycle 1 -> TASK-009 (Monitor) -> TASK-010 (Retry) -> TASK-011 (DLQ)
         -> TASK-018 (Sink Atomicity)
         -> TASK-016 (Log Production)
-        -> TASK-008 (Task Query API) -> TASK-021 (Task Feed GUI) -> TASK-035 (GUI Submission)
+        -> TASK-008 (Task Query API, Cycle 1) -> TASK-021 (Task Feed GUI) -> TASK-035 (GUI Submission)
         -> TASK-026 (Schema Validation) -> TASK-023 (Pipeline Builder) -> TASK-024 (Pipeline Mgmt)
 ```

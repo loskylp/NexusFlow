@@ -1,21 +1,23 @@
 # Project State
 **Manifest version:** v1 | **Profile:** Critical
-**Current phase:** EXECUTION
-**Current cycle:** 1
+**Current phase:** DEMO SIGN-OFF APPROVED — awaiting Methodologist retrospective
+**Current cycle:** 1 (complete)
 **Last updated:** 2026-03-27
 
 ---
 
 ## Where We Are
 
-Plan Gate v2.1 APPROVED (2026-03-26). Phase: CYCLE 1 EXECUTION -- planning correction in progress. All 14 of 14 original Cycle 1 tasks verified PASS. CI green. Sentinel: PASS WITH CONDITIONS. Staging provisioning paused. Nexus identified planning gap: TASK-008 (Task query API -- GET /api/tasks, GET /api/tasks/{id}) was omitted from Cycle 1 despite being needed for the demo flow. Nexus directed: add minimal TASK-008 to Cycle 1 and implement immediately. This is a planning correction, not a scope change. Planner dispatched (2026-03-27).
+Cycle 1 Demo Sign-off: APPROVED (2026-03-27). All 15 tasks (14 original + TASK-008 planning correction) verified PASS. CI green. Sentinel: PASS WITH CONDITIONS (3 HIGH findings tracked for remediation before Go-Live, none blocking). Staging deployed and demonstrated. Nexus approved the cycle.
+
+Next step: hand control to Methodologist — "Is there anything you want to change for the next iteration?" If yes, Methodologist reconfigures before Cycle 2 planning. If no, proceed directly to Cycle 2 planning via Planner.
 
 ## Active Work
 
-**Agent in control:** Planner (dispatched 2026-03-27)
-**Current task:** Planning correction -- add minimal TASK-008 (GET /api/tasks, GET /api/tasks/{id}) to Cycle 1
-**Waiting for:** Planner to produce task plan revision adding TASK-008 to Cycle 1, then Builder to implement, then Verifier to verify
-**Blocker:** TASK-008 blocks demo flow -- cannot demonstrate task lifecycle without the ability to query task status. Staging provisioning paused until this is resolved.
+**Agent in control:** Orchestrator (post-demo housekeeping complete)
+**Current task:** Awaiting Methodologist retrospective before Cycle 2
+**Waiting for:** Nexus to confirm whether Methodologist reconfiguration is needed, or proceed directly to Cycle 2 planning
+**Blocker:** None
 
 ---
 
@@ -38,8 +40,10 @@ Plan Gate v2.1 APPROVED (2026-03-26). Phase: CYCLE 1 EXECUTION -- planning corre
 | TASK-020: Worker Fleet Dashboard (GUI) | COMPLETE | 1 | PASS, CI green |
 | TASK-029: DevOps Phase 2 -- staging environment and CD pipeline | COMPLETE | 1 | PASS (68/68 acceptance) |
 
+| TASK-008: Task lifecycle state tracking and query API | COMPLETE | 1 | PASS (planning correction, verified 2026-03-27) |
+
 **Cycle summary:**
-- Tasks complete: 14 of 14
+- Tasks complete: 15 of 15 (14 original + TASK-008 planning correction)
 - TASK-029: COMPLETE (2026-03-27) -- Verifier PASS (68/68 acceptance), CI green. Staging docker-compose, CD workflow (demo/vN.N tags), Watchtower auto-redeploy, Traefik TLS, Uptime Kuma monitoring labels. 5 non-blocking observations (OBS-024 through OBS-028).
 - TASK-020: COMPLETE (2026-03-27) -- Verifier PASS, CI green. Worker Fleet Dashboard GUI verified.
 - TASK-019: COMPLETE (2026-03-27) -- Verifier PASS, CI green. React app shell with sidebar navigation and auth flow verified.
@@ -66,14 +70,14 @@ Plan Gate v2.1 APPROVED (2026-03-26). Phase: CYCLE 1 EXECUTION -- planning corre
 | Requirements Gate | 2026-03-25 | APPROVED | 31 requirements, 4 deferrals non-blocking; Nexus approved |
 | Architecture Gate | 2026-03-26 | APPROVED | Architecture v2 approved. AUDIT-006 closed as NOT APPLICABLE (no templates). All other architecture approved. |
 | Plan Gate | 2026-03-26 | APPROVED | Plan v2.1: 39 tasks across 5 cycles. v1.0.0 = Cycles 1-3 (31 tasks), v1.1.0 = Cycles 4-5 (8 tasks). Cycle 1 = 14 tasks. Approval authorizes full execution sequence. |
-| Demo Sign-off -- Cycle 1 | -- | -- | |
+| Demo Sign-off -- Cycle 1 | 2026-03-27 | APPROVED | 15 tasks verified PASS (14 original + TASK-008 planning correction). Sentinel PASS WITH CONDITIONS. Staging deployed. |
 | Go-Live -- v1.0.0 | -- | -- | |
 
 ---
 
 ## Pending Decisions
 
-Nexus directed planning correction: add TASK-008 to Cycle 1 (2026-03-27). Planner dispatched. After Planner + Builder + Verifier complete, resume staging provisioning.
+Methodologist retrospective: before Cycle 2 begins, the Nexus must answer — "Is there anything you want to change for the next iteration?" This is the standard post-demo handoff per Manifest.
 
 ---
 
@@ -100,7 +104,7 @@ Per Manifest and Plan Gate approval, the execution sequence is:
 Note: Sequential execution model (one Builder task at a time). The dependency layers above guide ordering; within a layer, tasks are executed sequentially.
 
 **Remaining execution order:**
-14 of 15 TASKS COMPLETE. TASK-008 added by Nexus directive (planning correction). Planner -> Builder -> Verifier for TASK-008, then resume staging provisioning and Demo Sign-off.
+15 of 15 TASKS COMPLETE. Cycle 1 Demo Sign-off APPROVED (2026-03-27). All tasks verified PASS, CI green, Sentinel PASS WITH CONDITIONS.
 
 ---
 
@@ -117,8 +121,8 @@ No active iterate loop. TASK-005 converged on iteration 2 (PASS). TASK-013 conve
 | Auditor passes -- requirements | 2 (audit v2: PASS WITH DEFERRALS; audit v4: PASS WITH DEFERRALS) |
 | Auditor passes -- architecture | 2 (architecture-audit-v1: PASS; architecture-audit-v2: PASS) |
 | Gate rejections this cycle | 0 |
-| Tasks completed | 14 of 14 planned |
-| Average iterations to PASS | 1.21 (14 tasks: 11 at 1 iteration, 3 at 2 iterations) |
+| Tasks completed | 15 of 15 (14 original + TASK-008 planning correction) |
+| Average iterations to PASS | 1.20 (15 tasks: 12 at 1 iteration, 3 at 2 iterations) |
 | Tasks that hit max iterations | 0 |
 | Escalations to Nexus | 0 |
 | Backward cascade triggered | No |

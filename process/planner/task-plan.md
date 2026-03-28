@@ -1,5 +1,5 @@
 # Task Plan -- NexusFlow
-**Version:** 2.1 | **Date:** 2026-03-26
+**Version:** 2.2 | **Date:** 2026-03-27
 **Requirements Version:** 5 | **Architecture Version:** 2
 **Artifact Weight:** Blueprint
 
@@ -240,6 +240,23 @@ Walking skeleton target: A user can log in, submit a task via the API, have it q
 **Demo Script:** tests/demo/TASK-020-demo.md
 **Status:** Pending
 
+### TASK-008: Task lifecycle state tracking and query API
+**Requirement(s):** REQ-009, REQ-017
+**Description:** Implement GET /api/tasks (list tasks with filtering by status, pipeline, user), GET /api/tasks/{id} (single task with state history). Enforce visibility isolation: regular users see only their own tasks, admins see all. Return task state, timestamps, worker assignment, retry count, and state transition history.
+**Acceptance Criteria:**
+- GET /api/tasks returns the authenticated user's tasks (for User role) or all tasks (for Admin)
+- GET /api/tasks?status=running filters to running tasks only
+- GET /api/tasks/{id} returns full task detail including state transition history from task_state_log
+- User-A cannot see User-B's tasks (returns empty list, not 403)
+- Admin can see all users' tasks
+- Unauthenticated request returns 401
+**Depends on:** TASK-002, TASK-003, TASK-005
+**Risk:** L -- standard CRUD query endpoint with role-based filtering
+**Value:** H -- Must Have for MVP; required for Task Feed GUI and API consumers; required for Cycle 1 demo to show task status
+**Priority:** P2 (LH -- quick win; moved from Cycle 2 to Cycle 1 per Nexus directive -- Cycle 1 demo requires task status visibility via API)
+**Demo Script:** tests/demo/TASK-008-demo.md
+**Status:** Pending
+
 ### TASK-029: DevOps Phase 2 -- staging environment and CD pipeline
 **Requirement(s):** ADR-005, FF-021
 **Description:** Set up staging environment on nxlabs.cc (nexusflow.staging.nxlabs.cc). Configure CI to build and push Docker images to container registry on demo/vN.N tag. Configure Watchtower on staging to auto-deploy from registry. Set up Traefik labels and Uptime Kuma labels for staging. Verify staging topology matches production.
@@ -261,13 +278,13 @@ Walking skeleton target: A user can log in, submit a task via the API, have it q
 
 ## Cycle 1 Demo Sign-off Criteria
 
-A user can log in (Admin), submit a task via the REST API using a demo pipeline (demo source -> trivial process -> demo sink), have it queued in Redis, picked up by a simulated worker, executed through the three-phase pipeline with schema mapping, and see the task reach "completed" state. The Worker Fleet Dashboard shows the demo worker online with real-time SSE updates. One demo source, one simulated worker, one demo sink -- all managed via the pipeline CRUD API. The walking skeleton is deployed to staging at nexusflow.staging.nxlabs.cc and accessible via TLS.
+A user can log in (Admin), submit a task via the REST API using a demo pipeline (demo source -> trivial process -> demo sink), have it queued in Redis, picked up by a simulated worker, executed through the three-phase pipeline with schema mapping, and see the task reach "completed" state. Task status is queryable via GET /api/tasks and GET /api/tasks/{id} with state transition history. The Worker Fleet Dashboard shows the demo worker online with real-time SSE updates. One demo source, one simulated worker, one demo sink -- all managed via the pipeline CRUD API. The walking skeleton is deployed to staging at nexusflow.staging.nxlabs.cc and accessible via TLS.
 
 ---
 
 ## Cycle 2 -- Core System Completion
 
-*Complete the core system: monitor/failover, retry, DLQ, cancellation, pipeline CRUD, pipeline chaining, SSE log production, admin user management, sink atomicity. Builds on the walking skeleton from Cycle 1.*
+*Complete the core system: monitor/failover, retry, DLQ, cancellation, pipeline chaining, SSE log production, admin user management, sink atomicity, schema validation. Builds on the walking skeleton from Cycle 1.*
 
 ### Priority 1 -- Do First
 
@@ -403,23 +420,6 @@ A user can log in (Admin), submit a task via the REST API using a demo pipeline 
 **Demo Script:** tests/demo/TASK-017-demo.md
 **Status:** Pending
 
-### TASK-008: Task lifecycle state tracking and query API
-**Requirement(s):** REQ-009, REQ-017
-**Description:** Implement GET /api/tasks (list tasks with filtering by status, pipeline, user), GET /api/tasks/{id} (single task with state history). Enforce visibility isolation: regular users see only their own tasks, admins see all. Return task state, timestamps, worker assignment, retry count, and state transition history.
-**Acceptance Criteria:**
-- GET /api/tasks returns the authenticated user's tasks (for User role) or all tasks (for Admin)
-- GET /api/tasks?status=running filters to running tasks only
-- GET /api/tasks/{id} returns full task detail including state transition history from task_state_log
-- User-A cannot see User-B's tasks (returns empty list, not 403)
-- Admin can see all users' tasks
-- Unauthenticated request returns 401
-**Depends on:** TASK-002, TASK-003, TASK-005
-**Risk:** L -- standard CRUD query endpoint with role-based filtering
-**Value:** H -- Must Have for MVP; required for Task Feed GUI and API consumers
-**Priority:** P1 (LH -- quick win)
-**Demo Script:** tests/demo/TASK-008-demo.md
-**Status:** Pending
-
 ### Priority 2 -- Do After P1
 
 ### TASK-026: Schema mapping validation at design time
@@ -441,7 +441,7 @@ A user can log in (Admin), submit a task via the REST API using a demo pipeline 
 
 ## Cycle 2 Demo Sign-off Criteria
 
-Full backend core system works end-to-end: admin can monitor heartbeats and observe failover when a worker goes down, tasks are retried on infrastructure failure with exponential backoff, exhausted tasks land in the dead letter queue with cascading chain cancellation, tasks can be cancelled, pipelines can be chained (A -> B triggers automatically), logs stream in real time via SSE, sink operations are atomic with idempotency, and admin can manage users. All Must Have backend requirements satisfied.
+Full backend core system works end-to-end: admin can monitor heartbeats and observe failover when a worker goes down, tasks are retried on infrastructure failure with exponential backoff, exhausted tasks land in the dead letter queue with cascading chain cancellation, tasks can be cancelled, pipelines can be chained (A -> B triggers automatically), logs stream in real time via SSE, sink operations are atomic with idempotency, admin can manage users, and design-time schema validation works. All Must Have backend requirements satisfied.
 
 ---
 
@@ -763,13 +763,13 @@ None. All architectural unknowns have been resolved by the Architect in v2. No s
 ## Cycle Boundaries
 
 ### Cycle 1 -- MVP Walking Skeleton
-**Tasks:** TASK-001, TASK-002, TASK-003, TASK-004, TASK-005, TASK-006, TASK-007, TASK-013, TASK-042, TASK-019, TASK-025, TASK-015, TASK-020, TASK-029
-**Task count:** 14
-**Demo Sign-off criteria:** Admin can log in, create a demo pipeline (demo source + trivial process + demo sink) via API, submit a task, have it queued, assigned to a simulated worker, executed through all three phases, and see it reach "completed" state. Worker Fleet Dashboard shows the demo worker online with real-time SSE updates. Walking skeleton deployed to staging at nexusflow.staging.nxlabs.cc.
+**Tasks:** TASK-001, TASK-002, TASK-003, TASK-004, TASK-005, TASK-006, TASK-007, TASK-013, TASK-042, TASK-019, TASK-025, TASK-015, TASK-020, TASK-008, TASK-029
+**Task count:** 15
+**Demo Sign-off criteria:** Admin can log in, create a demo pipeline (demo source + trivial process + demo sink) via API, submit a task, have it queued, assigned to a simulated worker, executed through all three phases, and see it reach "completed" state. Task status queryable via GET /api/tasks and GET /api/tasks/{id} with state transition history. Worker Fleet Dashboard shows the demo worker online with real-time SSE updates. Walking skeleton deployed to staging at nexusflow.staging.nxlabs.cc.
 
 ### Cycle 2 -- Core System Completion
-**Tasks:** TASK-009, TASK-010, TASK-011, TASK-012, TASK-014, TASK-018, TASK-016, TASK-017, TASK-008, TASK-026
-**Task count:** 10
+**Tasks:** TASK-009, TASK-010, TASK-011, TASK-012, TASK-014, TASK-018, TASK-016, TASK-017, TASK-026
+**Task count:** 9
 **Demo Sign-off criteria:** Monitor detects downed workers and reassigns tasks. Retry with backoff works. Dead letter queue with cascading cancellation works. Task cancellation works. Pipeline chaining triggers downstream tasks. Sink atomicity verified. Log streaming via SSE works. Admin can manage users. Design-time schema validation works.
 
 ### Cycle 3 -- GUI Completion and Infrastructure
@@ -844,3 +844,32 @@ TASK-029 (DevOps Phase 2 -- staging environment and CD pipeline) moved from Cycl
 - All other tasks retain their cycle assignment, dependencies, and acceptance criteria unchanged
 - Release Map release boundaries unchanged (v1.0.0 = Cycles 1-3, v1.1.0 = Cycles 4-5)
 - Cut line unchanged
+
+---
+
+## Revision Delta (Plan v2.1 -> v2.2)
+
+### Summary of Changes
+
+**Nexus directive applied mid-cycle:**
+TASK-008 (Task lifecycle state tracking and query API) moved from Cycle 2 P1 to Cycle 1 P2. The Nexus identified that the Cycle 1 demo cannot show task status without GET /api/tasks and GET /api/tasks/{id}. All TASK-008 dependencies (TASK-002, TASK-003, TASK-005) are already complete in Cycle 1.
+
+### Changes
+
+| Item | Change |
+|---|---|
+| TASK-008 | Moved from Cycle 2 P1 to Cycle 1 P2 (15th task, before TASK-029) |
+| TASK-008 priority | P1 (LH) in Cycle 2 -> P2 (LH) in Cycle 1; value justification updated to note Cycle 1 demo requirement |
+| Cycle 1 task count | 14 -> 15 |
+| Cycle 2 task count | 10 -> 9 |
+| Cycle 1 demo criteria | Updated to include task status query via GET /api/tasks and GET /api/tasks/{id} |
+| Cycle 2 description | Removed "task query API" from scope summary (moved to Cycle 1) |
+| Release Map v2.2 | Updated REQ-009 cycle assignment to reflect TASK-008 in Cycle 1 |
+| Dependency Graph v2.2 | TASK-008 moved to Cycle 1 diagram; removed from Cycle 2 diagram |
+
+### Unaffected
+- All other tasks retain their cycle assignment, dependencies, and acceptance criteria unchanged
+- TASK-008 acceptance criteria unchanged -- only cycle assignment and priority label changed
+- Release Map release boundaries unchanged (v1.0.0 = Cycles 1-3, v1.1.0 = Cycles 4-5)
+- Cut line unchanged
+- No dependency violations introduced -- TASK-008 depends on TASK-002, TASK-003, TASK-005, all in Cycle 1

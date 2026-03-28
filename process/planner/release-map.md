@@ -1,6 +1,6 @@
 # Release Map -- NexusFlow
-**Version:** 2.1 | **Date:** 2026-03-26
-**Task Plan Version:** 2.1
+**Version:** 2.2 | **Date:** 2026-03-27
+**Task Plan Version:** 2.2
 **CD Philosophy:** Cycle-based (Demo Sign-off at cycle boundary, Nexus Go-Live decision for production)
 **Status:** Living document -- updated each planning cycle
 
@@ -36,7 +36,7 @@ Cycles are internal development iterations. Production versions are release mile
 | REQ-006 | Three-phase pipeline execution | 1 | TASK-007 |
 | REQ-007 | Schema mapping between pipeline phases | 1, 2 | TASK-007 (runtime), TASK-026 (design-time) |
 | REQ-008 | Atomic sink operations with cleanup | 2 | TASK-018 |
-| REQ-009 | Task lifecycle state tracking | 1, 2 | TASK-007 (transitions), TASK-008 (query API) |
+| REQ-009 | Task lifecycle state tracking | 1 | TASK-007 (transitions), TASK-008 (query API) |
 | REQ-010 | Cancel a running task | 2 | TASK-012 |
 | REQ-011 | Infrastructure-failure retry | 2 | TASK-010 |
 | REQ-012 | Dead letter queue with cascading cancellation | 2 | TASK-011 |
@@ -136,7 +136,7 @@ Potential feature groups (not yet decomposed):
 ## Rolling Confidence Assessment
 
 ### Cycle 1 (Walking Skeleton) -- Confidence: HIGH
-**Rationale:** Focused scope (14 tasks) targets the walking skeleton plus staging deployment. All architectural decisions are made. Technology stack confirmed. DevOps Phase 1 is standard Docker + CI setup. Auth, worker registration, and task submission are well-understood patterns. Pipeline execution (TASK-007) is the highest-risk task but architecture specifies it clearly. Demo connectors (TASK-042) are lightweight by design. Worker Fleet Dashboard GUI has a complete UX spec. TASK-029 (staging deployment) is scheduled last in the cycle, after the walking skeleton exists, and follows documented nxlabs.cc conventions (ADR-005).
+**Rationale:** Focused scope (15 tasks) targets the walking skeleton plus staging deployment. All architectural decisions are made. Technology stack confirmed. DevOps Phase 1 is standard Docker + CI setup. Auth, worker registration, and task submission are well-understood patterns. Pipeline execution (TASK-007) is the highest-risk task but architecture specifies it clearly. Demo connectors (TASK-042) are lightweight by design. Worker Fleet Dashboard GUI has a complete UX spec. TASK-008 (task query API) moved into Cycle 1 to support demo -- low risk, all dependencies already in cycle. TASK-029 (staging deployment) is scheduled last in the cycle, after the walking skeleton exists, and follows documented nxlabs.cc conventions (ADR-005).
 
 **Risk factors:**
 - Pipeline execution with schema mapping (TASK-007) is the most complex task in the cycle
@@ -145,7 +145,7 @@ Potential feature groups (not yet decomposed):
 - All are well-specified by the Architect; no unknowns remain
 
 ### Cycle 2 (Core System) -- Confidence: HIGH
-**Rationale:** Builds on working walking skeleton. Monitor/failover (TASK-009) and sink atomicity (TASK-018) are the highest-risk tasks but both have clear ADR specifications. Remaining tasks (retry, DLQ, cancellation, chaining, log production, user management, task query API, schema validation) are well-understood patterns.
+**Rationale:** Builds on working walking skeleton. Monitor/failover (TASK-009) and sink atomicity (TASK-018) are the highest-risk tasks but both have clear ADR specifications. Remaining tasks (retry, DLQ, cancellation, chaining, log production, user management, schema validation) are well-understood patterns. TASK-008 moved to Cycle 1, reducing cycle scope to 9 tasks.
 
 **Risk factors:**
 - Monitor service (TASK-009) integrates heartbeat detection, XCLAIM, retry counting, and dead-letter routing

@@ -1,0 +1,386 @@
+================================================================================
+TASK-003: Authentication and Session Management
+Demo executed: 2026-03-28
+Staging URL: https://nexusflow.staging.nxlabs.cc
+================================================================================
+
+
+--------------------------------------------------------------------------------
+Scenario 1: Admin login returns token and user object
+--------------------------------------------------------------------------------
+
+$ curl -s -X POST \
+  https://nexusflow.staging.nxlabs.cc/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{
+    "username": "admin",
+    "password": "admin"
+  }' | python3 -m json.tool
+
+Response: HTTP 200
+{
+    "token": "96ccff6445ce23cf9c9550eff25d8439b4ce4b077df721ae5870f7e5843a9ae9",
+    "user": {
+        "id": "ba997a26-4209-483a-90e7-193ff9d5d223",
+        "username": "admin",
+        "role": "admin"
+    }
+}
+
+RESULT: PASS
+  - 64-character hex token returned.
+  - User object contains username "admin" and role "admin".
+
+
+--------------------------------------------------------------------------------
+Scenario 2: Login with wrong password is rejected
+--------------------------------------------------------------------------------
+
+$ curl -s -X POST \
+  https://nexusflow.staging.nxlabs.cc/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{
+    "username": "admin",
+    "password": "wrongpassword"
+  }'
+
+Response: HTTP 401
+invalid credentials
+
+RESULT: PASS
+  - 401 returned with generic error message.
+  - No token or session cookie issued.
+
+
+--------------------------------------------------------------------------------
+Scenario 2b: Login with non-existent username is rejected
+--------------------------------------------------------------------------------
+
+$ curl -s -X POST \
+  https://nexusflow.staging.nxlabs.cc/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{
+    "username": "nonexistent",
+    "password": "admin"
+  }'
+
+Response: HTTP 401
+invalid credentials
+
+RESULT: PASS
+  - Same 401 response as wrong-password case.
+  - No username enumeration possible.
+
+
+--------------------------------------------------------------------------------
+Scenario 3: Unauthenticated request to protected endpoint is blocked
+--------------------------------------------------------------------------------
+
+$ curl -s -X GET \
+  https://nexusflow.staging.nxlabs.cc/api/tasks
+
+Response: HTTP 401
+{"error":"unauthorized"}
+
+$ curl -s -X GET \
+  https://nexusflow.staging.nxlabs.cc/api/pipelines
+
+Response: HTTP 401
+{"error":"unauthorized"}
+
+$ curl -s -X GET \
+  https://nexusflow.staging.nxlabs.cc/api/workers
+
+Response: HTTP 401
+{"error":"unauthorized"}
+
+RESULT: PASS
+  - All three protected endpoints return 401 when no Authorization
+    header is provided.
+
+
+--------------------------------------------------------------------------------
+Scenario 4: Authenticated request passes through to the handler
+--------------------------------------------------------------------------------
+
+$ curl -s -X GET \
+  https://nexusflow.staging.nxlabs.cc/api/tasks \
+  -H "Authorization: Bearer 96ccff6445ce23cf9c9550eff25d8439b4ce4b077df721ae5870f7e5843a9ae9" \
+  | python3 -m json.tool
+
+Response: HTTP 200
+[
+    {
+        "id": "4534cdb6-3baa-43e3-b5cd-2d2034618194",
+        "pipelineId": null,
+        "chainId": null,
+        "userId": "ba997a26-4209-483a-90e7-193ff9d5d223",
+        "status": "completed",
+        "retryConfig": {
+            "maxRetries": 3,
+            "backoff": "exponential"
+        },
+        "retryCount": 0,
+        "executionId": "4534cdb6-3baa-43e3-b5cd-2d2034618194:0",
+        "workerId": "433508bffd2a-29560726",
+        "input": {},
+        "createdAt": "2026-03-28T01:45:31.085457Z",
+        "updatedAt": "2026-03-28T01:45:31.110483Z"
+    },
+    {
+        "id": "65aa867c-6432-48cf-bc19-9a554ae7c413",
+        "pipelineId": null,
+        "chainId": null,
+        "userId": "ba997a26-4209-483a-90e7-193ff9d5d223",
+        "status": "completed",
+        "retryConfig": {
+            "maxRetries": 3,
+            "backoff": "exponential"
+        },
+        "retryCount": 0,
+        "executionId": "65aa867c-6432-48cf-bc19-9a554ae7c413:0",
+        "workerId": "433508bffd2a-29560726",
+        "input": {},
+        "createdAt": "2026-03-28T01:42:24.280967Z",
+        "updatedAt": "2026-03-28T01:42:24.297446Z"
+    },
+    {
+        "id": "947d6487-65e5-43ec-ba83-fb1e97c226c3",
+        "pipelineId": null,
+        "chainId": null,
+        "userId": "ba997a26-4209-483a-90e7-193ff9d5d223",
+        "status": "completed",
+        "retryConfig": {
+            "maxRetries": 3,
+            "backoff": "exponential"
+        },
+        "retryCount": 0,
+        "executionId": "947d6487-65e5-43ec-ba83-fb1e97c226c3:0",
+        "workerId": "433508bffd2a-29560726",
+        "input": {},
+        "createdAt": "2026-03-28T01:41:21.882119Z",
+        "updatedAt": "2026-03-28T01:41:21.89086Z"
+    },
+    {
+        "id": "8a17340b-513a-4dae-99a3-35b276ca62be",
+        "pipelineId": null,
+        "chainId": null,
+        "userId": "ba997a26-4209-483a-90e7-193ff9d5d223",
+        "status": "completed",
+        "retryConfig": {
+            "maxRetries": 3,
+            "backoff": "exponential"
+        },
+        "retryCount": 0,
+        "executionId": "8a17340b-513a-4dae-99a3-35b276ca62be:0",
+        "workerId": "433508bffd2a-29560726",
+        "input": {},
+        "createdAt": "2026-03-28T01:40:57.231951Z",
+        "updatedAt": "2026-03-28T01:40:57.248Z"
+    },
+    {
+        "id": "653d2e8b-7cb1-4a23-973d-ce49bf5bdf5d",
+        "pipelineId": null,
+        "chainId": null,
+        "userId": "ba997a26-4209-483a-90e7-193ff9d5d223",
+        "status": "failed",
+        "retryConfig": {
+            "maxRetries": 3,
+            "backoff": "exponential"
+        },
+        "retryCount": 0,
+        "executionId": "653d2e8b-7cb1-4a23-973d-ce49bf5bdf5d:0",
+        "workerId": "433508bffd2a-29560726",
+        "input": {},
+        "createdAt": "2026-03-28T01:40:55.302821Z",
+        "updatedAt": "2026-03-28T01:40:55.322286Z"
+    },
+    {
+        "id": "89e0130c-1d3b-4faa-bdbe-9f4882444a7a",
+        "pipelineId": null,
+        "chainId": null,
+        "userId": "ba997a26-4209-483a-90e7-193ff9d5d223",
+        "status": "completed",
+        "retryConfig": {
+            "maxRetries": 3,
+            "backoff": "exponential"
+        },
+        "retryCount": 0,
+        "executionId": "89e0130c-1d3b-4faa-bdbe-9f4882444a7a:0",
+        "workerId": "433508bffd2a-29560726",
+        "input": {
+            "key": "value2"
+        },
+        "createdAt": "2026-03-28T01:39:17.082652Z",
+        "updatedAt": "2026-03-28T01:39:17.097768Z"
+    },
+    {
+        "id": "ceeda72b-d152-4545-ae7a-1927ba95a5bb",
+        "pipelineId": null,
+        "chainId": null,
+        "userId": "ba997a26-4209-483a-90e7-193ff9d5d223",
+        "status": "completed",
+        "retryConfig": {
+            "maxRetries": 3,
+            "backoff": "exponential"
+        },
+        "retryCount": 0,
+        "executionId": "ceeda72b-d152-4545-ae7a-1927ba95a5bb:0",
+        "workerId": "433508bffd2a-29560726",
+        "input": {
+            "key": "value"
+        },
+        "createdAt": "2026-03-28T01:39:14.209993Z",
+        "updatedAt": "2026-03-28T01:39:14.227611Z"
+    },
+    {
+        "id": "b2438999-8833-4482-a38d-10eea9c59e28",
+        "pipelineId": "450c2c5a-b98a-44ac-a04b-da7a03d63381",
+        "chainId": null,
+        "userId": "ba997a26-4209-483a-90e7-193ff9d5d223",
+        "status": "completed",
+        "retryConfig": {
+            "maxRetries": 3,
+            "backoff": "exponential"
+        },
+        "retryCount": 0,
+        "executionId": "b2438999-8833-4482-a38d-10eea9c59e28:0",
+        "workerId": "433508bffd2a-29560726",
+        "input": {},
+        "createdAt": "2026-03-28T01:26:03.606595Z",
+        "updatedAt": "2026-03-28T01:26:03.627959Z"
+    },
+    {
+        "id": "8335b7e0-8fdd-490f-a00e-3b336981ec85",
+        "pipelineId": "3be2140d-f34f-4f67-97b4-1bdf19ed510c",
+        "chainId": null,
+        "userId": "ba997a26-4209-483a-90e7-193ff9d5d223",
+        "status": "failed",
+        "retryConfig": {
+            "maxRetries": 3,
+            "backoff": "exponential"
+        },
+        "retryCount": 0,
+        "executionId": "8335b7e0-8fdd-490f-a00e-3b336981ec85:0",
+        "workerId": "433508bffd2a-29560726",
+        "input": {},
+        "createdAt": "2026-03-28T01:24:56.142055Z",
+        "updatedAt": "2026-03-28T01:24:56.160815Z"
+    },
+    {
+        "id": "9a141f98-4fa4-4d23-ab7e-db2a217a7c90",
+        "pipelineId": "e2f2cf24-a34a-40d6-905c-88ca7f613282",
+        "chainId": null,
+        "userId": "ba997a26-4209-483a-90e7-193ff9d5d223",
+        "status": "completed",
+        "retryConfig": {
+            "maxRetries": 3,
+            "backoff": "exponential"
+        },
+        "retryCount": 0,
+        "executionId": "9a141f98-4fa4-4d23-ab7e-db2a217a7c90:0",
+        "workerId": "c8e129a3bbd7-7b0db11c",
+        "input": {
+            "key": "cycle1-demo"
+        },
+        "createdAt": "2026-03-28T00:52:53.833616Z",
+        "updatedAt": "2026-03-28T00:52:53.916121Z"
+    },
+    {
+        "id": "5c2c3325-6741-422b-9691-0d1f4b85bd50",
+        "pipelineId": "95012a56-1082-41f7-a10d-1871fadb99e8",
+        "chainId": null,
+        "userId": "ba997a26-4209-483a-90e7-193ff9d5d223",
+        "status": "completed",
+        "retryConfig": {
+            "maxRetries": 3,
+            "backoff": "exponential"
+        },
+        "retryCount": 0,
+        "executionId": "5c2c3325-6741-422b-9691-0d1f4b85bd50:0",
+        "workerId": "213fd7c5c361-9db83b0b",
+        "input": {},
+        "createdAt": "2026-03-27T20:26:15.080222Z",
+        "updatedAt": "2026-03-27T20:26:15.095648Z"
+    },
+    {
+        "id": "be29e39c-44e2-4575-b88f-fc5e3c7c798e",
+        "pipelineId": "f088a236-6a4e-4e45-91be-22aa1f9adadc",
+        "chainId": null,
+        "userId": "ba997a26-4209-483a-90e7-193ff9d5d223",
+        "status": "failed",
+        "retryConfig": {
+            "maxRetries": 3,
+            "backoff": "exponential"
+        },
+        "retryCount": 0,
+        "executionId": "be29e39c-44e2-4575-b88f-fc5e3c7c798e:0",
+        "workerId": "213fd7c5c361-9db83b0b",
+        "input": {},
+        "createdAt": "2026-03-27T20:16:45.153014Z",
+        "updatedAt": "2026-03-27T20:16:45.177292Z"
+    }
+]
+
+RESULT: PASS
+  - Bearer token authentication accepted.
+  - Handler returned 200 with full task array (12 tasks).
+
+
+--------------------------------------------------------------------------------
+Scenario 5: Logout invalidates the session
+--------------------------------------------------------------------------------
+
+Step 1 -- Fresh login to get a disposable token:
+
+$ curl -s -X POST \
+  https://nexusflow.staging.nxlabs.cc/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{
+    "username": "admin",
+    "password": "admin"
+  }' | python3 -m json.tool
+
+Response: HTTP 200
+Token obtained: 86ae47fa37444c64ee12d4e5df7746c19036de0d18333f5a95500ecd8b6be7b5
+
+Step 2 -- Verify the token works (pre-logout):
+
+$ curl -s -o /dev/null -w "%{http_code}" \
+  https://nexusflow.staging.nxlabs.cc/api/tasks \
+  -H "Authorization: Bearer 86ae47fa37444c64ee12d4e5df7746c19036de0d18333f5a95500ecd8b6be7b5"
+
+Response: HTTP 200
+
+Step 3 -- Logout:
+
+$ curl -s -X POST \
+  https://nexusflow.staging.nxlabs.cc/api/auth/logout \
+  -H "Authorization: Bearer 86ae47fa37444c64ee12d4e5df7746c19036de0d18333f5a95500ecd8b6be7b5"
+
+Response: HTTP 204 (No Content)
+
+Step 4 -- Verify the token is invalid (post-logout):
+
+$ curl -s \
+  https://nexusflow.staging.nxlabs.cc/api/tasks \
+  -H "Authorization: Bearer 86ae47fa37444c64ee12d4e5df7746c19036de0d18333f5a95500ecd8b6be7b5"
+
+Response: HTTP 401
+{"error":"unauthorized"}
+
+RESULT: PASS
+  - Session immediately revoked on logout.
+  - Same token returns 401 after POST /api/auth/logout.
+
+
+--------------------------------------------------------------------------------
+Scenario 6: Admin user is present after first startup
+--------------------------------------------------------------------------------
+
+Verified implicitly by Scenario 1. The admin user exists and can log in
+with the default credentials (admin / admin). The seed function ran on
+first startup.
+
+RESULT: PASS
+  - Admin login succeeds on staging, confirming the seed mechanism.

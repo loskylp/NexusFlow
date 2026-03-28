@@ -15,6 +15,10 @@ go.work.sum
 # Web
 web/node_modules/
 web/dist/
+node_modules/
+
+# Playwright MCP logs
+.playwright-mcp/
 
 # Environment files
 .env

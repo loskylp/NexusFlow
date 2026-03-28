@@ -1,0 +1,114 @@
+================================================================================
+TASK-025: Worker Fleet Status API
+Demo executed: 2026-03-28
+Staging URL: https://nexusflow.staging.nxlabs.cc
+================================================================================
+
+
+--------------------------------------------------------------------------------
+Setup: Login
+--------------------------------------------------------------------------------
+
+$ curl -s -X POST \
+  https://nexusflow.staging.nxlabs.cc/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{
+    "username": "admin",
+    "password": "admin"
+  }' | python3 -m json.tool
+
+Response: HTTP 200
+{
+    "token": "96ccff6445ce23cf9c9550eff25d8439b4ce4b077df721ae5870f7e5843a9ae9",
+    "user": {
+        "id": "ba997a26-4209-483a-90e7-193ff9d5d223",
+        "username": "admin",
+        "role": "admin"
+    }
+}
+
+TOKEN=96ccff6445ce23cf9c9550eff25d8439b4ce4b077df721ae5870f7e5843a9ae9
+
+
+--------------------------------------------------------------------------------
+Scenario 1: Authenticated admin retrieves list of all registered workers
+--------------------------------------------------------------------------------
+
+$ curl -s \
+  https://nexusflow.staging.nxlabs.cc/api/workers \
+  -H "Authorization: Bearer 96ccff6445ce23cf9c9550eff25d8439b4ce4b077df721ae5870f7e5843a9ae9" \
+  | python3 -m json.tool
+
+Response: HTTP 200
+[
+    {
+        "id": "213fd7c5c361-9db83b0b",
+        "status": "down",
+        "tags": [
+            "demo",
+            "etl"
+        ],
+        "currentTaskId": null,
+        "lastHeartbeat": "2026-03-27T22:16:49.187009Z"
+    },
+    {
+        "id": "c8e129a3bbd7-7b0db11c",
+        "status": "down",
+        "tags": [
+            "demo",
+            "etl"
+        ],
+        "currentTaskId": null,
+        "lastHeartbeat": "2026-03-28T01:16:08.012782Z"
+    },
+    {
+        "id": "433508bffd2a-29560726",
+        "status": "online",
+        "tags": [
+            "demo",
+            "etl"
+        ],
+        "currentTaskId": null,
+        "lastHeartbeat": "2026-03-28T01:16:09.551559Z"
+    }
+]
+
+RESULT: PASS
+  - 200 OK with JSON array.
+  - 3 workers returned.
+  - Each worker has: id, status, tags, currentTaskId, lastHeartbeat.
+  - status values are "online" or "down".
+  - tags is an array (["demo", "etl"]).
+  - currentTaskId is null (no tasks currently executing).
+  - lastHeartbeat is a non-empty timestamp string.
+
+
+--------------------------------------------------------------------------------
+Scenario 3: Unauthenticated request is rejected with 401
+--------------------------------------------------------------------------------
+
+$ curl -s \
+  https://nexusflow.staging.nxlabs.cc/api/workers
+
+Response: HTTP 401
+{"error":"unauthorized"}
+
+RESULT: PASS
+  - 401 returned.
+  - No worker data disclosed.
+
+
+--------------------------------------------------------------------------------
+Scenario 4: Invalid or expired token is rejected with 401
+--------------------------------------------------------------------------------
+
+$ curl -s \
+  https://nexusflow.staging.nxlabs.cc/api/workers \
+  -H "Authorization: Bearer aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+
+Response: HTTP 401
+{"error":"unauthorized"}
+
+RESULT: PASS
+  - Syntactically valid but non-existent 64-char hex token rejected.
+  - 401 returned, no worker data disclosed.

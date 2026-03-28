@@ -1,0 +1,611 @@
+================================================================================
+TASK-013: Pipeline CRUD via REST API
+Demo executed: 2026-03-28
+Staging URL: https://nexusflow.staging.nxlabs.cc
+================================================================================
+
+
+--------------------------------------------------------------------------------
+Setup: Login
+--------------------------------------------------------------------------------
+
+$ curl -s -X POST \
+  https://nexusflow.staging.nxlabs.cc/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{
+    "username": "admin",
+    "password": "admin"
+  }' | python3 -m json.tool
+
+Response: HTTP 200
+{
+    "token": "96ccff6445ce23cf9c9550eff25d8439b4ce4b077df721ae5870f7e5843a9ae9",
+    "user": {
+        "id": "ba997a26-4209-483a-90e7-193ff9d5d223",
+        "username": "admin",
+        "role": "admin"
+    }
+}
+
+TOKEN=96ccff6445ce23cf9c9550eff25d8439b4ce4b077df721ae5870f7e5843a9ae9
+
+
+--------------------------------------------------------------------------------
+Scenario 1: Create a pipeline (POST /api/pipelines)
+--------------------------------------------------------------------------------
+
+$ curl -s -X POST \
+  https://nexusflow.staging.nxlabs.cc/api/pipelines \
+  -H "Authorization: Bearer 96ccff6445ce23cf9c9550eff25d8439b4ce4b077df721ae5870f7e5843a9ae9" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "demo-pipeline-001",
+    "dataSourceConfig": {
+      "connectorType": "demo",
+      "config": {
+        "rows": 10
+      },
+      "outputSchema": ["id", "name", "value"]
+    },
+    "processConfig": {
+      "connectorType": "demo",
+      "config": {},
+      "inputMappings": [
+        {"sourceField": "id", "targetField": "record_id"},
+        {"sourceField": "name", "targetField": "label"},
+        {"sourceField": "value", "targetField": "amount"}
+      ],
+      "outputSchema": ["record_id", "label", "amount"]
+    },
+    "sinkConfig": {
+      "connectorType": "demo",
+      "config": {},
+      "inputMappings": [
+        {"sourceField": "record_id", "targetField": "id"},
+        {"sourceField": "label", "targetField": "name"},
+        {"sourceField": "amount", "targetField": "value"}
+      ]
+    }
+  }' | python3 -m json.tool
+
+Response: HTTP 201
+{
+    "id": "ea2b2c50-00de-45f6-b2df-e31cbae0e9e4",
+    "name": "demo-pipeline-001",
+    "userId": "ba997a26-4209-483a-90e7-193ff9d5d223",
+    "dataSourceConfig": {
+        "connectorType": "demo",
+        "config": {
+            "rows": 10
+        },
+        "outputSchema": [
+            "id",
+            "name",
+            "value"
+        ]
+    },
+    "processConfig": {
+        "connectorType": "demo",
+        "config": {},
+        "inputMappings": [
+            {
+                "sourceField": "id",
+                "targetField": "record_id"
+            },
+            {
+                "sourceField": "name",
+                "targetField": "label"
+            },
+            {
+                "sourceField": "value",
+                "targetField": "amount"
+            }
+        ],
+        "outputSchema": [
+            "record_id",
+            "label",
+            "amount"
+        ]
+    },
+    "sinkConfig": {
+        "connectorType": "demo",
+        "config": {},
+        "inputMappings": [
+            {
+                "sourceField": "record_id",
+                "targetField": "id"
+            },
+            {
+                "sourceField": "label",
+                "targetField": "name"
+            },
+            {
+                "sourceField": "amount",
+                "targetField": "value"
+            }
+        ]
+    },
+    "createdAt": "2026-03-28T01:54:03.45695Z",
+    "updatedAt": "2026-03-28T01:54:03.45695Z"
+}
+
+PIPELINE_ID=ea2b2c50-00de-45f6-b2df-e31cbae0e9e4
+
+RESULT: PASS
+  - 201 Created returned.
+  - UUID id assigned.
+  - userId set to authenticated user (not caller-supplied).
+  - All three phase configs preserved.
+  - createdAt and updatedAt set.
+
+
+--------------------------------------------------------------------------------
+Scenario 2: List pipelines (GET /api/pipelines)
+--------------------------------------------------------------------------------
+
+$ curl -s \
+  https://nexusflow.staging.nxlabs.cc/api/pipelines \
+  -H "Authorization: Bearer 96ccff6445ce23cf9c9550eff25d8439b4ce4b077df721ae5870f7e5843a9ae9" \
+  | python3 -m json.tool
+
+Response: HTTP 200
+[
+    {
+        "id": "f088a236-6a4e-4e45-91be-22aa1f9adadc",
+        "name": "demo-smoke-test",
+        "userId": "ba997a26-4209-483a-90e7-193ff9d5d223",
+        "dataSourceConfig": {
+            "connectorType": "",
+            "config": null,
+            "outputSchema": null
+        },
+        "processConfig": {
+            "connectorType": "",
+            "config": null,
+            "inputMappings": null,
+            "outputSchema": null
+        },
+        "sinkConfig": {
+            "connectorType": "",
+            "config": null,
+            "inputMappings": null
+        },
+        "createdAt": "2026-03-27T20:16:02.282451Z",
+        "updatedAt": "2026-03-27T20:16:02.282451Z"
+    },
+    {
+        "id": "95012a56-1082-41f7-a10d-1871fadb99e8",
+        "name": "demo-smoke-test-v2",
+        "userId": "ba997a26-4209-483a-90e7-193ff9d5d223",
+        "dataSourceConfig": {
+            "connectorType": "demo",
+            "config": {
+                "count": 3
+            },
+            "outputSchema": [
+                "name",
+                "value"
+            ]
+        },
+        "processConfig": {
+            "connectorType": "demo",
+            "config": {
+                "uppercase_field": "name"
+            },
+            "inputMappings": [
+                {
+                    "sourceField": "name",
+                    "targetField": "name"
+                },
+                {
+                    "sourceField": "value",
+                    "targetField": "value"
+                }
+            ],
+            "outputSchema": [
+                "name",
+                "value"
+            ]
+        },
+        "sinkConfig": {
+            "connectorType": "demo",
+            "config": {},
+            "inputMappings": [
+                {
+                    "sourceField": "name",
+                    "targetField": "name"
+                },
+                {
+                    "sourceField": "value",
+                    "targetField": "value"
+                }
+            ]
+        },
+        "createdAt": "2026-03-27T20:25:36.500116Z",
+        "updatedAt": "2026-03-27T20:25:36.500116Z"
+    },
+    {
+        "id": "e2f2cf24-a34a-40d6-905c-88ca7f613282",
+        "name": "demo-pipeline-cycle1",
+        "userId": "ba997a26-4209-483a-90e7-193ff9d5d223",
+        "dataSourceConfig": {
+            "connectorType": "demo",
+            "config": {
+                "count": 5
+            },
+            "outputSchema": [
+                "id",
+                "name",
+                "value"
+            ]
+        },
+        "processConfig": {
+            "connectorType": "demo",
+            "config": {
+                "uppercase_field": "name"
+            },
+            "inputMappings": [
+                {
+                    "sourceField": "id",
+                    "targetField": "id"
+                },
+                {
+                    "sourceField": "name",
+                    "targetField": "name"
+                },
+                {
+                    "sourceField": "value",
+                    "targetField": "value"
+                }
+            ],
+            "outputSchema": [
+                "id",
+                "name",
+                "value"
+            ]
+        },
+        "sinkConfig": {
+            "connectorType": "demo",
+            "config": {
+                "target": "stdout"
+            },
+            "inputMappings": [
+                {
+                    "sourceField": "id",
+                    "targetField": "id"
+                },
+                {
+                    "sourceField": "name",
+                    "targetField": "name"
+                },
+                {
+                    "sourceField": "value",
+                    "targetField": "value"
+                }
+            ]
+        },
+        "createdAt": "2026-03-28T00:52:43.919625Z",
+        "updatedAt": "2026-03-28T00:52:43.919625Z"
+    },
+    {
+        "id": "3be2140d-f34f-4f67-97b4-1bdf19ed510c",
+        "name": "demo-cycle1-final",
+        "userId": "ba997a26-4209-483a-90e7-193ff9d5d223",
+        "dataSourceConfig": {
+            "connectorType": "",
+            "config": null,
+            "outputSchema": null
+        },
+        "processConfig": {
+            "connectorType": "",
+            "config": null,
+            "inputMappings": null,
+            "outputSchema": null
+        },
+        "sinkConfig": {
+            "connectorType": "",
+            "config": null,
+            "inputMappings": null
+        },
+        "createdAt": "2026-03-28T01:24:20.559971Z",
+        "updatedAt": "2026-03-28T01:24:20.559971Z"
+    },
+    {
+        "id": "450c2c5a-b98a-44ac-a04b-da7a03d63381",
+        "name": "demo-cycle1-final-v2",
+        "userId": "ba997a26-4209-483a-90e7-193ff9d5d223",
+        "dataSourceConfig": {
+            "connectorType": "demo",
+            "config": {
+                "count": 5
+            },
+            "outputSchema": null
+        },
+        "processConfig": {
+            "connectorType": "demo",
+            "config": {
+                "uppercase_field": "name"
+            },
+            "inputMappings": null,
+            "outputSchema": null
+        },
+        "sinkConfig": {
+            "connectorType": "demo",
+            "config": {},
+            "inputMappings": null
+        },
+        "createdAt": "2026-03-28T01:25:46.976435Z",
+        "updatedAt": "2026-03-28T01:25:46.976435Z"
+    },
+    {
+        "id": "ea2b2c50-00de-45f6-b2df-e31cbae0e9e4",
+        "name": "demo-pipeline-001",
+        "userId": "ba997a26-4209-483a-90e7-193ff9d5d223",
+        "dataSourceConfig": {
+            "connectorType": "demo",
+            "config": {
+                "rows": 10
+            },
+            "outputSchema": [
+                "id",
+                "name",
+                "value"
+            ]
+        },
+        "processConfig": {
+            "connectorType": "demo",
+            "config": {},
+            "inputMappings": [
+                {
+                    "sourceField": "id",
+                    "targetField": "record_id"
+                },
+                {
+                    "sourceField": "name",
+                    "targetField": "label"
+                },
+                {
+                    "sourceField": "value",
+                    "targetField": "amount"
+                }
+            ],
+            "outputSchema": [
+                "record_id",
+                "label",
+                "amount"
+            ]
+        },
+        "sinkConfig": {
+            "connectorType": "demo",
+            "config": {},
+            "inputMappings": [
+                {
+                    "sourceField": "record_id",
+                    "targetField": "id"
+                },
+                {
+                    "sourceField": "label",
+                    "targetField": "name"
+                },
+                {
+                    "sourceField": "amount",
+                    "targetField": "value"
+                }
+            ]
+        },
+        "createdAt": "2026-03-28T01:54:03.45695Z",
+        "updatedAt": "2026-03-28T01:54:03.45695Z"
+    }
+]
+
+RESULT: PASS
+  - 200 OK with JSON array.
+  - 6 pipelines returned (admin sees all).
+  - Newly created demo-pipeline-001 is present in the list.
+
+
+--------------------------------------------------------------------------------
+Scenario 3: Retrieve a single pipeline (GET /api/pipelines/{id})
+--------------------------------------------------------------------------------
+
+$ curl -s \
+  https://nexusflow.staging.nxlabs.cc/api/pipelines/ea2b2c50-00de-45f6-b2df-e31cbae0e9e4 \
+  -H "Authorization: Bearer 96ccff6445ce23cf9c9550eff25d8439b4ce4b077df721ae5870f7e5843a9ae9" \
+  | python3 -m json.tool
+
+Response: HTTP 200
+{
+    "id": "ea2b2c50-00de-45f6-b2df-e31cbae0e9e4",
+    "name": "demo-pipeline-001",
+    "userId": "ba997a26-4209-483a-90e7-193ff9d5d223",
+    "dataSourceConfig": {
+        "connectorType": "demo",
+        "config": {
+            "rows": 10
+        },
+        "outputSchema": [
+            "id",
+            "name",
+            "value"
+        ]
+    },
+    "processConfig": {
+        "connectorType": "demo",
+        "config": {},
+        "inputMappings": [
+            {
+                "sourceField": "id",
+                "targetField": "record_id"
+            },
+            {
+                "sourceField": "name",
+                "targetField": "label"
+            },
+            {
+                "sourceField": "value",
+                "targetField": "amount"
+            }
+        ],
+        "outputSchema": [
+            "record_id",
+            "label",
+            "amount"
+        ]
+    },
+    "sinkConfig": {
+        "connectorType": "demo",
+        "config": {},
+        "inputMappings": [
+            {
+                "sourceField": "record_id",
+                "targetField": "id"
+            },
+            {
+                "sourceField": "label",
+                "targetField": "name"
+            },
+            {
+                "sourceField": "amount",
+                "targetField": "value"
+            }
+        ]
+    },
+    "createdAt": "2026-03-28T01:54:03.45695Z",
+    "updatedAt": "2026-03-28T01:54:03.45695Z"
+}
+
+RESULT: PASS
+  - 200 OK with full pipeline JSON.
+  - All three phase config fields present.
+
+
+--------------------------------------------------------------------------------
+Scenario 4: Update a pipeline (PUT /api/pipelines/{id})
+--------------------------------------------------------------------------------
+
+$ curl -s -X PUT \
+  https://nexusflow.staging.nxlabs.cc/api/pipelines/ea2b2c50-00de-45f6-b2df-e31cbae0e9e4 \
+  -H "Authorization: Bearer 96ccff6445ce23cf9c9550eff25d8439b4ce4b077df721ae5870f7e5843a9ae9" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "demo-pipeline-001-updated",
+    "dataSourceConfig": {
+      "connectorType": "demo",
+      "config": {
+        "rows": 20
+      },
+      "outputSchema": ["id", "name", "value"]
+    },
+    "processConfig": {
+      "connectorType": "demo",
+      "config": {},
+      "inputMappings": [
+        {"sourceField": "id", "targetField": "record_id"},
+        {"sourceField": "name", "targetField": "label"},
+        {"sourceField": "value", "targetField": "amount"}
+      ],
+      "outputSchema": ["record_id", "label", "amount"]
+    },
+    "sinkConfig": {
+      "connectorType": "demo",
+      "config": {},
+      "inputMappings": [
+        {"sourceField": "record_id", "targetField": "id"},
+        {"sourceField": "label", "targetField": "name"},
+        {"sourceField": "amount", "targetField": "value"}
+      ]
+    }
+  }' | python3 -m json.tool
+
+Response: HTTP 200
+{
+    "id": "ea2b2c50-00de-45f6-b2df-e31cbae0e9e4",
+    "name": "demo-pipeline-001-updated",
+    "userId": "ba997a26-4209-483a-90e7-193ff9d5d223",
+    "dataSourceConfig": {
+        "connectorType": "demo",
+        "config": {
+            "rows": 20
+        },
+        "outputSchema": [
+            "id",
+            "name",
+            "value"
+        ]
+    },
+    "processConfig": {
+        "connectorType": "demo",
+        "config": {},
+        "inputMappings": [
+            {
+                "sourceField": "id",
+                "targetField": "record_id"
+            },
+            {
+                "sourceField": "name",
+                "targetField": "label"
+            },
+            {
+                "sourceField": "value",
+                "targetField": "amount"
+            }
+        ],
+        "outputSchema": [
+            "record_id",
+            "label",
+            "amount"
+        ]
+    },
+    "sinkConfig": {
+        "connectorType": "demo",
+        "config": {},
+        "inputMappings": [
+            {
+                "sourceField": "record_id",
+                "targetField": "id"
+            },
+            {
+                "sourceField": "label",
+                "targetField": "name"
+            },
+            {
+                "sourceField": "amount",
+                "targetField": "value"
+            }
+        ]
+    },
+    "createdAt": "2026-03-28T01:54:03.45695Z",
+    "updatedAt": "2026-03-28T01:54:23.688552Z"
+}
+
+RESULT: PASS
+  - 200 OK returned.
+  - Name updated to "demo-pipeline-001-updated".
+  - dataSourceConfig.config.rows updated from 10 to 20.
+  - userId unchanged (still original owner).
+  - updatedAt advanced from createdAt.
+
+
+--------------------------------------------------------------------------------
+Scenario 5: Delete a pipeline (DELETE /api/pipelines/{id})
+--------------------------------------------------------------------------------
+
+$ curl -s -X DELETE \
+  https://nexusflow.staging.nxlabs.cc/api/pipelines/ea2b2c50-00de-45f6-b2df-e31cbae0e9e4 \
+  -H "Authorization: Bearer 96ccff6445ce23cf9c9550eff25d8439b4ce4b077df721ae5870f7e5843a9ae9"
+
+Response: HTTP 204 (No Content)
+
+Verify deletion:
+
+$ curl -s \
+  https://nexusflow.staging.nxlabs.cc/api/pipelines/ea2b2c50-00de-45f6-b2df-e31cbae0e9e4 \
+  -H "Authorization: Bearer 96ccff6445ce23cf9c9550eff25d8439b4ce4b077df721ae5870f7e5843a9ae9"
+
+Response: HTTP 404
+{"error":"pipeline not found"}
+
+RESULT: PASS
+  - 204 No Content on delete.
+  - Subsequent GET returns 404.
+  - Pipeline fully removed.

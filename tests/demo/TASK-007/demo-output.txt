@@ -1,0 +1,295 @@
+================================================================================
+TASK-007: Tag-Based Task Assignment and Pipeline Execution
+Demo executed: 2026-03-28
+Staging URL: https://nexusflow.staging.nxlabs.cc
+================================================================================
+
+
+--------------------------------------------------------------------------------
+Setup: Login and obtain token
+--------------------------------------------------------------------------------
+
+$ curl -s -X POST \
+  https://nexusflow.staging.nxlabs.cc/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{
+    "username": "admin",
+    "password": "admin"
+  }' | python3 -m json.tool
+
+Response: HTTP 200
+{
+    "token": "96ccff6445ce23cf9c9550eff25d8439b4ce4b077df721ae5870f7e5843a9ae9",
+    "user": {
+        "id": "ba997a26-4209-483a-90e7-193ff9d5d223",
+        "username": "admin",
+        "role": "admin"
+    }
+}
+
+TOKEN=96ccff6445ce23cf9c9550eff25d8439b4ce4b077df721ae5870f7e5843a9ae9
+
+
+--------------------------------------------------------------------------------
+Scenario 1: Worker registers and listens on its tag-specific stream
+--------------------------------------------------------------------------------
+
+$ curl -s -X GET \
+  https://nexusflow.staging.nxlabs.cc/api/workers \
+  -H "Authorization: Bearer 96ccff6445ce23cf9c9550eff25d8439b4ce4b077df721ae5870f7e5843a9ae9" \
+  | python3 -m json.tool
+
+Response: HTTP 200
+[
+    {
+        "id": "213fd7c5c361-9db83b0b",
+        "status": "down",
+        "tags": [
+            "demo",
+            "etl"
+        ],
+        "currentTaskId": null,
+        "lastHeartbeat": "2026-03-27T22:16:49.187009Z"
+    },
+    {
+        "id": "c8e129a3bbd7-7b0db11c",
+        "status": "down",
+        "tags": [
+            "demo",
+            "etl"
+        ],
+        "currentTaskId": null,
+        "lastHeartbeat": "2026-03-28T01:16:08.012782Z"
+    },
+    {
+        "id": "433508bffd2a-29560726",
+        "status": "online",
+        "tags": [
+            "demo",
+            "etl"
+        ],
+        "currentTaskId": null,
+        "lastHeartbeat": "2026-03-28T01:16:09.551559Z"
+    }
+]
+
+RESULT: PASS
+  - Worker 433508bffd2a-29560726 is online with tags ["demo", "etl"].
+  - It is listening on queue:demo and queue:etl Redis streams.
+
+
+--------------------------------------------------------------------------------
+Scenario 2: Task executes through all three pipeline phases and completes
+--------------------------------------------------------------------------------
+
+Step 1 -- Create a pipeline:
+
+$ curl -s -X POST \
+  https://nexusflow.staging.nxlabs.cc/api/pipelines \
+  -H "Authorization: Bearer 96ccff6445ce23cf9c9550eff25d8439b4ce4b077df721ae5870f7e5843a9ae9" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "demo-pipeline-001",
+    "dataSourceConfig": {
+      "connectorType": "demo",
+      "config": {
+        "rows": 10
+      },
+      "outputSchema": ["id", "name", "value"]
+    },
+    "processConfig": {
+      "connectorType": "demo",
+      "config": {},
+      "inputMappings": [
+        {"sourceField": "id", "targetField": "record_id"},
+        {"sourceField": "name", "targetField": "label"},
+        {"sourceField": "value", "targetField": "amount"}
+      ],
+      "outputSchema": ["record_id", "label", "amount"]
+    },
+    "sinkConfig": {
+      "connectorType": "demo",
+      "config": {},
+      "inputMappings": [
+        {"sourceField": "record_id", "targetField": "id"},
+        {"sourceField": "label", "targetField": "name"},
+        {"sourceField": "amount", "targetField": "value"}
+      ]
+    }
+  }' | python3 -m json.tool
+
+Response: HTTP 201
+{
+    "id": "ea2b2c50-00de-45f6-b2df-e31cbae0e9e4",
+    "name": "demo-pipeline-001",
+    "userId": "ba997a26-4209-483a-90e7-193ff9d5d223",
+    "dataSourceConfig": {
+        "connectorType": "demo",
+        "config": {
+            "rows": 10
+        },
+        "outputSchema": [
+            "id",
+            "name",
+            "value"
+        ]
+    },
+    "processConfig": {
+        "connectorType": "demo",
+        "config": {},
+        "inputMappings": [
+            {
+                "sourceField": "id",
+                "targetField": "record_id"
+            },
+            {
+                "sourceField": "name",
+                "targetField": "label"
+            },
+            {
+                "sourceField": "value",
+                "targetField": "amount"
+            }
+        ],
+        "outputSchema": [
+            "record_id",
+            "label",
+            "amount"
+        ]
+    },
+    "sinkConfig": {
+        "connectorType": "demo",
+        "config": {},
+        "inputMappings": [
+            {
+                "sourceField": "record_id",
+                "targetField": "id"
+            },
+            {
+                "sourceField": "label",
+                "targetField": "name"
+            },
+            {
+                "sourceField": "amount",
+                "targetField": "value"
+            }
+        ]
+    },
+    "createdAt": "2026-03-28T01:54:03.45695Z",
+    "updatedAt": "2026-03-28T01:54:03.45695Z"
+}
+
+PIPELINE_ID=ea2b2c50-00de-45f6-b2df-e31cbae0e9e4
+
+Step 2 -- Submit a task for this pipeline:
+
+$ curl -s -X POST \
+  https://nexusflow.staging.nxlabs.cc/api/tasks \
+  -H "Authorization: Bearer 96ccff6445ce23cf9c9550eff25d8439b4ce4b077df721ae5870f7e5843a9ae9" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "pipelineId": "ea2b2c50-00de-45f6-b2df-e31cbae0e9e4",
+    "tags": ["etl"],
+    "input": {
+      "key": "value"
+    }
+  }' | python3 -m json.tool
+
+Response: HTTP 201
+{
+    "taskId": "a94f611e-e533-4691-b9f8-1bd615d01b43",
+    "status": "queued"
+}
+
+TASK_ID=a94f611e-e533-4691-b9f8-1bd615d01b43
+
+Step 3 -- Verify task completed (after 3 seconds):
+
+$ curl -s \
+  https://nexusflow.staging.nxlabs.cc/api/tasks/a94f611e-e533-4691-b9f8-1bd615d01b43 \
+  -H "Authorization: Bearer 96ccff6445ce23cf9c9550eff25d8439b4ce4b077df721ae5870f7e5843a9ae9" \
+  | python3 -m json.tool
+
+Response: HTTP 200
+{
+    "task": {
+        "id": "a94f611e-e533-4691-b9f8-1bd615d01b43",
+        "pipelineId": "ea2b2c50-00de-45f6-b2df-e31cbae0e9e4",
+        "chainId": null,
+        "userId": "ba997a26-4209-483a-90e7-193ff9d5d223",
+        "status": "completed",
+        "retryConfig": {
+            "maxRetries": 3,
+            "backoff": "exponential"
+        },
+        "retryCount": 0,
+        "executionId": "a94f611e-e533-4691-b9f8-1bd615d01b43:0",
+        "workerId": "433508bffd2a-29560726",
+        "input": {
+            "key": "value"
+        },
+        "createdAt": "2026-03-28T01:54:42.251779Z",
+        "updatedAt": "2026-03-28T01:54:42.281025Z"
+    },
+    "stateHistory": [
+        {
+            "id": "05de9446-f10f-4df2-8b47-a2778378a176",
+            "taskId": "a94f611e-e533-4691-b9f8-1bd615d01b43",
+            "fromState": "submitted",
+            "toState": "queued",
+            "reason": "enqueued to Redis stream",
+            "timestamp": "2026-03-28T01:54:42.258988Z"
+        },
+        {
+            "id": "0a353ed5-58f6-4f32-91e2-84d4f87e5716",
+            "taskId": "a94f611e-e533-4691-b9f8-1bd615d01b43",
+            "fromState": "queued",
+            "toState": "assigned",
+            "reason": "assigned to worker 433508bffd2a-29560726",
+            "timestamp": "2026-03-28T01:54:42.274171Z"
+        },
+        {
+            "id": "9fd6a001-ea16-423f-aa07-70de353c830e",
+            "taskId": "a94f611e-e533-4691-b9f8-1bd615d01b43",
+            "fromState": "assigned",
+            "toState": "running",
+            "reason": "pipeline execution started",
+            "timestamp": "2026-03-28T01:54:42.277899Z"
+        },
+        {
+            "id": "996ddcdf-e00a-4072-b21e-9bf14f80fa3c",
+            "taskId": "a94f611e-e533-4691-b9f8-1bd615d01b43",
+            "fromState": "running",
+            "toState": "completed",
+            "reason": "pipeline completed successfully",
+            "timestamp": "2026-03-28T01:54:42.281495Z"
+        }
+    ]
+}
+
+RESULT: PASS
+  - Task reached "completed" status.
+  - All three pipeline phases executed (DataSource -> Process -> Sink).
+  - Worker 433508bffd2a-29560726 picked up the task from queue:etl.
+
+
+--------------------------------------------------------------------------------
+Scenario 3: State transitions are recorded with timestamps in task_state_log
+--------------------------------------------------------------------------------
+
+(Using state history from Scenario 2 task above)
+
+State transitions recorded:
+
+  | fromState  | toState   | reason                                  | timestamp                    |
+  |------------|-----------|----------------------------------------|------------------------------|
+  | submitted  | queued    | enqueued to Redis stream               | 2026-03-28T01:54:42.258988Z  |
+  | queued     | assigned  | assigned to worker 433508bffd2a-29560726| 2026-03-28T01:54:42.274171Z  |
+  | assigned   | running   | pipeline execution started             | 2026-03-28T01:54:42.277899Z  |
+  | running    | completed | pipeline completed successfully        | 2026-03-28T01:54:42.281495Z  |
+
+RESULT: PASS
+  - All four state transitions recorded.
+  - Each has a non-null timestamp.
+  - Transitions are in chronological order.
+  - Total execution time: ~22ms (from queued to completed).

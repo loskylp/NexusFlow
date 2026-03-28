@@ -50,7 +50,11 @@ All images are public on ghcr.io — no registry auth required on the staging ho
 | web | `ghcr.io/loskylp/nexusflow/web:v0.1` | Up |
 | redis | `redis:7-alpine` | Up, healthy |
 
-**Note:** Watchtower was removed from this deployment (see Known Issues below).
+**Note:** NexusFlow does not run its own Watchtower. The nxlabs.cc infrastructure
+Watchtower (`nickfedor/watchtower:latest`) manages container updates across all
+projects on the host. NexusFlow containers are opted in via the
+`com.centurylinklabs.watchtower.enable=true` label on each service. Confirmed
+scanned=7 in the infra Watchtower logs — all NexusFlow containers are being watched.
 
 ### Environment configuration
 
@@ -110,30 +114,31 @@ dispatch paths are fully functional.
 
 ## Issues Encountered
 
-### Issue 1 — Watchtower incompatible with Docker 29.x (non-blocking)
+### Issue 1 — NexusFlow was incorrectly running its own Watchtower (resolved)
 
-**Symptom:** `containrrr/watchtower:latest` (and `1.7.1`) crash-loop on the
-staging host with: `client version 1.25 is too old. Minimum supported API version is 1.40`.
+**Symptom:** An earlier version of `deploy/staging/docker-compose.yml` included a
+`watchtower` service block that would start a NexusFlow-specific Watchtower container.
+This violates the nxlabs.cc infrastructure model: Watchtower is a shared infrastructure
+service managed by the server owner, not a per-project service.
 
-**Cause:** Watchtower's Docker SDK client is compiled with API version 1.25. The
-Docker Engine on nxlabs.cc (version 29.3.1) enforces a minimum API version of 1.40.
-All published Watchtower versions use the same old SDK version.
+**Root cause:** The integration guide (`INTEGRATION.md` in `loskylp/nxlabs.cc-infra`)
+was not consulted during initial compose authoring. Projects on nxlabs.cc are expected
+to opt containers in to the infrastructure Watchtower via the
+`com.centurylinklabs.watchtower.enable=true` label only — they must not run their own
+Watchtower instance.
 
-**Resolution:** Watchtower was removed from the running staging stack. The compose
-file was updated to pin `containrrr/watchtower:1.7.1` (documenting the intent) but
-the service was not started.
+**Resolution (2026-03-27):**
+- The `watchtower` service block was removed from `deploy/staging/docker-compose.yml`.
+- The updated compose was synced to `/opt/nexusflow-staging/docker-compose.yml` on the host.
+- `docker compose up -d` was run to reconcile — all five NexusFlow services continued
+  running without restart; no rogue Watchtower container was present at time of fix.
+- The infrastructure Watchtower (`nickfedor/watchtower:latest`) remains healthy and is
+  scanning all opted-in containers (`scanned=7` confirmed in logs).
+- All NexusFlow containers retain the `com.centurylinklabs.watchtower.enable=true` label
+  and are correctly managed by the infrastructure Watchtower.
 
-**Impact:** Automatic image redeployment on new tag push does not work. Image
-updates must be applied manually:
-```
-ssh deploy@nxlabs.cc "cd /opt/nexusflow-staging && docker compose pull && docker compose up -d"
-```
-
-**Required escalation:** This should be surfaced to the nxlabs.cc infrastructure
-owner. Options: (a) downgrade Docker daemon to a version that accepts API 1.25
-(not recommended), (b) wait for Watchtower to release a version built against
-Docker SDK 1.40+, (c) replace Watchtower with an alternative auto-update mechanism
-(e.g. a Cron job that polls ghcr.io and restarts on digest change).
+**Impact:** None to running services. Auto-update is now correctly handled by the
+infrastructure Watchtower. No manual update step is required.
 
 ### Issue 2 — Task GET / List endpoints not implemented (Builder gap)
 
@@ -170,7 +175,9 @@ For future deployments to the same host (e.g. production):
 2. Database must be provisioned: `sudo /opt/postgres/provision.sh <db_name>`.
 3. Deploy user has `docker` group membership — no sudo needed for compose commands.
 4. ghcr.io images are public — no registry auth configuration required.
-5. Watchtower incompatible with Docker 29.x (see Issue 1 above).
+5. Auto-updates are handled by the nxlabs.cc infrastructure Watchtower — NexusFlow
+   services must carry `com.centurylinklabs.watchtower.enable=true` and must NOT
+   run their own Watchtower service.
 
 ---
 
@@ -180,6 +187,6 @@ The following parity gaps are documented for Nexus awareness before the release 
 
 | Gap | Staging | Production (planned) | Risk |
 |---|---|---|---|
-| Watchtower | Not running | Not running (same issue) | Auto-redeploy unavailable on both |
+| Auto-updates | Infrastructure Watchtower (running, scanned=7) | Infrastructure Watchtower (same host) | None — both environments use the shared infra Watchtower |
 | Task GET/List API | Not implemented | Not implemented | Demo UI task status view may not work |
 | Database | Shared nxlabs.cc PostgreSQL | Shared nxlabs.cc PostgreSQL (separate DB) | Low — same infrastructure |
