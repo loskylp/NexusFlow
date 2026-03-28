@@ -13,8 +13,12 @@
 # Deploy:
 #   docker compose -f deploy/staging/docker-compose.yml up -d
 #
-# Image update (auto via Watchtower, or manual):
+# Image update (auto via nxlabs.cc infrastructure Watchtower, or manual):
 #   docker compose -f deploy/staging/docker-compose.yml pull && docker compose -f deploy/staging/docker-compose.yml up -d
+#
+# Note: NexusFlow does NOT run its own Watchtower. The nxlabs.cc infrastructure
+# Watchtower manages container updates across all projects. NexusFlow containers
+# opt in via the com.centurylinklabs.watchtower.enable=true label.
 #
 # See: ADR-005, TASK-029
 
@@ -54,16 +58,37 @@ services:
       - "traefik.http.routers.nexusflow-staging-api.tls=true"
       - "traefik.http.routers.nexusflow-staging-api.tls.certresolver=letsencrypt"
       - "traefik.http.routers.nexusflow-staging-api.entrypoints=websecure"
+      # Explicit priority — higher than the web router (10) so /api/* always reaches the API.
+      # Traefik assigns priority by rule length automatically, but this makes it explicit and
+      # immune to host-infrastructure Traefik configuration that could override the default.
+      - "traefik.http.routers.nexusflow-staging-api.priority=20"
       - "traefik.http.services.nexusflow-staging-api.loadbalancer.server.port=8080"
+      # Disable Traefik response buffering for SSE (Server-Sent Events).
+      # Traefik buffers backend responses by default. SSE requires events to be flushed to
+      # the client immediately as they are written. flushinterval=-1 disables buffering and
+      # forwards each write to the client without delay.
+      # Note: the Go backend also sets X-Accel-Buffering: no, but that header is nginx-specific
+      # and is not honoured by Traefik — this label is the Traefik-side fix. (ADR-007)
+      - "traefik.http.services.nexusflow-staging-api.loadbalancer.responseforwarding.flushinterval=-1"
       # --- Watchtower auto-redeploy ---
       # Watchtower polls the registry every 300 s and redeploys when a new image is found.
       - "com.centurylinklabs.watchtower.enable=true"
       # --- Uptime Kuma monitoring via AutoKuma labels ---
-      # AutoKuma reads these labels to create/update monitors in Uptime Kuma automatically.
+      # The api container is the anchor for the NexusFlow Staging group and tag definitions.
+      # Group: one collapsible section per system in Uptime Kuma (nxlabs.cc convention).
+      - "kuma.nexusflow-staging-group.group.name=NexusFlow Staging"
+      # Tags: category labels attached to monitors (nxlabs.cc convention).
+      - "kuma.tag-nexusflow-backend.tag.name=Backend"
+      - "kuma.tag-nexusflow-backend.tag.color=#FF9800"
+      - "kuma.tag-nexusflow-frontend.tag.name=Frontend"
+      - "kuma.tag-nexusflow-frontend.tag.color=#9C27B0"
+      - "kuma.tag-nexusflow-data.tag.name=Data"
+      - "kuma.tag-nexusflow-data.tag.color=#2196F3"
+      # Monitor: API health endpoint — nested under the group, tagged Backend.
       - "kuma.nexusflow-staging-api.http.name=NexusFlow Staging API"
       - "kuma.nexusflow-staging-api.http.url=https://nexusflow.staging.nxlabs.cc/api/health"
-      - "kuma.nexusflow-staging-api.http.group=NexusFlow Staging"
-      - "kuma.nexusflow-staging-api.http.expected_status=200"
+      - "kuma.nexusflow-staging-api.http.parent_name=nexusflow-staging-group"
+      - 'kuma.nexusflow-staging-api.http.tag_names=[{"name": "tag-nexusflow-backend"}]'
 
   worker:
     image: ghcr.io/loskylp/nexusflow/worker:${IMAGE_TAG:-latest}
@@ -106,20 +131,22 @@ services:
     labels:
       # --- Traefik routing ---
       # Routes all non-/api traffic to the React frontend served by nginx.
-      # Priority is lower than the API router so /api/* routes take precedence.
+      # Priority 10 — lower than the API router (20) so /api/* routes always take precedence.
       - "traefik.enable=true"
       - "traefik.http.routers.nexusflow-staging-web.rule=Host(`nexusflow.staging.nxlabs.cc`)"
       - "traefik.http.routers.nexusflow-staging-web.tls=true"
       - "traefik.http.routers.nexusflow-staging-web.tls.certresolver=letsencrypt"
       - "traefik.http.routers.nexusflow-staging-web.entrypoints=websecure"
+      - "traefik.http.routers.nexusflow-staging-web.priority=10"
       - "traefik.http.services.nexusflow-staging-web.loadbalancer.server.port=80"
       # --- Watchtower auto-redeploy ---
       - "com.centurylinklabs.watchtower.enable=true"
       # --- Uptime Kuma monitoring ---
+      # Monitor: web frontend — nested under the same group as the API, tagged Frontend.
       - "kuma.nexusflow-staging-web.http.name=NexusFlow Staging Web"
       - "kuma.nexusflow-staging-web.http.url=https://nexusflow.staging.nxlabs.cc/"
-      - "kuma.nexusflow-staging-web.http.group=NexusFlow Staging"
-      - "kuma.nexusflow-staging-web.http.expected_status=200"
+      - "kuma.nexusflow-staging-web.http.parent_name=nexusflow-staging-group"
+      - 'kuma.nexusflow-staging-web.http.tag_names=[{"name": "tag-nexusflow-frontend"}]'
 
   redis:
     # Service-managed Redis — not shared infrastructure on nxlabs.cc (ADR-005).
@@ -137,35 +164,24 @@ services:
       - redis-data:/data
     networks:
       - internal
+      - postgres  # Also on postgres network so Uptime Kuma can reach Redis for monitoring
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s
       timeout: 5s
       retries: 3
-
-  watchtower:
-    # Polls the container registry every 300 s (5 min) and redeploys any service
-    # that has com.centurylinklabs.watchtower.enable=true when a new image is detected.
-    # This satisfies AC-2: Watchtower redeploys within 5 minutes of image push.
-    # Pin to 1.7.1 — "latest" tag ships Docker client API v1.25, below the host minimum (1.40).
-    image: containrrr/watchtower:1.7.1
-    restart: unless-stopped
-    volumes:
-      # Docker socket required for Watchtower to inspect and restart containers.
-      - /var/run/docker.sock:/var/run/docker.sock
-      # Registry credentials for pulling images from ghcr.io (private registry).
-      - /root/.docker/config.json:/config.json:ro
-    environment:
-      # Poll interval: 300 seconds = 5 minutes (satisfies FF-021 / AC-2).
-      - WATCHTOWER_POLL_INTERVAL=300
-      # Only redeploy containers that have the watchtower.enable label.
-      - WATCHTOWER_LABEL_ENABLE=true
-      # Remove old images after a successful update to avoid disk bloat.
-      - WATCHTOWER_CLEANUP=true
-      # Log level for debugging deployments.
-      - WATCHTOWER_LOG_LEVEL=info
-    networks:
-      - internal
+    labels:
+      # --- Watchtower auto-redeploy ---
+      # Redis is a project-managed service (installed by NexusFlow, not shared infra).
+      # Watchtower keeps it updated when new redis:7-alpine images are published.
+      - "com.centurylinklabs.watchtower.enable=true"
+      # --- Uptime Kuma monitoring via AutoKuma labels ---
+      # Redis monitor — uses Uptime Kuma's native redis monitor type which connects
+      # and issues a PING command, verifying the Redis instance is responsive.
+      - "kuma.nexusflow-staging-redis.redis.name=NexusFlow Staging Redis"
+      - "kuma.nexusflow-staging-redis.redis.database_connection_string=redis://nexusflow-staging-redis-1:6379"
+      - "kuma.nexusflow-staging-redis.redis.parent_name=nexusflow-staging-group"
+      - 'kuma.nexusflow-staging-redis.redis.tag_names=[{"name": "tag-nexusflow-data"}]'
 
 volumes:
   # Persists Redis data across container restarts (ADR-001, FF-024).
