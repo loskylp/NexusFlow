@@ -530,13 +530,28 @@ func writeSSEEvent(w http.ResponseWriter, event *models.SSEEvent) error {
 	return nil
 }
 
-// setSSEHeaders sets the HTTP headers required for a Server-Sent Events stream.
-// Must be called before any data is written to w.
+// setSSEHeaders sets the HTTP headers required for a Server-Sent Events stream
+// and immediately flushes the 200 OK status line and headers to the client.
+//
+// Go's net/http buffers the status line and headers until the first Write call.
+// For SSE, the client must receive the 200 OK and Content-Type header before any
+// events arrive so the browser's EventSource can confirm the connection is live.
+// Without an explicit WriteHeader + Flush here, a connection with no immediate
+// events appears to hang from the browser's perspective ("Reconnecting...").
+//
+// Must be called before any data is written to w. w must implement http.Flusher.
 func setSSEHeaders(w http.ResponseWriter) {
 	w.Header().Set("Content-Type", "text/event-stream")
 	w.Header().Set("Cache-Control", "no-cache")
 	w.Header().Set("Connection", "keep-alive")
 	w.Header().Set("X-Accel-Buffering", "no") // Disable nginx buffering (ADR-005).
+	// Flush the 200 OK + headers to the client immediately.
+	// This ensures the browser's EventSource sees a successful response before
+	// any events are published, preventing spurious reconnection attempts.
+	w.WriteHeader(http.StatusOK)
+	if f, ok := w.(http.Flusher); ok {
+		f.Flush()
+	}
 }
 
 // taskChannelKey returns the Redis Pub/Sub channel key for a task feed subscription.
