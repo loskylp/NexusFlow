@@ -1,27 +1,61 @@
 # Project State
 **Manifest version:** v1 | **Profile:** Critical
-**Current phase:** DEMO SIGN-OFF APPROVED — awaiting Methodologist retrospective
-**Current cycle:** 1 (complete)
+**Current phase:** EXECUTION -- Cycle 2
+**Current cycle:** 2
 **Last updated:** 2026-03-27
 
 ---
 
 ## Where We Are
 
-Cycle 1 Demo Sign-off: APPROVED (2026-03-27). All 15 tasks (14 original + TASK-008 planning correction) verified PASS. CI green. Sentinel: PASS WITH CONDITIONS (3 HIGH findings tracked for remediation before Go-Live, none blocking). Staging deployed and demonstrated. Nexus approved the cycle.
+Cycle 1 Demo Sign-off: APPROVED (2026-03-27). Nexus skipped Methodologist retrospective and directed immediate Cycle 2 start. Transitioning to Cycle 2 execution.
 
-Next step: hand control to Methodologist — "Is there anything you want to change for the next iteration?" If yes, Methodologist reconfigures before Cycle 2 planning. If no, proceed directly to Cycle 2 planning via Planner.
+Cycle 2 scope: 10 tasks -- Core System Completion (monitor/failover, retry, DLQ, cancellation, pipeline chaining, log production, admin user management, sink atomicity, schema validation).
 
 ## Active Work
 
-**Agent in control:** Orchestrator (post-demo housekeeping complete)
-**Current task:** Awaiting Methodologist retrospective before Cycle 2
-**Waiting for:** Nexus to confirm whether Methodologist reconfiguration is needed, or proceed directly to Cycle 2 planning
+**Agent in control:** Builder (dispatched for TASK-009)
+**Current task:** TASK-009 -- Monitor service: heartbeat checking and failover
+**Waiting for:** Builder to complete TASK-009
 **Blocker:** None
 
 ---
 
-## Cycle 1 -- Task Status
+## Cycle 2 -- Task Status
+
+| Task | Description | Dependencies (Cycle 2) | Status |
+|---|---|---|---|
+| TASK-009 | Monitor service -- heartbeat checking and failover | None (depends on Cycle 1: TASK-004, TASK-006, TASK-007) | IN PROGRESS |
+| TASK-010 | Infrastructure retry with backoff | TASK-009 | Pending |
+| TASK-011 | Dead letter queue with cascading cancellation | TASK-009, TASK-010, TASK-014 | Pending |
+| TASK-012 | Task cancellation | None (depends on Cycle 1: TASK-005, TASK-007) | Pending |
+| TASK-014 | Pipeline chain definition | None (depends on Cycle 1: TASK-013, TASK-007) | Pending |
+| TASK-016 | Log production and dual storage | None (depends on Cycle 1: TASK-007, TASK-015) | Pending |
+| TASK-017 | Admin user management | None (depends on Cycle 1: TASK-003) | Pending |
+| TASK-018 | Sink atomicity with idempotency | None (depends on Cycle 1: TASK-007) | Pending |
+| TASK-026 | Schema mapping validation at design time | None (depends on Cycle 1: TASK-013) | Pending |
+
+**Cycle 2 dependency layers (sequential execution):**
+- Layer 0 (independent -- depend only on Cycle 1): TASK-009, TASK-012, TASK-014, TASK-018, TASK-016, TASK-017, TASK-026
+- Layer 1: TASK-010 (depends on TASK-009)
+- Layer 2: TASK-011 (depends on TASK-009, TASK-010, TASK-014)
+
+**Execution order (planned):**
+1. TASK-009 -- Monitor service (P1/HH, critical path: TASK-010 and TASK-011 depend on it)
+2. TASK-018 -- Sink atomicity (P1/HH, high-risk, independent)
+3. TASK-012 -- Task cancellation (P1/MH, independent)
+4. TASK-014 -- Pipeline chain definition (P1/MH, independent; TASK-011 depends on it)
+5. TASK-010 -- Infrastructure retry (P1/MH, depends on TASK-009)
+6. TASK-016 -- Log production (P1/MH, independent)
+7. TASK-017 -- Admin user management (P1/LH, quick win, independent)
+8. TASK-011 -- Dead letter queue (P1/MH, depends on TASK-009, TASK-010, TASK-014)
+9. TASK-026 -- Schema validation (P2/LM, independent)
+
+Note: TASK-011 is placed after TASK-010 and TASK-014 due to dependency chain. Other independent tasks are interleaved to maximize progress while dependencies resolve.
+
+---
+
+## Cycle 1 -- Task Status (Complete)
 
 | Task | Status | Iterations | Verifier |
 |---|---|---|---|
@@ -39,27 +73,9 @@ Next step: hand control to Methodologist — "Is there anything you want to chan
 | TASK-015: SSE event infrastructure | COMPLETE | 1 | PASS, CI green |
 | TASK-020: Worker Fleet Dashboard (GUI) | COMPLETE | 1 | PASS, CI green |
 | TASK-029: DevOps Phase 2 -- staging environment and CD pipeline | COMPLETE | 1 | PASS (68/68 acceptance) |
-
 | TASK-008: Task lifecycle state tracking and query API | COMPLETE | 1 | PASS (planning correction, verified 2026-03-27) |
 
-**Cycle summary:**
-- Tasks complete: 15 of 15 (14 original + TASK-008 planning correction)
-- TASK-029: COMPLETE (2026-03-27) -- Verifier PASS (68/68 acceptance), CI green. Staging docker-compose, CD workflow (demo/vN.N tags), Watchtower auto-redeploy, Traefik TLS, Uptime Kuma monitoring labels. 5 non-blocking observations (OBS-024 through OBS-028).
-- TASK-020: COMPLETE (2026-03-27) -- Verifier PASS, CI green. Worker Fleet Dashboard GUI verified.
-- TASK-019: COMPLETE (2026-03-27) -- Verifier PASS, CI green. React app shell with sidebar navigation and auth flow verified.
-- TASK-025: COMPLETE (2026-03-27) -- Verifier PASS (iteration 2), CI green. Worker fleet status API (GET /api/workers) verified.
-- TASK-042: COMPLETE (2026-03-26) -- Verifier PASS, CI green. Demo connectors (demo source, simulated worker, demo sink) verified. OBS-023 identified: race condition in TASK-005 submit handler.
-- TASK-005: COMPLETE (2026-03-26) -- Verifier PASS (iteration 2), CI green. Wiring omission in `cmd/api/main.go` and plain text 401 fixed in iteration 1; verified PASS on iteration 2. OBS-023 identified during TASK-042 verification: XADD fires before UpdateStatus(queued), causing worker to see task in "submitted" state and fail submitted->assigned transition.
-- TASK-013: COMPLETE (2026-03-26) -- Verifier PASS (iteration 2), CI green. Pipeline CRUD via REST API with all 7 acceptance criteria met.
-- TASK-007: COMPLETE (2026-03-26) -- Verifier PASS (9/9 acceptance, 22 tests), CI green. Tag-based task assignment, pipeline execution (DataSource/Process/Sink), schema mapping, state transitions, SSE event emission. 4 non-blocking observations recorded (OBS-019 through OBS-022).
-- Requirements satisfied this cycle: REQ-019 (TASK-003 delivers auth -- first direct requirement deliverable)
-- Sentinel: COMPLETE (2026-03-27) -- PASS WITH CONDITIONS. No Critical findings. 3 HIGH (SEC-001, SEC-002, SEC-003) must be tracked for remediation before Go-Live. Does not block Demo Sign-off.
-- Scaffolder: COMPLETE (2026-03-26, 57 files, manifest at process/scaffolder/scaffold-manifest.md)
-- TASK-001: COMPLETE (2026-03-26) -- Verifier PASS, CI green. Note: staticcheck U1000 errors on 30 scaffold stubs required a fix commit (1687c64, added lint:ignore directives) before CI passed on second run.
-- TASK-002: COMPLETE (2026-03-26) -- Verifier PASS (95/95 acceptance, 7/7 integration), CI green (run 23606734063). OBS-003 resolved (health endpoint 200 with postgres). 4 non-blocking observations recorded.
-- TASK-004: COMPLETE (2026-03-26) -- Verifier PASS (16/16 acceptance, p95=0.12ms), CI green (run 23613717030, commit 9661a5f). Deviations: EnqueueDeadLetter, ReadTasks, Acknowledge implemented here (scaffold had them in TASK-009/TASK-007); ReadTasks uses 200ms polling loop for context cancellation responsiveness. 3 non-blocking observations recorded (OBS-010 through OBS-012).
-- TASK-003: COMPLETE (2026-03-26) -- Verifier PASS (24/24 acceptance, 55 unit tests), CI green (commit d78ad65). Deviations: login uses `username` not `email` (consistent with DB schema); Session struct lacks Token field (token is Redis key per ADR-006); conditional auth middleware (nil-safe pattern, temporary). 4 non-blocking observations recorded (OBS-013 through OBS-016).
-- TASK-006: COMPLETE (2026-03-26) -- Verifier PASS (14/14 acceptance, 35 unit tests), CI green. Worker registration with tags, heartbeat every 5s, concurrent registration, graceful shutdown. 3 non-blocking observations recorded (OBS-016 through OBS-018).
+**Cycle 1 summary:** 15/15 tasks COMPLETE. Demo Sign-off APPROVED (2026-03-27). Sentinel PASS WITH CONDITIONS.
 
 ---
 
@@ -77,40 +93,26 @@ Next step: hand control to Methodologist — "Is there anything you want to chan
 
 ## Pending Decisions
 
-Methodologist retrospective: before Cycle 2 begins, the Nexus must answer — "Is there anything you want to change for the next iteration?" This is the standard post-demo handoff per Manifest.
+None. Nexus skipped Methodologist retrospective and directed immediate Cycle 2 start.
 
 ---
 
-## Execution Sequence -- Cycle 1
+## Execution Sequence -- Cycle 2
 
-Per Manifest and Plan Gate approval, the execution sequence is:
+Per Plan Gate approval (authorizes full execution sequence), the execution sequence is:
 
-1. **Scaffolder** -- generate project skeleton for all 14 Cycle 1 tasks (COMPLETE 2026-03-26)
-2. **DevOps Phase 1** (TASK-001) -- CI pipeline, dev environment, Environment Contract
-3. **Builder tasks** in dependency order:
-   - Layer 1: TASK-002, TASK-004 (both depend only on TASK-001)
-   - Layer 2: TASK-003, TASK-006 (depend on TASK-002)
-   - Layer 3: TASK-005, TASK-013, TASK-015 (depend on TASK-003/TASK-004)
-   - Layer 4: TASK-025 (depends on TASK-003, TASK-006)
-   - Layer 5: TASK-007 (depends on TASK-004, TASK-005, TASK-006, TASK-013)
-   - Layer 6: TASK-042 (depends on TASK-007, TASK-013)
-   - Layer 7: TASK-019 (depends on TASK-003)
-   - Layer 8: TASK-020 (depends on TASK-019, TASK-025, TASK-015, TASK-006)
-   - Layer 9: TASK-029 (DevOps Phase 2 -- depends on TASK-001, TASK-042)
-4. **Verifier** after each Builder task (Pre-staging mode until TASK-029 completes; Full mode after)
-5. **Sentinel** cycle-level security review after all tasks pass Verifier
-6. **Demo Sign-off** -- present to Nexus
+1. **Builder tasks** in dependency-aware order (see execution order above)
+2. **Verifier** after each Builder task (Full mode -- staging available from Cycle 1)
+3. **Sentinel** cycle-level security review after all tasks pass Verifier
+4. **Demo Sign-off** -- present to Nexus
 
-Note: Sequential execution model (one Builder task at a time). The dependency layers above guide ordering; within a layer, tasks are executed sequentially.
-
-**Remaining execution order:**
-15 of 15 TASKS COMPLETE. Cycle 1 Demo Sign-off APPROVED (2026-03-27). All tasks verified PASS, CI green, Sentinel PASS WITH CONDITIONS.
+Note: Scaffolder not re-invoked -- Cycle 1 Scaffolder already scaffolded full project structure including Cycle 2 task stubs. Sequential execution model (one Builder task at a time).
 
 ---
 
 ## Iterate Loop State
 
-No active iterate loop. TASK-005 converged on iteration 2 (PASS). TASK-013 converged on iteration 2 (PASS). TASK-007 converged on iteration 1 (PASS). TASK-042 converged on iteration 1 (PASS). TASK-015 converged on iteration 1 (PASS). TASK-025 converged on iteration 2 (PASS). TASK-020 converged on iteration 1 (PASS). OBS-023 resolved (targeted fix applied).
+No active iterate loop. Starting Cycle 2 fresh.
 
 ---
 
@@ -129,80 +131,45 @@ No active iterate loop. TASK-005 converged on iteration 2 (PASS). TASK-013 conve
 
 ---
 
-## Open Verifier Observations (Cycle 1)
+## Process Metrics -- Cycle 2
+
+| Metric | Value |
+|---|---|
+| Tasks completed | 0 of 10 |
+| Average iterations to PASS | -- |
+| Tasks that hit max iterations | 0 |
+| Escalations to Nexus | 0 |
+
+---
+
+## Open Verifier Observations (Carried from Cycle 1)
 
 | ID | Source | Description | Status |
 |---|---|---|---|
-| OBS-001 | TASK-001 | Dockerfile go.sum generation strategy is fragile -- resolved by committing go.sum | Resolved (TASK-001 verification) |
-| OBS-002 | TASK-001 | golang-migrate removed from go.mod by go mod tidy -- TASK-002 Builder must re-add it | Resolved (TASK-002 re-added golang-migrate) |
-| OBS-003 | TASK-001 | API health endpoint returns 503 until TASK-002 wires postgres pool | Resolved (TASK-002 verified: health returns 200 with postgres connected) |
-| OBS-004 | TASK-001 | golang.org/x/crypto moved to indirect in go.mod -- expected, no action needed | Resolved (no action) |
 | OBS-005 | TASK-001 | npm audit reports 2 moderate vulnerabilities in frontend deps | Open -- pending Sentinel review |
-| OBS-006 | TASK-002 | CREATE TRIGGER has no IF NOT EXISTS -- standard for PostgreSQL 16; golang-migrate handles idempotency | Resolved (no action -- by design) |
 | OBS-007 | TASK-002 | task_logs has no explicit PRIMARY KEY due to partitioned table constraint; id is NOT NULL with gen_random_uuid() | Open -- awareness for TASK-016 |
-| OBS-008 | TASK-002 | schema_migrations not dropped by down migration -- correct, golang-migrate owns that table | Resolved (no action -- by design) |
-| OBS-009 | TASK-002 | schemaMappings column absent from pipelines -- embedded in JSONB phase config columns; deliberate design decision | Resolved (no action -- by design) |
-| OBS-010 | TASK-004 | RedisQueue.Close() not wired -- no graceful shutdown caller yet | Open -- pending TASK-003 or later wiring |
+| OBS-010 | TASK-004 | RedisQueue.Close() not wired -- no graceful shutdown caller yet | Open -- pending wiring |
 | OBS-011 | TASK-004 | Malformed stream entries silently skipped; pending list may accumulate stale entries | Open -- awareness for future DLQ enhancement |
 | OBS-012 | TASK-004 | ReadTasks batch size fixed at 10 -- configurable batch size deferred | Open -- awareness for future refactor |
-| OBS-013 | TASK-003 | Conditional auth middleware (`if s.sessions != nil`) -- protected routes accessible without auth when sessions is nil; temporary pattern, remove at end of Cycle 1 | Open -- hardening at cycle end |
-| OBS-014 | TASK-003 | `seedAdminIfEmpty` uses `List()` instead of `COUNT(*)` -- acceptable at single-org scale | Open -- awareness for future cleanup |
-| OBS-015 | TASK-003 | AC-5 system-level 403 test gap -- RequireRole 403 path exercised only at unit level; first admin-only route (TASK-013 or TASK-020) must include system-level 403 test | Open -- pending TASK-013 or TASK-020 |
-| OBS-016 | TASK-003 | Stale Docker container caused initial test failures -- Builder handoff should include rebuild note | Open -- process improvement |
-| OBS-016 | TASK-006 | `markOffline` uses `WorkerStatusDown` ("down") vs plain English "offline" -- ADR-002 defines "down"; code is correct; terminology note for docs | Resolved (no action -- by design) |
-| OBS-017 | TASK-006 | `runConsumptionLoop` blocks on `ctx.Done()` (TASK-007 stub); `InitGroups` creates Redis stream structures before tasks exist -- benign, idempotent via BUSYGROUP | Open -- awareness for TASK-007 |
-| OBS-018 | TASK-006 | Worker Dockerfile binary built with `golang:1.23-alpine` (musl) runs on `alpine:3.20` -- if CI changes to glibc builder, needs `CGO_ENABLED=0` or runtime image change | Open -- awareness for CI changes |
-| OBS-019 | TASK-007 | AC-9 scope boundary: `PublishTaskEvent` verified at worker level; full Pub/Sub delivery (broker -> Redis -> SSE client) deferred to TASK-015 | Resolved (TASK-015 COMPLETE) |
-| OBS-020 | TASK-007 | XACK multi-tag loop: `ackMessage` tries XACK against each tag sequentially; clean fix (adding `StreamTag` to `TaskMessage`) deferred to TASK-004 scope | Open -- awareness for future refactor |
-| OBS-021 | TASK-007 | Seven tests use 2-second timeouts for consumption loop exit; test suite takes ~14s for worker package | Open -- awareness for test performance |
-| OBS-022 | TASK-007 | `applyMappingsToSlice` docstring says empty mappings returns empty map but actual behavior is pass-through; docstring is misleading | Resolved (TASK-042 Builder corrected docstring) |
-| OBS-023 | TASK-042 | Race condition in TASK-005 submit handler: XADD fires before UpdateStatus(queued) completes, causing worker to see task in "submitted" state and fail submitted->assigned transition. Fix: call UpdateStatus(queued) before Enqueue. | **Resolved** (2026-03-26) |
-| OBS-024 | TASK-029 | Watchtower docker.sock mount gives root-equivalent Docker daemon access on staging host -- accepted risk for staging, document in TASK-036 operational runbook | Open -- awareness for TASK-036 |
-| OBS-025 | TASK-029 | Watchtower mounts /root/.docker/config.json for ghcr.io auth -- consider making packages public to simplify | Open -- evaluate before first staging deploy |
-| OBS-026 | TASK-029 | IMAGE_TAG and Watchtower interplay documented in handoff notes but not inline in .env.example comments | Open -- minor documentation improvement |
-| OBS-027 | TASK-029 | WATCHTOWER_CLEANUP=true removes old images after redeploy -- confirmed intentional for staging disk management | Resolved (no action -- by design) |
-| OBS-028 | TASK-029 | Worker service correctly excluded from traefik network (no external HTTP surface) -- consistent with ADR-005 | Resolved (no action -- by design) |
+| OBS-013 | TASK-003 | Conditional auth middleware (`if s.sessions != nil`) -- protected routes accessible without auth when sessions is nil; temporary pattern, remove | Open -- hardening needed |
+| OBS-014 | TASK-003 | `seedAdminIfEmpty` uses `List()` instead of `COUNT(*)` -- acceptable at single-org scale | Open -- awareness |
+| OBS-015 | TASK-003 | AC-5 system-level 403 test gap -- RequireRole 403 path exercised only at unit level | Open -- pending system-level test |
+| OBS-017 | TASK-006 | `runConsumptionLoop` blocks on `ctx.Done()` (TASK-007 stub); `InitGroups` creates Redis stream structures before tasks exist | Resolved (TASK-007 complete) |
+| OBS-018 | TASK-006 | Worker Dockerfile binary built with `golang:1.23-alpine` (musl) runs on `alpine:3.20` | Open -- awareness for CI changes |
+| OBS-020 | TASK-007 | XACK multi-tag loop: `ackMessage` tries XACK against each tag sequentially | Open -- awareness for future refactor |
+| OBS-021 | TASK-007 | Seven tests use 2-second timeouts; test suite takes ~14s for worker package | Open -- awareness for test performance |
+| OBS-024 | TASK-029 | Watchtower docker.sock mount gives root-equivalent Docker daemon access on staging | Open -- awareness for TASK-036 |
+| OBS-025 | TASK-029 | Watchtower mounts /root/.docker/config.json for ghcr.io auth | Open -- evaluate before first staging deploy |
+| OBS-026 | TASK-029 | IMAGE_TAG and Watchtower interplay not documented inline in .env.example | Open -- minor documentation improvement |
 
 ---
 
-## Standing Routing Rules (Cycle 1)
+## Standing Routing Rules (Cycle 2)
 
-- Scaffolder runs before any Builder task (14 tasks >= 3, Manifest rule). COMPLETE (2026-03-26).
-- DevOps Phase 1 (TASK-001) must complete before any other Builder task begins.
-- DevOps Phase 2 (TASK-029) runs after TASK-042 passes Verifier. After TASK-029 completes, Verifier mode switches from Pre-staging to Full.
-- Verifier mode is Pre-staging until TASK-029 completes.
-- AUDIT-006 (pipeline template sharing) CLOSED -- NOT APPLICABLE (Nexus decision 2026-03-26).
-
----
-
-## Designer Completion Record
-
-**Date:** 2026-03-26
-**Artifacts produced:**
-- `process/designer/ux-spec.md` -- UX Specification (7 screens, 5 user flows, interaction spec, visual spec, SSE architecture, role-based visibility rules, accessibility notes)
-- `process/designer/DESIGN.md` -- Design System (color tokens, typography, spacing, component patterns)
-- `process/designer/proposal.md` -- Design Proposal (7 screens with Stitch IDs, review checklist)
-- `process/designer/screenshots/` -- 7 PNG files (01-login through 07-chaos-controller)
-- Stitch project: 14608407312724823932 (7 screens, all approved by Nexus)
-
-**Nexus review:** All 7 screens approved. No revisions requested.
-**Screens:** Login, Worker Fleet Dashboard, Task Feed and Monitor, Pipeline Builder, Log Streamer, Sink Inspector, Chaos Controller
-**Design hypotheses:** 8 hypotheses documented for future validation (landing page choice, card feed vs table, dark log panel, schema validation timing, phase colors, chaos confirmation, worker sort order)
-
----
-
-## Planner Completion Record
-
-**Date:** 2026-03-26
-**Artifacts produced (v1, revised to v2, then v2.1):**
-- `process/planner/task-plan.md` -- Task Plan v2.1 (39 tasks: 14 Cycle 1, 10 Cycle 2, 7 Cycle 3, 6 Cycle 4, 2 Cycle 5)
-- `process/planner/release-map.md` -- Release Map v2.1 (v1.0.0 = Cycles 1-3, v1.1.0 = Cycles 4-5)
-- `process/planner/dependency-graph.md` -- Dependency Graph v2.1 (Mermaid graphs for all 5 cycles)
-
-**Three-pass execution:** Pass 1 (decomposition), Pass 2 (scoring/ordering), Pass 3 (release map) -- all completed in sequence. Full re-plan for v2 after Nexus feedback. Further revision to v2.1.
-**No spikes required.** All architectural unknowns resolved in Architecture v2.
-**Walking skeleton critical path (Cycle 1):** TASK-001 -> TASK-002/TASK-004 -> TASK-003/TASK-006 -> TASK-005/TASK-013 -> TASK-007 -> TASK-042
-**High-risk tasks (4):** TASK-007 (pipeline execution), TASK-009 (monitor/failover), TASK-015 (SSE infrastructure), TASK-018 (sink atomicity)
+- Scaffolder NOT re-invoked -- full project scaffolded in Cycle 1 (57 files, including Cycle 2 stubs).
+- DevOps Phase 2 (TASK-029) already COMPLETE from Cycle 1 -- Verifier runs in Full mode from the start of Cycle 2.
+- TASK-011 cannot begin until TASK-009, TASK-010, and TASK-014 are all COMPLETE.
+- Sentinel cycle-level review runs after all 10 tasks pass Verifier.
 
 ---
 
@@ -218,69 +185,4 @@ No active iterate loop. TASK-005 converged on iteration 2 (PASS). TASK-013 conve
 | Architecture Gate -- revision directed | 2026-03-26 | Nexus directed two changes: (1) Go replaces Node.js/TypeScript; (2) deploy to nxlabs.cc infrastructure |
 | Architecture Gate -- approved | 2026-03-26 | Architecture v2 APPROVED. AUDIT-006 closed NOT APPLICABLE (no templates). All other architecture approved. |
 | Plan Gate | 2026-03-26 | APPROVED -- Plan v2.1: 39 tasks, 5 cycles; v1.0.0 (Cycles 1-3, 31 tasks), v1.1.0 (Cycles 4-5, 8 tasks). Authorizes full Cycle 1 execution. |
-
----
-
-## Architect Revision Record -- v2
-
-**Date:** 2026-03-26
-**Trigger:** Nexus-directed changes at Architecture Gate
-**Changes:**
-- ADR-004 (Technology Stack): Go replaces Node.js/TypeScript for all backend services; pgx+sqlc replaces Prisma; go-redis replaces ioredis
-- ADR-005 (Deployment Model): completely rewritten for nxlabs.cc (187.124.233.130); Traefik, Watchtower, shared PostgreSQL, service-managed Redis (ADR-005)
-- ADR-006 (Auth): updated for Go session middleware (gorilla/sessions or scs)
-- ADR-007 (Real-time): updated for Go SSE implementation
-- ADR-008 (Data Model): updated for golang-migrate + sqlc replacing Prisma
-- Fitness functions v2: 2 new (FF-024: Redis persistence on container restart; FF-025: infrastructure health via Uptime Kuma)
-- FF-015 updated: Go build + go vet + staticcheck replaces TypeScript tsc
-
-**Foundational assumption changed:** YES -- deployment model (nxlabs.cc infrastructure). Backward impact check required on Auditor re-audit.
-
----
-
-## Auditor Completion Record -- Architecture Audit (v1)
-
-**Date:** 2026-03-26
-**Artifact produced:** `process/auditor/architecture-audit-v1.md`
-**Result:** PASS -- READY FOR ARCHITECTURE GATE
-**Findings:**
-- Coverage: 31/31 requirements covered, no gaps
-- Consistency: 9 ADRs mutually compatible, no contradictions
-- Coherence: all provisions credibly address requirements
-- Fitness functions: 23/23 traceable (18 to requirements, 5 to ADRs)
-- Deferrals resolved: AUDIT-005, AUDIT-007, AUDIT-009
-- Deferral still tracked: AUDIT-006 (pipeline template sharing, deadline: before Cycle 2 planning)
-**Non-blocking observations:** 3 (OBS-001: requirements file version discrepancy; OBS-002: DEMO-004 architectural provision lightweight; OBS-003: 5 fitness functions trace to ADRs rather than requirements)
-
----
-
-## Auditor Completion Record -- Architecture Audit (v2)
-
-**Date:** 2026-03-26
-**Artifact produced:** `process/auditor/architecture-audit-v2.md`
-**Result:** PASS -- READY FOR ARCHITECTURE GATE
-**Findings:**
-- Coverage: 31/31 requirements covered, no gaps
-- Consistency: 9 ADRs (5 revised, 4 unchanged) mutually compatible, no contradictions
-- Coherence: all provisions credibly address requirements with Go backend and nxlabs.cc deployment
-- Fitness functions: 25/25 traceable (19 to requirements, 6 to ADRs)
-- Backward impact check: no [INVALIDATED] flags -- neither Go backend nor nxlabs.cc deployment invalidates any requirement acceptance scenario
-- AUDIT-006 CLOSED -- NOT APPLICABLE (Nexus decision 2026-03-26: no templates at all; template sharing is moot)
-**Non-blocking observations:** 5 (OBS-001: requirements file version discrepancy; OBS-002: DEMO-004 provision lightweight; OBS-003: OpenAPI contract enforcement newly critical; OBS-004: 6 fitness functions trace to ADRs; OBS-005: 2 new fitness functions FF-024 and FF-025)
-
----
-
-## Architect Completion Record
-
-**Date:** 2026-03-26
-**Artifacts produced:**
-- `process/architect/architecture-v1.md` -- system architecture with component map, deployment model, data flow
-- `process/architect/adr/ADR-001.md` through `ADR-009.md` -- 9 architectural decision records
-- `process/architect/fitness-functions.md` -- 23 fitness functions across 7 categories
-
-**Deferral resolutions:**
-- AUDIT-005 (Log retention policy) -- resolved in ADR-008 (Data Model and Schema Migration)
-- AUDIT-007 (Schema validation timing) -- resolved in ADR-008
-- AUDIT-009 (Sink Inspector "Before" state capture) -- resolved in ADR-009 (Sink Atomicity and Inspector)
-
-**Contested decisions:** None -- no Nexus value judgment required
+| Demo Sign-off -- Cycle 1 | 2026-03-27 | APPROVED. Nexus skipped Methodologist retrospective, directed immediate Cycle 2 start. |
