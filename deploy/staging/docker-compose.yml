@@ -52,16 +52,30 @@ services:
       start_period: 15s
     labels:
       # --- Traefik routing ---
-      # Routes /api/* traffic to the API service over HTTPS with Let's Encrypt TLS.
+      # Two routers for the API service:
+      #   nexusflow-staging-api     → handles /api/* (REST endpoints)
+      #   nexusflow-staging-api-sse → handles /events/* (SSE streaming endpoints)
+      #
+      # The Go backend registers SSE routes at /events/* (no /api prefix).
+      # Both routers use the same backend service (port 8080).
+      # Priorities are set explicitly: API=20, SSE=20, Web=10 — both API routers
+      # beat the web router; Traefik also prefers longer rules within equal priority.
       - "traefik.enable=true"
+      # REST API router — /api/*
       - "traefik.http.routers.nexusflow-staging-api.rule=Host(`nexusflow.staging.nxlabs.cc`) && PathPrefix(`/api`)"
       - "traefik.http.routers.nexusflow-staging-api.tls=true"
       - "traefik.http.routers.nexusflow-staging-api.tls.certresolver=letsencrypt"
       - "traefik.http.routers.nexusflow-staging-api.entrypoints=websecure"
-      # Explicit priority — higher than the web router (10) so /api/* always reaches the API.
-      # Traefik assigns priority by rule length automatically, but this makes it explicit and
-      # immune to host-infrastructure Traefik configuration that could override the default.
       - "traefik.http.routers.nexusflow-staging-api.priority=20"
+      - "traefik.http.routers.nexusflow-staging-api.service=nexusflow-staging-api"
+      # SSE router — /events/* (Server-Sent Events streams, no /api prefix in Go routes)
+      - "traefik.http.routers.nexusflow-staging-api-sse.rule=Host(`nexusflow.staging.nxlabs.cc`) && PathPrefix(`/events`)"
+      - "traefik.http.routers.nexusflow-staging-api-sse.tls=true"
+      - "traefik.http.routers.nexusflow-staging-api-sse.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.nexusflow-staging-api-sse.entrypoints=websecure"
+      - "traefik.http.routers.nexusflow-staging-api-sse.priority=20"
+      - "traefik.http.routers.nexusflow-staging-api-sse.service=nexusflow-staging-api"
+      # Shared backend service — both routers resolve to port 8080.
       - "traefik.http.services.nexusflow-staging-api.loadbalancer.server.port=8080"
       # Disable Traefik response buffering for SSE (Server-Sent Events).
       # Traefik buffers backend responses by default. SSE requires events to be flushed to
