@@ -21,32 +21,34 @@ import (
 // Server holds all dependencies needed to serve the NexusFlow REST API.
 // Dependencies are injected at construction time; no global state.
 type Server struct {
-	cfg       *config.Config
-	pool      *db.Pool
-	redis     *redis.Client
-	users     db.UserRepository
-	tasks     db.TaskRepository
-	pipelines db.PipelineRepository
-	workers   db.WorkerRepository
-	producer  queue.Producer
-	sessions  queue.SessionStore
-	broker    sse.Broker
+	cfg           *config.Config
+	pool          *db.Pool
+	redis         *redis.Client
+	users         db.UserRepository
+	tasks         db.TaskRepository
+	pipelines     db.PipelineRepository
+	workers       db.WorkerRepository
+	producer      queue.Producer
+	sessions      queue.SessionStore
+	broker        sse.Broker
+	cancellations queue.CancellationStore
 }
 
 // NewServer constructs the API Server with all required dependencies.
 //
 // Args:
 //
-//	cfg:       Loaded runtime configuration.
-//	pool:      PostgreSQL connection pool for health checks.
-//	redis:     go-redis client for health checks.
-//	users:     UserRepository backed by PostgreSQL.
-//	tasks:     TaskRepository backed by PostgreSQL.
-//	pipelines: PipelineRepository backed by PostgreSQL.
-//	workers:   WorkerRepository backed by PostgreSQL.
-//	producer:  Queue Producer for enqueuing tasks into Redis Streams.
-//	sessions:  SessionStore backed by Redis for auth middleware.
-//	broker:    SSE Broker for real-time event distribution.
+//	cfg:           Loaded runtime configuration.
+//	pool:          PostgreSQL connection pool for health checks.
+//	redis:         go-redis client for health checks.
+//	users:         UserRepository backed by PostgreSQL.
+//	tasks:         TaskRepository backed by PostgreSQL.
+//	pipelines:     PipelineRepository backed by PostgreSQL.
+//	workers:       WorkerRepository backed by PostgreSQL.
+//	producer:      Queue Producer for enqueuing tasks into Redis Streams.
+//	sessions:      SessionStore backed by Redis for auth middleware.
+//	broker:        SSE Broker for real-time event distribution.
+//	cancellations: CancellationStore for setting cancel flags on running tasks.
 //
 // Preconditions:
 //   - All arguments are non-nil and their underlying connections are open.
@@ -61,18 +63,20 @@ func NewServer(
 	producer queue.Producer,
 	sessions queue.SessionStore,
 	broker sse.Broker,
+	cancellations queue.CancellationStore,
 ) *Server {
 	return &Server{
-		cfg:       cfg,
-		pool:      pool,
-		redis:     redisClient,
-		users:     users,
-		tasks:     tasks,
-		pipelines: pipelines,
-		workers:   workers,
-		producer:  producer,
-		sessions:  sessions,
-		broker:    broker,
+		cfg:           cfg,
+		pool:          pool,
+		redis:         redisClient,
+		users:         users,
+		tasks:         tasks,
+		pipelines:     pipelines,
+		workers:       workers,
+		producer:      producer,
+		sessions:      sessions,
+		broker:        broker,
+		cancellations: cancellations,
 	}
 }
 

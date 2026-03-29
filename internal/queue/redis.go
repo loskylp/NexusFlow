@@ -426,7 +426,50 @@ func (q *RedisQueue) Publish(ctx context.Context, channel string, event *models.
 	panic("not implemented")
 }
 
+// --- CancellationStore ---
+
+// SetCancelFlag implements CancellationStore.SetCancelFlag.
+// Writes a short-lived Redis key cancel:{taskID} so the Worker can detect the
+// cancellation signal between pipeline phases without polling PostgreSQL.
+//
+// Postconditions:
+//   - On success: cancel:{taskID} exists in Redis with the given TTL.
+func (q *RedisQueue) SetCancelFlag(ctx context.Context, taskID string, ttl time.Duration) error {
+	key := CancelFlagKey(taskID)
+	if err := q.client.Set(ctx, key, "1", ttl).Err(); err != nil {
+		return fmt.Errorf("queue.SetCancelFlag: SET %s: %w", key, err)
+	}
+	return nil
+}
+
+// CheckCancelFlag implements CancellationStore.CheckCancelFlag.
+// Returns true when cancel:{taskID} exists (i.e. the flag has been set and has not expired).
+// Returns false when the key is absent or expired (redis.Nil is treated as "not cancelled").
+//
+// Postconditions:
+//   - Returns (true, nil) when the cancel flag is present.
+//   - Returns (false, nil) when the cancel flag is absent or expired.
+//   - Returns (false, err) for Redis connectivity failures only.
+func (q *RedisQueue) CheckCancelFlag(ctx context.Context, taskID string) (bool, error) {
+	key := CancelFlagKey(taskID)
+	_, err := q.client.Get(ctx, key).Result()
+	if errors.Is(err, redis.Nil) {
+		return false, nil
+	}
+	if err != nil {
+		return false, fmt.Errorf("queue.CheckCancelFlag: GET %s: %w", key, err)
+	}
+	return true, nil
+}
+
 // --- Key helpers (public) ---
+
+// CancelFlagKey returns the Redis key used to signal a running task to stop.
+// Format: cancel:{taskID}
+// See: REQ-010, TASK-012
+func CancelFlagKey(taskID string) string {
+	return "cancel:" + taskID
+}
 
 // NewLogStream returns the Redis Streams key for a task's hot log stream.
 // Format: logs:{taskId}

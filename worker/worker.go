@@ -35,14 +35,15 @@ import (
 // Worker is the main struct for the NexusFlow worker process.
 // A single Worker instance manages registration, heartbeat, and task execution.
 type Worker struct {
-	cfg        *config.Config
-	tasks      db.TaskRepository
-	workers    db.WorkerRepository
-	pipelines  db.PipelineRepository
-	consumer   queue.Consumer
-	heartbeat  queue.HeartbeatStore
-	broker     TaskEventBroker
-	connectors ConnectorRegistry
+	cfg           *config.Config
+	tasks         db.TaskRepository
+	workers       db.WorkerRepository
+	pipelines     db.PipelineRepository
+	consumer      queue.Consumer
+	heartbeat     queue.HeartbeatStore
+	broker        TaskEventBroker
+	connectors    ConnectorRegistry
+	cancellations queue.CancellationStore
 }
 
 // NewWorker constructs a Worker with all required dependencies.
@@ -51,13 +52,14 @@ type Worker struct {
 //
 // Args:
 //
-//	cfg:        Runtime configuration (WorkerTags and WorkerID are required).
-//	tasks:      TaskRepository for status transitions.
-//	workers:    WorkerRepository for registration and status updates.
-//	consumer:   Queue Consumer for XREADGROUP and XACK.
-//	heartbeat:  HeartbeatStore for writing to workers:active.
-//	broker:     SSE Broker for publishing task and log events.
-//	connectors: Registry of available DataSource, Process, and Sink connectors.
+//	cfg:           Runtime configuration (WorkerTags and WorkerID are required).
+//	tasks:         TaskRepository for status transitions.
+//	workers:       WorkerRepository for registration and status updates.
+//	consumer:      Queue Consumer for XREADGROUP and XACK.
+//	heartbeat:     HeartbeatStore for writing to workers:active.
+//	broker:        SSE Broker for publishing task and log events.
+//	connectors:    Registry of available DataSource, Process, and Sink connectors.
+//	cancellations: CancellationStore for checking Redis cancel flags (may be nil).
 //
 // Preconditions:
 //   - cfg.WorkerTags is non-empty.
@@ -70,16 +72,18 @@ func NewWorker(
 	heartbeat queue.HeartbeatStore,
 	broker TaskEventBroker,
 	connectors ConnectorRegistry,
+	cancellations queue.CancellationStore,
 ) *Worker {
 	return &Worker{
-		cfg:        cfg,
-		tasks:      tasks,
-		workers:    workers,
-		pipelines:  nil,
-		consumer:   consumer,
-		heartbeat:  heartbeat,
-		broker:     broker,
-		connectors: connectors,
+		cfg:           cfg,
+		tasks:         tasks,
+		workers:       workers,
+		pipelines:     nil,
+		consumer:      consumer,
+		heartbeat:     heartbeat,
+		broker:        broker,
+		connectors:    connectors,
+		cancellations: cancellations,
 	}
 }
 
@@ -88,14 +92,15 @@ func NewWorker(
 //
 // Args:
 //
-//	cfg:        Runtime configuration (WorkerTags and WorkerID are required).
-//	tasks:      TaskRepository for status transitions.
-//	workers:    WorkerRepository for registration and status updates.
-//	pipelines:  PipelineRepository for loading pipeline definitions.
-//	consumer:   Queue Consumer for XREADGROUP and XACK.
-//	heartbeat:  HeartbeatStore for writing to workers:active.
-//	broker:     SSE Broker for publishing task and log events. May be nil.
-//	connectors: Registry of available DataSource, Process, and Sink connectors.
+//	cfg:           Runtime configuration (WorkerTags and WorkerID are required).
+//	tasks:         TaskRepository for status transitions.
+//	workers:       WorkerRepository for registration and status updates.
+//	pipelines:     PipelineRepository for loading pipeline definitions.
+//	consumer:      Queue Consumer for XREADGROUP and XACK.
+//	heartbeat:     HeartbeatStore for writing to workers:active.
+//	broker:        SSE Broker for publishing task and log events. May be nil.
+//	connectors:    Registry of available DataSource, Process, and Sink connectors.
+//	cancellations: CancellationStore for checking Redis cancel flags (may be nil).
 //
 // Preconditions:
 //   - cfg.WorkerTags is non-empty.
@@ -109,16 +114,18 @@ func NewWorkerWithPipelines(
 	heartbeat queue.HeartbeatStore,
 	broker TaskEventBroker,
 	connectors ConnectorRegistry,
+	cancellations queue.CancellationStore,
 ) *Worker {
 	return &Worker{
-		cfg:        cfg,
-		tasks:      tasks,
-		workers:    workers,
-		pipelines:  pipelines,
-		consumer:   consumer,
-		heartbeat:  heartbeat,
-		broker:     broker,
-		connectors: connectors,
+		cfg:           cfg,
+		tasks:         tasks,
+		workers:       workers,
+		pipelines:     pipelines,
+		consumer:      consumer,
+		heartbeat:     heartbeat,
+		broker:        broker,
+		connectors:    connectors,
+		cancellations: cancellations,
 	}
 }
 
@@ -375,6 +382,12 @@ func (w *Worker) runPipeline(ctx context.Context, message *queue.TaskMessage, ta
 		return &domainErrorWrapper{cause: err}
 	}
 
+	// Cancellation check between DataSource and Process (REQ-010, TASK-012).
+	// A cancelled flag set by the API handler triggers a graceful domain-level halt.
+	if w.checkCancellation(ctx, taskID) {
+		return &domainErrorWrapper{cause: fmt.Errorf("task cancelled")}
+	}
+
 	// Apply DataSource -> Process schema mapping.
 	processRecords, err := w.applyMappingsToSlice(dsRecords, pipeline.ProcessConfig.InputMappings)
 	if err != nil {
@@ -385,6 +398,11 @@ func (w *Worker) runPipeline(ctx context.Context, message *queue.TaskMessage, ta
 	transformedRecords, err := w.runProcess(ctx, pipeline, processRecords)
 	if err != nil {
 		return &domainErrorWrapper{cause: err}
+	}
+
+	// Cancellation check between Process and Sink (REQ-010, TASK-012).
+	if w.checkCancellation(ctx, taskID) {
+		return &domainErrorWrapper{cause: fmt.Errorf("task cancelled")}
 	}
 
 	// Apply Process -> Sink schema mapping.
@@ -682,6 +700,32 @@ func (w *Worker) ApplySchemaMapping(data map[string]any, mappings []models.Schem
 		result[m.TargetField] = val
 	}
 	return result, nil
+}
+
+// checkCancellation returns true when the cancel:{taskID} flag is set in Redis,
+// indicating that the API layer has requested cancellation of this task.
+// Returns false when the store is nil (pass-through when Redis is unavailable in tests).
+// Errors from Redis are logged but do not halt execution — failing to detect a
+// cancellation is safer than killing a healthy task due to a transient Redis error.
+//
+// Args:
+//
+//	ctx:    Execution context.
+//	taskID: The task to check.
+//
+// Returns:
+//   - true if the cancellation flag is set.
+//   - false if the flag is absent, expired, or the store is nil.
+func (w *Worker) checkCancellation(ctx context.Context, taskID uuid.UUID) bool {
+	if w.cancellations == nil {
+		return false
+	}
+	cancelled, err := w.cancellations.CheckCancelFlag(ctx, taskID.String())
+	if err != nil {
+		log.Printf("worker: task %s: checkCancellation: Redis error (ignoring): %v", taskID, err)
+		return false
+	}
+	return cancelled
 }
 
 // isDomainError returns true when err is a domainErrorWrapper, meaning the failure is

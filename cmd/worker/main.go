@@ -106,6 +106,7 @@ func main() {
 		redisQueue, // HeartbeatStore
 		nil,        // Broker — wired in TASK-015
 		connectorRegistry,
+		redisQueue, // CancellationStore — TASK-012
 	)
 
 	// Run blocks until SIGTERM/SIGINT.

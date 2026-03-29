@@ -348,7 +348,7 @@ func TestDemoConnectors_EndToEnd_TaskCompletes(t *testing.T) {
 		WorkerID:   "test-worker",
 		WorkerTags: []string{"demo"},
 	}
-	w := worker.NewWorkerWithPipelines(cfg, taskRepo, nil, pipelineRepo, nil, nil, nil, reg)
+	w := worker.NewWorkerWithPipelines(cfg, taskRepo, nil, pipelineRepo, nil, nil, nil, reg, nil)
 
 	msg := &queue.TaskMessage{
 		TaskID:      taskID.String(),

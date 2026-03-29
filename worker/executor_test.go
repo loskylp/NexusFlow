@@ -490,6 +490,7 @@ func buildWorkerForExecution(
 		newFakeHeartbeatStore(),
 		broker,
 		reg,
+		nil, // cancellations — not needed for executor tests
 	)
 }
 
@@ -501,7 +502,7 @@ func buildWorkerForExecution(
 func TestApplySchemaMapping_RenamesFields(t *testing.T) {
 	w := worker.NewWorker(
 		testExecutorConfig("map-test-001"),
-		nil, nil, nil, nil, nil, nil,
+		nil, nil, nil, nil, nil, nil, nil,
 	)
 
 	input := map[string]any{"id": "123", "name": "Alice"}
@@ -529,7 +530,7 @@ func TestApplySchemaMapping_RenamesFields(t *testing.T) {
 func TestApplySchemaMapping_ErrorOnMissingSourceField(t *testing.T) {
 	w := worker.NewWorker(
 		testExecutorConfig("map-test-002"),
-		nil, nil, nil, nil, nil, nil,
+		nil, nil, nil, nil, nil, nil, nil,
 	)
 
 	input := map[string]any{"id": "123"}
@@ -548,7 +549,7 @@ func TestApplySchemaMapping_ErrorOnMissingSourceField(t *testing.T) {
 func TestApplySchemaMapping_EmptyMappings(t *testing.T) {
 	w := worker.NewWorker(
 		testExecutorConfig("map-test-003"),
-		nil, nil, nil, nil, nil, nil,
+		nil, nil, nil, nil, nil, nil, nil,
 	)
 
 	input := map[string]any{"id": "123", "name": "Alice"}
@@ -566,7 +567,7 @@ func TestApplySchemaMapping_EmptyMappings(t *testing.T) {
 func TestApplySchemaMapping_DoesNotMutateInput(t *testing.T) {
 	w := worker.NewWorker(
 		testExecutorConfig("map-test-004"),
-		nil, nil, nil, nil, nil, nil,
+		nil, nil, nil, nil, nil, nil, nil,
 	)
 
 	input := map[string]any{"id": "123"}
@@ -1062,6 +1063,7 @@ func TestRunConsumptionLoop_TagFiltering(t *testing.T) {
 		newFakeHeartbeatStore(),
 		nil, // broker
 		newFakeRegistry(),
+		nil, // cancellations
 	)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 200*time.Millisecond)

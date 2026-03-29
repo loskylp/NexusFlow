@@ -213,6 +213,35 @@ type HeartbeatStore interface {
 	Remove(ctx context.Context, workerID string) error
 }
 
+// CancellationStore writes and reads task cancellation flags in Redis.
+// The Cancel handler sets the flag; the Worker reads it between pipeline phases.
+// See: REQ-010, TASK-012
+type CancellationStore interface {
+	// SetCancelFlag marks a task as cancelled by writing cancel:{taskID} in Redis
+	// with a short TTL. The Worker polls this key between pipeline phases.
+	//
+	// Args:
+	//   ctx:    Request context.
+	//   taskID: The task to cancel.
+	//   ttl:    How long the flag persists; typically 60 seconds.
+	//
+	// Postconditions:
+	//   - On success: cancel:{taskID} exists in Redis with the given TTL.
+	SetCancelFlag(ctx context.Context, taskID string, ttl time.Duration) error
+
+	// CheckCancelFlag returns true when cancel:{taskID} exists in Redis.
+	// Returns false when the key is absent or expired.
+	//
+	// Args:
+	//   ctx:    Request context.
+	//   taskID: The task to check.
+	//
+	// Returns:
+	//   true if the cancellation flag is set; false otherwise.
+	//   An error only for Redis connectivity failures (not for missing keys).
+	CheckCancelFlag(ctx context.Context, taskID string) (bool, error)
+}
+
 // EventPublisher publishes events to Redis Pub/Sub channels consumed by the SSE broker.
 // See: ADR-007, TASK-015
 type EventPublisher interface {

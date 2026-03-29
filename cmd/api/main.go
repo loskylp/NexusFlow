@@ -115,6 +115,7 @@ func main() {
 		q,
 		sessionStore,
 		broker,
+		q, // CancellationStore — same RedisQueue instance
 	)
 
 	addr := fmt.Sprintf(":%d", cfg.APIPort)

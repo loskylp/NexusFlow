@@ -101,7 +101,19 @@ func (r *stubTaskRepo) IncrementRetryCount(_ context.Context, _ uuid.UUID) (int,
 	return 0, nil
 }
 
-func (r *stubTaskRepo) Cancel(_ context.Context, _ uuid.UUID, _ string) error {
+func (r *stubTaskRepo) Cancel(_ context.Context, id uuid.UUID, reason string) error {
+	if t, ok := r.tasks[id]; ok {
+		oldStatus := t.Status
+		t.Status = models.TaskStatusCancelled
+		r.statusLog = append(r.statusLog, &models.TaskStateLog{
+			ID:        uuid.New(),
+			TaskID:    id,
+			FromState: oldStatus,
+			ToState:   models.TaskStatusCancelled,
+			Reason:    reason,
+			Timestamp: time.Now(),
+		})
+	}
 	return nil
 }
 
@@ -1040,6 +1052,344 @@ func TestTaskGet_InvalidTaskIDReturns400(t *testing.T) {
 		t.Errorf("expected 400, got %d", rec.Code)
 	}
 }
+
+// --- Cancel test helpers ---
+
+// stubCancellationStore is an in-memory CancellationStore for Cancel handler tests.
+// It records SetCancelFlag calls and allows pre-loading flags for CheckCancelFlag.
+type stubCancellationStore struct {
+	flags map[string]bool
+}
+
+func newStubCancellationStore() *stubCancellationStore {
+	return &stubCancellationStore{flags: make(map[string]bool)}
+}
+
+func (s *stubCancellationStore) SetCancelFlag(_ context.Context, taskID string, _ time.Duration) error {
+	s.flags[taskID] = true
+	return nil
+}
+
+func (s *stubCancellationStore) CheckCancelFlag(_ context.Context, taskID string) (bool, error) {
+	return s.flags[taskID], nil
+}
+
+// taskCancelRequest builds a POST /api/tasks/{id}/cancel request with chi route context.
+func taskCancelRequest(t *testing.T, taskID string, sess *models.Session) *http.Request {
+	t.Helper()
+	url := "/api/tasks/" + taskID + "/cancel"
+	req := taskRequest(t, http.MethodPost, url, sess)
+	rctx := chi.NewRouteContext()
+	rctx.URLParams.Add("id", taskID)
+	return req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
+}
+
+// newCancelTestServer builds a Server with the given task repo, broker, and
+// cancellation store. Other fields are stubbed with safe no-op implementations.
+// Nil arguments are left as true nil interfaces to avoid the typed-nil interface pitfall:
+// a (*stubSSEBroker)(nil) stored in an sse.Broker interface is non-nil and would bypass
+// nil guards in the handler, causing a panic on method dispatch.
+func newCancelTestServer(tasks *stubTaskRepo, broker *stubSSEBroker, cs *stubCancellationStore) *Server {
+	srv := &Server{
+		tasks:     tasks,
+		pipelines: newStubPipelineRepo(),
+		producer:  &stubProducer{},
+	}
+	// Assign only when non-nil to avoid typed-nil interface pitfalls.
+	if broker != nil {
+		srv.broker = broker
+	}
+	if cs != nil {
+		srv.cancellations = cs
+	}
+	return srv
+}
+
+// makeQueuedTask inserts a task with the given status owned by ownerID into the stub repo.
+func makeQueuedTask(repo *stubTaskRepo, ownerID uuid.UUID, status models.TaskStatus) *models.Task {
+	task := &models.Task{
+		ID:          uuid.New(),
+		UserID:      ownerID,
+		Status:      status,
+		RetryConfig: models.DefaultRetryConfig(),
+		Input:       map[string]any{},
+		CreatedAt:   time.Now(),
+		UpdatedAt:   time.Now(),
+	}
+	repo.tasks[task.ID] = task
+	return task
+}
+
+// --- Cancel tests ---
+
+// TestCancel_OwnerCancelSubmittedTaskReturns204 verifies acceptance criterion 1:
+// POST /api/tasks/{id}/cancel by the task owner returns 204 and sets status to "cancelled".
+func TestCancel_OwnerCancelSubmittedTaskReturns204(t *testing.T) {
+	repo := newStubTaskRepo()
+	ownerID := uuid.New()
+	task := makeQueuedTask(repo, ownerID, models.TaskStatusSubmitted)
+
+	sess := &models.Session{UserID: ownerID, Role: models.RoleUser, CreatedAt: time.Now()}
+	srv := newCancelTestServer(repo, nil, nil)
+	h := &TaskHandler{server: srv}
+
+	rec := httptest.NewRecorder()
+	h.Cancel(rec, taskCancelRequest(t, task.ID.String(), sess))
+
+	if rec.Code != http.StatusNoContent {
+		t.Fatalf("expected 204, got %d: %s", rec.Code, rec.Body.String())
+	}
+
+	// Status must be "cancelled" after the call.
+	stored := repo.tasks[task.ID]
+	if stored.Status != models.TaskStatusCancelled {
+		t.Errorf("expected status %q, got %q", models.TaskStatusCancelled, stored.Status)
+	}
+}
+
+// TestCancel_AdminCanCancelAnyTask verifies acceptance criterion 2:
+// an Admin can cancel a task they do not own.
+func TestCancel_AdminCanCancelAnyTask(t *testing.T) {
+	repo := newStubTaskRepo()
+	ownerID := uuid.New()
+	adminID := uuid.New()
+	task := makeQueuedTask(repo, ownerID, models.TaskStatusQueued)
+
+	sess := &models.Session{UserID: adminID, Role: models.RoleAdmin, CreatedAt: time.Now()}
+	srv := newCancelTestServer(repo, nil, nil)
+	h := &TaskHandler{server: srv}
+
+	rec := httptest.NewRecorder()
+	h.Cancel(rec, taskCancelRequest(t, task.ID.String(), sess))
+
+	if rec.Code != http.StatusNoContent {
+		t.Fatalf("expected 204, got %d: %s", rec.Code, rec.Body.String())
+	}
+
+	stored := repo.tasks[task.ID]
+	if stored.Status != models.TaskStatusCancelled {
+		t.Errorf("expected status %q, got %q", models.TaskStatusCancelled, stored.Status)
+	}
+}
+
+// TestCancel_NonOwnerNonAdminReturns403 verifies acceptance criterion 3:
+// a non-owner non-admin caller receives 403 and the task is not cancelled.
+func TestCancel_NonOwnerNonAdminReturns403(t *testing.T) {
+	repo := newStubTaskRepo()
+	ownerID := uuid.New()
+	otherID := uuid.New()
+	task := makeQueuedTask(repo, ownerID, models.TaskStatusQueued)
+
+	sess := &models.Session{UserID: otherID, Role: models.RoleUser, CreatedAt: time.Now()}
+	srv := newCancelTestServer(repo, nil, nil)
+	h := &TaskHandler{server: srv}
+
+	rec := httptest.NewRecorder()
+	h.Cancel(rec, taskCancelRequest(t, task.ID.String(), sess))
+
+	if rec.Code != http.StatusForbidden {
+		t.Errorf("expected 403, got %d", rec.Code)
+	}
+
+	// Task must not be cancelled.
+	stored := repo.tasks[task.ID]
+	if stored.Status == models.TaskStatusCancelled {
+		t.Error("task was cancelled by a non-owner non-admin caller")
+	}
+}
+
+// TestCancel_TerminalTaskReturns409 verifies acceptance criterion 4:
+// cancelling a task in a terminal state (completed, failed, cancelled) returns 409.
+func TestCancel_TerminalTaskReturns409(t *testing.T) {
+	terminalStates := []models.TaskStatus{
+		models.TaskStatusCompleted,
+		models.TaskStatusFailed,
+		models.TaskStatusCancelled,
+	}
+
+	for _, status := range terminalStates {
+		t.Run(string(status), func(t *testing.T) {
+			repo := newStubTaskRepo()
+			ownerID := uuid.New()
+			task := makeQueuedTask(repo, ownerID, status)
+
+			sess := &models.Session{UserID: ownerID, Role: models.RoleUser, CreatedAt: time.Now()}
+			srv := newCancelTestServer(repo, nil, nil)
+			h := &TaskHandler{server: srv}
+
+			rec := httptest.NewRecorder()
+			h.Cancel(rec, taskCancelRequest(t, task.ID.String(), sess))
+
+			if rec.Code != http.StatusConflict {
+				t.Errorf("status=%q: expected 409, got %d", status, rec.Code)
+			}
+		})
+	}
+}
+
+// TestCancel_RunningTaskSetsCancelFlag verifies acceptance criterion 5:
+// cancelling a running task sets the Redis cancel flag so the worker can detect it.
+func TestCancel_RunningTaskSetsCancelFlag(t *testing.T) {
+	repo := newStubTaskRepo()
+	ownerID := uuid.New()
+	task := makeQueuedTask(repo, ownerID, models.TaskStatusRunning)
+
+	cs := newStubCancellationStore()
+	sess := &models.Session{UserID: ownerID, Role: models.RoleUser, CreatedAt: time.Now()}
+	srv := newCancelTestServer(repo, nil, cs)
+	h := &TaskHandler{server: srv}
+
+	rec := httptest.NewRecorder()
+	h.Cancel(rec, taskCancelRequest(t, task.ID.String(), sess))
+
+	if rec.Code != http.StatusNoContent {
+		t.Fatalf("expected 204, got %d: %s", rec.Code, rec.Body.String())
+	}
+
+	// The cancel flag must be set for this task ID.
+	if !cs.flags[task.ID.String()] {
+		t.Error("expected cancel flag to be set in CancellationStore for running task")
+	}
+}
+
+// TestCancel_NonRunningTaskDoesNotSetCancelFlag verifies that the cancel flag
+// is NOT set for non-running tasks (submitted, queued, assigned) — the flag is
+// only relevant when a Worker is actively executing the task.
+func TestCancel_NonRunningTaskDoesNotSetCancelFlag(t *testing.T) {
+	for _, status := range []models.TaskStatus{
+		models.TaskStatusSubmitted,
+		models.TaskStatusQueued,
+		models.TaskStatusAssigned,
+	} {
+		t.Run(string(status), func(t *testing.T) {
+			repo := newStubTaskRepo()
+			ownerID := uuid.New()
+			task := makeQueuedTask(repo, ownerID, status)
+
+			cs := newStubCancellationStore()
+			sess := &models.Session{UserID: ownerID, Role: models.RoleUser, CreatedAt: time.Now()}
+			srv := newCancelTestServer(repo, nil, cs)
+			h := &TaskHandler{server: srv}
+
+			rec := httptest.NewRecorder()
+			h.Cancel(rec, taskCancelRequest(t, task.ID.String(), sess))
+
+			if rec.Code != http.StatusNoContent {
+				t.Fatalf("status=%q: expected 204, got %d", status, rec.Code)
+			}
+
+			if cs.flags[task.ID.String()] {
+				t.Errorf("status=%q: cancel flag must NOT be set for non-running task", status)
+			}
+		})
+	}
+}
+
+// TestCancel_CreatesTaskStateLogEntry verifies acceptance criterion 6:
+// cancellation creates a task_state_log entry recording the transition.
+func TestCancel_CreatesTaskStateLogEntry(t *testing.T) {
+	repo := newStubTaskRepo()
+	ownerID := uuid.New()
+	task := makeQueuedTask(repo, ownerID, models.TaskStatusQueued)
+
+	sess := &models.Session{UserID: ownerID, Role: models.RoleUser, CreatedAt: time.Now()}
+	srv := newCancelTestServer(repo, nil, nil)
+	h := &TaskHandler{server: srv}
+
+	rec := httptest.NewRecorder()
+	h.Cancel(rec, taskCancelRequest(t, task.ID.String(), sess))
+
+	if rec.Code != http.StatusNoContent {
+		t.Fatalf("expected 204, got %d: %s", rec.Code, rec.Body.String())
+	}
+
+	// The state log must contain a transition to "cancelled".
+	log, _ := repo.GetStateLog(context.Background(), task.ID)
+	var found bool
+	for _, entry := range log {
+		if entry.ToState == models.TaskStatusCancelled {
+			found = true
+		}
+	}
+	if !found {
+		t.Error("expected task_state_log entry with ToState=cancelled")
+	}
+}
+
+// TestCancel_NotFoundReturns404 verifies that requesting cancellation of a
+// non-existent task returns 404.
+func TestCancel_NotFoundReturns404(t *testing.T) {
+	repo := newStubTaskRepo()
+	ownerID := uuid.New()
+	sess := &models.Session{UserID: ownerID, Role: models.RoleUser, CreatedAt: time.Now()}
+	srv := newCancelTestServer(repo, nil, nil)
+	h := &TaskHandler{server: srv}
+
+	rec := httptest.NewRecorder()
+	h.Cancel(rec, taskCancelRequest(t, uuid.New().String(), sess))
+
+	if rec.Code != http.StatusNotFound {
+		t.Errorf("expected 404, got %d", rec.Code)
+	}
+}
+
+// TestCancel_UnauthenticatedReturns401 verifies that a missing session returns 401.
+func TestCancel_UnauthenticatedReturns401(t *testing.T) {
+	repo := newStubTaskRepo()
+	srv := newCancelTestServer(repo, nil, nil)
+	h := &TaskHandler{server: srv}
+
+	rec := httptest.NewRecorder()
+	h.Cancel(rec, taskCancelRequest(t, uuid.New().String(), nil))
+
+	if rec.Code != http.StatusUnauthorized {
+		t.Errorf("expected 401, got %d", rec.Code)
+	}
+}
+
+// TestCancel_InvalidTaskIDReturns400 verifies that a non-UUID path segment
+// returns 400.
+func TestCancel_InvalidTaskIDReturns400(t *testing.T) {
+	repo := newStubTaskRepo()
+	ownerID := uuid.New()
+	sess := &models.Session{UserID: ownerID, Role: models.RoleUser, CreatedAt: time.Now()}
+	srv := newCancelTestServer(repo, nil, nil)
+	h := &TaskHandler{server: srv}
+
+	rec := httptest.NewRecorder()
+	h.Cancel(rec, taskCancelRequest(t, "not-a-uuid", sess))
+
+	if rec.Code != http.StatusBadRequest {
+		t.Errorf("expected 400, got %d", rec.Code)
+	}
+}
+
+// TestCancel_PublishesSSEEvent verifies that a successful cancellation publishes
+// an SSE task event (fire-and-forget per ADR-007).
+func TestCancel_PublishesSSEEvent(t *testing.T) {
+	repo := newStubTaskRepo()
+	ownerID := uuid.New()
+	task := makeQueuedTask(repo, ownerID, models.TaskStatusQueued)
+
+	broker := &stubSSEBroker{}
+	sess := &models.Session{UserID: ownerID, Role: models.RoleUser, CreatedAt: time.Now()}
+	srv := newCancelTestServer(repo, broker, nil)
+	h := &TaskHandler{server: srv}
+
+	rec := httptest.NewRecorder()
+	h.Cancel(rec, taskCancelRequest(t, task.ID.String(), sess))
+
+	if rec.Code != http.StatusNoContent {
+		t.Fatalf("expected 204, got %d: %s", rec.Code, rec.Body.String())
+	}
+
+	if !broker.publishCalled {
+		t.Error("expected PublishTaskEvent to be called on successful cancellation")
+	}
+}
+
+// Compile-time assertion that stubCancellationStore satisfies queue.CancellationStore.
+var _ queue.CancellationStore = (*stubCancellationStore)(nil)
 
 // Compile-time assertion that stubTaskRepo satisfies db.TaskRepository.
 var _ db.TaskRepository = (*stubTaskRepo)(nil)

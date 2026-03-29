@@ -212,7 +212,7 @@ func (r *PgTaskRepository) IncrementRetryCount(ctx context.Context, id uuid.UUID
 //   - Caller has verified the requesting user is the task owner or Admin.
 //   - Task is in a cancellable state (not already terminal).
 func (r *PgTaskRepository) Cancel(ctx context.Context, id uuid.UUID, reason string) error {
-	return r.queries.CancelTask(ctx, id)
+	return r.UpdateStatus(ctx, id, models.TaskStatusCancelled, reason, nil)
 }
 
 // GetStateLog implements TaskRepository.GetStateLog.

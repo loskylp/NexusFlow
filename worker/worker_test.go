@@ -119,7 +119,7 @@ func TestNewWorker_ReturnsNonNil(t *testing.T) {
 	repo := newFakeWorkerRepo()
 	hb := newFakeHeartbeatStore()
 
-	w := worker.NewWorker(cfg, nil, repo, nil, hb, nil, nil)
+	w := worker.NewWorker(cfg, nil, repo, nil, hb, nil, nil, nil)
 	if w == nil {
 		t.Fatal("NewWorker returned nil")
 	}
@@ -132,7 +132,7 @@ func TestRegister_InsertsWorkerWithOnlineStatus(t *testing.T) {
 	repo := newFakeWorkerRepo()
 	hb := newFakeHeartbeatStore()
 
-	w := worker.NewWorker(cfg, nil, repo, nil, hb, nil, nil)
+	w := worker.NewWorker(cfg, nil, repo, nil, hb, nil, nil, nil)
 
 	if err := w.Register(context.Background()); err != nil {
 		t.Fatalf("Register: %v", err)
@@ -157,7 +157,7 @@ func TestRegister_RecordsInitialHeartbeat(t *testing.T) {
 	repo := newFakeWorkerRepo()
 	hb := newFakeHeartbeatStore()
 
-	w := worker.NewWorker(cfg, nil, repo, nil, hb, nil, nil)
+	w := worker.NewWorker(cfg, nil, repo, nil, hb, nil, nil, nil)
 
 	if err := w.Register(context.Background()); err != nil {
 		t.Fatalf("Register: %v", err)
@@ -176,7 +176,7 @@ func TestRegister_SetsCorrectTags(t *testing.T) {
 	repo := newFakeWorkerRepo()
 	hb := newFakeHeartbeatStore()
 
-	w := worker.NewWorker(cfg, nil, repo, nil, hb, nil, nil)
+	w := worker.NewWorker(cfg, nil, repo, nil, hb, nil, nil, nil)
 
 	if err := w.Register(context.Background()); err != nil {
 		t.Fatalf("Register: %v", err)
@@ -205,7 +205,7 @@ func TestRegister_SetsRegisteredAt(t *testing.T) {
 	hb := newFakeHeartbeatStore()
 
 	before := time.Now().Add(-time.Second)
-	w := worker.NewWorker(cfg, nil, repo, nil, hb, nil, nil)
+	w := worker.NewWorker(cfg, nil, repo, nil, hb, nil, nil, nil)
 	if err := w.Register(context.Background()); err != nil {
 		t.Fatalf("Register: %v", err)
 	}
@@ -231,7 +231,7 @@ func TestEmitHeartbeats_CallsRecordHeartbeatPeriodically(t *testing.T) {
 	repo := newFakeWorkerRepo()
 	hb := newFakeHeartbeatStore()
 
-	w := worker.NewWorker(cfg, nil, repo, nil, hb, nil, nil)
+	w := worker.NewWorker(cfg, nil, repo, nil, hb, nil, nil, nil)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 250*time.Millisecond)
 	defer cancel()
@@ -258,7 +258,7 @@ func TestRun_MarksWorkerDownOnShutdown(t *testing.T) {
 	repo := newFakeWorkerRepo()
 	hb := newFakeHeartbeatStore()
 
-	w := worker.NewWorker(cfg, nil, repo, nil, hb, nil, nil)
+	w := worker.NewWorker(cfg, nil, repo, nil, hb, nil, nil, nil)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	done := make(chan error, 1)
@@ -305,7 +305,7 @@ func TestRun_MultipleWorkersDifferentIDs(t *testing.T) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			w := worker.NewWorker(cfg, nil, repo, nil, hb, nil, nil)
+			w := worker.NewWorker(cfg, nil, repo, nil, hb, nil, nil, nil)
 			_ = w.Run(ctx)
 		}()
 	}

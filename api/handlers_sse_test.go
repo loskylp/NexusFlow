@@ -33,6 +33,7 @@ type stubSSEBroker struct {
 	serveSinkCalled   bool
 	serveSinkTaskID   string
 	capturedSession   *models.Session
+	publishCalled     bool // set to true when PublishTaskEvent is called
 }
 
 func (b *stubSSEBroker) Start(_ context.Context) error { return nil }
@@ -64,6 +65,7 @@ func (b *stubSSEBroker) ServeSinkEvents(w http.ResponseWriter, _ *http.Request, 
 }
 
 func (b *stubSSEBroker) PublishTaskEvent(_ context.Context, _ *models.Task, _ string) error {
+	b.publishCalled = true
 	return nil
 }
 
