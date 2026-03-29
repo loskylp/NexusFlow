@@ -86,11 +86,13 @@ func main() {
 	pipelineRepo := db.NewPgPipelineRepository(pool)
 	redisQueue := queue.NewRedisQueue(redisClient)
 
-	// Build connector registry and register demo connectors (TASK-042).
-	// All three demo connector types ("demo") are registered so pipelines using
-	// connector type "demo" execute end-to-end through the walking skeleton.
+	// Build connector registry and register connectors.
+	// Demo connectors (type "demo") provide the walking skeleton for all three phases.
+	// Atomic sink connectors (types "database", "s3", "file") provide production-grade
+	// atomicity and idempotency at the Sink boundary (TASK-018, ADR-003, ADR-009).
 	connectorRegistry := workerPkg.NewDefaultConnectorRegistry()
 	workerPkg.RegisterDemoConnectors(connectorRegistry)
+	workerPkg.RegisterAtomicSinkConnectors(connectorRegistry)
 
 	// Construct the worker.
 	// broker is nil until TASK-015 (SSE infrastructure) is implemented.
