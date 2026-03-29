@@ -8,15 +8,15 @@
 
 ## Where We Are
 
-Cycle 2 execution in progress. TASK-012 (Task cancellation) built by Builder (2026-03-29). 14 unit tests + 3 worker cancellation tests passing. Builder flagged deviation: PgTaskRepository.Cancel may not write task_state_log entry -- Verifier to check in integration. Dispatching to Verifier for verification.
+Cycle 2 execution in progress. TASK-012 (Task cancellation) verified PASS (iteration 2, 2026-03-29). 6/6 acceptance criteria passed. CI green.
 
-Cycle 2 scope: 10 tasks -- Core System Completion. 2 of 10 verified PASS (TASK-009, TASK-018). TASK-012 built, pending verification. Next after verification: TASK-014.
+Cycle 2 scope: 10 tasks -- Core System Completion. 3 of 10 verified PASS (TASK-009, TASK-018, TASK-012). Next: TASK-014 (Pipeline chain definition) -- dispatching to Builder.
 
 ## Active Work
 
-**Agent in control:** Verifier (dispatched for TASK-012 verification)
-**Current task:** TASK-012 -- Task cancellation
-**Waiting for:** Verifier to complete TASK-012 verification
+**Agent in control:** Builder (dispatched for TASK-014)
+**Current task:** TASK-014 -- Pipeline chain definition
+**Waiting for:** Builder to complete TASK-014 implementation
 **Blocker:** None
 
 ---
@@ -28,7 +28,7 @@ Cycle 2 scope: 10 tasks -- Core System Completion. 2 of 10 verified PASS (TASK-0
 | TASK-009 | Monitor service -- heartbeat checking and failover | None (depends on Cycle 1: TASK-004, TASK-006, TASK-007) | COMPLETE (Verifier PASS, 2026-03-28) |
 | TASK-010 | Infrastructure retry with backoff | TASK-009 | Pending |
 | TASK-011 | Dead letter queue with cascading cancellation | TASK-009, TASK-010, TASK-014 | Pending |
-| TASK-012 | Task cancellation | None (depends on Cycle 1: TASK-005, TASK-007) | BUILT -- PENDING VERIFICATION |
+| TASK-012 | Task cancellation | None (depends on Cycle 1: TASK-005, TASK-007) | COMPLETE (Verifier PASS, 2026-03-29) |
 | TASK-014 | Pipeline chain definition | None (depends on Cycle 1: TASK-013, TASK-007) | Pending |
 | TASK-016 | Log production and dual storage | None (depends on Cycle 1: TASK-007, TASK-015) | Pending |
 | TASK-017 | Admin user management | None (depends on Cycle 1: TASK-003) | Pending |
@@ -112,7 +112,7 @@ Note: Scaffolder not re-invoked -- Cycle 1 Scaffolder already scaffolded full pr
 
 ## Iterate Loop State
 
-No active iterate loop. TASK-009 passed on first iteration. TASK-018 passed on first iteration. TASK-012 built (iteration 1), dispatched to Verifier for initial verification.
+No active iterate loop. TASK-009 passed on first iteration. TASK-018 passed on first iteration. TASK-012 passed on iteration 2 (re-verification after Builder fix). Dispatching TASK-014 to Builder (iteration 1).
 
 ---
 
@@ -135,7 +135,7 @@ No active iterate loop. TASK-009 passed on first iteration. TASK-018 passed on f
 
 | Metric | Value |
 |---|---|
-| Tasks completed | 2 of 10 |
+| Tasks completed | 3 of 10 |
 | Average iterations to PASS | -- |
 | Tasks that hit max iterations | 0 |
 | Escalations to Nexus | 0 |
