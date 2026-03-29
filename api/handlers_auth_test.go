@@ -15,6 +15,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/nxlabs/nexusflow/internal/auth"
 	"github.com/nxlabs/nexusflow/internal/config"
+	"github.com/nxlabs/nexusflow/internal/db"
 	"github.com/nxlabs/nexusflow/internal/models"
 )
 
@@ -34,6 +35,9 @@ func (r *stubUserRepo) addUser(u *models.User) {
 }
 
 func (r *stubUserRepo) Create(_ context.Context, u *models.User) (*models.User, error) {
+	if _, exists := r.users[u.Username]; exists {
+		return nil, db.ErrConflict
+	}
 	r.users[u.Username] = u
 	return u, nil
 }

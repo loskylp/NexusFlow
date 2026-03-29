@@ -13,6 +13,7 @@ import (
 	"github.com/nxlabs/nexusflow/internal/auth"
 	"github.com/nxlabs/nexusflow/internal/config"
 	"github.com/nxlabs/nexusflow/internal/db"
+	"github.com/nxlabs/nexusflow/internal/models"
 	"github.com/nxlabs/nexusflow/internal/queue"
 	"github.com/nxlabs/nexusflow/internal/sse"
 	"github.com/redis/go-redis/v9"
@@ -110,6 +111,9 @@ func NewServer(
 //	GET    /api/workers                — WorkerHandler.List      (TASK-025) — authenticated
 //	POST   /api/chains                 — ChainHandler.Create     (TASK-014) — authenticated
 //	GET    /api/chains/{id}            — ChainHandler.Get        (TASK-014) — authenticated
+//	POST   /api/users                  — UserHandler.CreateUser  (TASK-017) — admin
+//	GET    /api/users                  — UserHandler.ListUsers   (TASK-017) — admin
+//	PUT    /api/users/{id}/deactivate  — UserHandler.DeactivateUser (TASK-017) — admin
 //	GET    /events/tasks               — SSEHandler.Tasks        (TASK-015) — authenticated
 //	GET    /events/workers             — SSEHandler.Workers      (TASK-015) — authenticated
 //	GET    /events/tasks/{id}/logs     — SSEHandler.Logs         (TASK-015) — authenticated
@@ -155,6 +159,15 @@ func (s *Server) Handler() http.Handler {
 
 		workerH := &WorkerHandler{server: s}
 		protected.Get("/api/workers", workerH.List)
+
+		// User management routes (TASK-017): admin-only sub-group.
+		userH := &UserHandler{server: s}
+		protected.Group(func(admin chi.Router) {
+			admin.Use(auth.RequireRole(models.RoleAdmin))
+			admin.Post("/api/users", userH.CreateUser)
+			admin.Get("/api/users", userH.ListUsers)
+			admin.Put("/api/users/{id}/deactivate", userH.DeactivateUser)
+		})
 
 		// Chain routes (TASK-014).
 		chainH := &ChainHandler{server: s}
