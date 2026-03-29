@@ -127,6 +127,14 @@ func (r *stubTaskRepo) GetStateLog(_ context.Context, taskID uuid.UUID) ([]*mode
 	return out, nil
 }
 
+func (r *stubTaskRepo) SetRetryAfterAndTags(_ context.Context, _ uuid.UUID, _ *time.Time, _ []string) error {
+	return nil
+}
+
+func (r *stubTaskRepo) ListRetryReady(_ context.Context) ([]*models.Task, error) {
+	return []*models.Task{}, nil
+}
+
 // stubPipelineRepo is an in-memory PipelineRepository for testing.
 type stubPipelineRepo struct {
 	pipelines map[uuid.UUID]*models.Pipeline

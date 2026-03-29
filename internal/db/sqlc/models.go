@@ -58,6 +58,8 @@ type Task struct {
 	Status      string             `db:"status" json:"status"`
 	RetryConfig json.RawMessage    `db:"retry_config" json:"retry_config"`
 	RetryCount  int32              `db:"retry_count" json:"retry_count"`
+	RetryAfter  pgtype.Timestamptz `db:"retry_after" json:"retry_after"`
+	RetryTags   []string           `db:"retry_tags" json:"retry_tags"`
 	ExecutionID string             `db:"execution_id" json:"execution_id"`
 	WorkerID    *string            `db:"worker_id" json:"worker_id"`
 	Input       json.RawMessage    `db:"input" json:"input"`

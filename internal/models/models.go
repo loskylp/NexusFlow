@@ -175,7 +175,14 @@ type Chain struct {
 // PipelineID is nullable: when the referenced pipeline is deleted, PipelineID
 // is set to nil by the database (ON DELETE SET NULL). Historical tasks are
 // preserved with a nil PipelineID rather than being cascade-deleted.
-// See: process/analyst/brief.md (Task), REQ-001, REQ-009, ADR-003
+// RetryAfter is set by the Monitor when a task is reclaimed after an infrastructure
+// failure. When non-nil, the task must not be re-enqueued until RetryAfter has elapsed
+// (exponential/linear/fixed backoff per RetryConfig.Backoff). A nil RetryAfter means
+// the task has never been retried or is immediately ready for dispatch.
+// RetryTags records the capability tag streams the task must be re-enqueued to when
+// RetryAfter elapses. Populated alongside RetryAfter during XCLAIM reclamation so
+// the Monitor's retry-ready scan knows which stream(s) to target.
+// See: process/analyst/brief.md (Task), REQ-001, REQ-009, ADR-003, TASK-010
 type Task struct {
 	ID          uuid.UUID    `json:"id"          db:"id"`
 	PipelineID  *uuid.UUID   `json:"pipelineId"  db:"pipeline_id"`
@@ -184,6 +191,8 @@ type Task struct {
 	Status      TaskStatus   `json:"status"      db:"status"`
 	RetryConfig RetryConfig  `json:"retryConfig" db:"retry_config"`
 	RetryCount  int          `json:"retryCount"  db:"retry_count"`
+	RetryAfter  *time.Time   `json:"retryAfter"  db:"retry_after"`
+	RetryTags   []string     `json:"retryTags"   db:"retry_tags"`
 	ExecutionID string       `json:"executionId" db:"execution_id"`
 	WorkerID    *string      `json:"workerId"    db:"worker_id"`
 	Input       map[string]any `json:"input"     db:"input"`

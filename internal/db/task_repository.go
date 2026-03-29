@@ -204,6 +204,50 @@ func (r *PgTaskRepository) IncrementRetryCount(ctx context.Context, id uuid.UUID
 	return int(count), nil
 }
 
+// SetRetryAfterAndTags implements TaskRepository.SetRetryAfterAndTags.
+// Updates the retry_after and retry_tags columns atomically for the task identified by id.
+// When retryAfter is nil, sets retry_after to NULL (task is immediately retryable).
+// Called by the Monitor after XCLAIM to enforce backoff delay (TASK-010).
+//
+// Postconditions:
+//   - On success: task.retry_after = retryAfter and task.retry_tags = retryTags in the database.
+func (r *PgTaskRepository) SetRetryAfterAndTags(ctx context.Context, id uuid.UUID, retryAfter *time.Time, retryTags []string) error {
+	var ts pgtype.Timestamptz
+	if retryAfter != nil {
+		ts = pgtype.Timestamptz{Time: retryAfter.UTC(), Valid: true}
+	}
+	if retryTags == nil {
+		retryTags = []string{}
+	}
+	return r.queries.SetTaskRetryAfterAndTags(ctx, sqlcdb.SetTaskRetryAfterAndTagsParams{
+		ID:         id,
+		RetryAfter: ts,
+		RetryTags:  retryTags,
+	})
+}
+
+// ListRetryReady implements TaskRepository.ListRetryReady.
+// Returns all tasks in "queued" status whose retry_after has elapsed.
+// Called by the Monitor scan loop to find tasks ready for re-dispatch (TASK-010).
+//
+// Postconditions:
+//   - Returns an empty (non-nil) slice when no tasks are ready.
+func (r *PgTaskRepository) ListRetryReady(ctx context.Context) ([]*models.Task, error) {
+	rows, err := r.queries.ListRetryReadyTasks(ctx)
+	if err != nil {
+		return nil, err
+	}
+	tasks := make([]*models.Task, 0, len(rows))
+	for _, row := range rows {
+		t, err := toModelTask(row)
+		if err != nil {
+			return nil, err
+		}
+		tasks = append(tasks, t)
+	}
+	return tasks, nil
+}
+
 // Cancel implements TaskRepository.Cancel.
 // Sets the task status to "cancelled". Does not verify cancel authority — that is
 // the service layer's responsibility (Domain Invariant 8).
@@ -255,6 +299,17 @@ func toModelTask(row sqlcdb.Task) (*models.Task, error) {
 		chainID = &id
 	}
 
+	var retryAfter *time.Time
+	if row.RetryAfter.Valid {
+		t := row.RetryAfter.Time
+		retryAfter = &t
+	}
+
+	retryTags := row.RetryTags
+	if retryTags == nil {
+		retryTags = []string{}
+	}
+
 	return &models.Task{
 		ID:          row.ID,
 		PipelineID:  pipelineID,
@@ -263,6 +318,8 @@ func toModelTask(row sqlcdb.Task) (*models.Task, error) {
 		Status:      models.TaskStatus(row.Status),
 		RetryConfig: retryConfig,
 		RetryCount:  int(row.RetryCount),
+		RetryAfter:  retryAfter,
+		RetryTags:   retryTags,
 		ExecutionID: row.ExecutionID,
 		WorkerID:    row.WorkerID,
 		Input:       input,

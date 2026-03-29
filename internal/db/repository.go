@@ -7,6 +7,7 @@ package db
 
 import (
 	"context"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/nxlabs/nexusflow/internal/models"
@@ -132,6 +133,28 @@ type TaskRepository interface {
 	// IncrementRetryCount increments the retry_count for a Task.
 	// Called by the Monitor on XCLAIM reclamation (ADR-002, TASK-009).
 	IncrementRetryCount(ctx context.Context, id uuid.UUID) (int, error)
+
+	// SetRetryAfterAndTags sets the retry_after timestamp and retry_tags on a Task atomically.
+	// retry_after gates re-enqueue: when non-nil, the task is not dispatched until after that time.
+	// retry_tags records which stream(s) the task must be re-enqueued to when the gate opens.
+	// Called by the Monitor after XCLAIM to enforce backoff delay between retry attempts (TASK-010).
+	//
+	// Args:
+	//   ctx:        Request context.
+	//   id:         The Task to update.
+	//   retryAfter: The earliest time the task may be re-enqueued. Nil clears the gate.
+	//   retryTags:  The capability tag stream(s) to re-enqueue to. Empty clears stored tags.
+	//
+	// Postconditions:
+	//   - On success: task.RetryAfter = retryAfter and task.RetryTags = retryTags in the database.
+	SetRetryAfterAndTags(ctx context.Context, id uuid.UUID, retryAfter *time.Time, retryTags []string) error
+
+	// ListRetryReady returns all Tasks in "queued" status whose retry_after has elapsed
+	// (retry_after IS NOT NULL AND retry_after <= now()). Called by the Monitor scan loop
+	// to find tasks that are ready to be re-enqueued to Redis after backoff delay (TASK-010).
+	//
+	// Returns an empty slice when no tasks are ready. Never returns nil.
+	ListRetryReady(ctx context.Context) ([]*models.Task, error)
 
 	// Cancel sets a Task's status to "cancelled".
 	// Cancel authority: only the submitting User or an Admin may cancel (Domain Invariant 8).

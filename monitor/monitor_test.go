@@ -82,6 +82,7 @@ type fakeTaskRepository struct {
 	tasks        map[uuid.UUID]*models.Task
 	statusUpdates []taskStatusUpdate
 	retryCounts  map[uuid.UUID]int
+	retryAfters  map[uuid.UUID]*time.Time
 }
 
 type taskStatusUpdate struct {
@@ -94,6 +95,7 @@ func newFakeTaskRepository() *fakeTaskRepository {
 	return &fakeTaskRepository{
 		tasks:       make(map[uuid.UUID]*models.Task),
 		retryCounts: make(map[uuid.UUID]int),
+		retryAfters: make(map[uuid.UUID]*time.Time),
 	}
 }
 
@@ -140,6 +142,30 @@ func (r *fakeTaskRepository) IncrementRetryCount(_ context.Context, id uuid.UUID
 		t.RetryCount = r.retryCounts[id]
 	}
 	return r.retryCounts[id], nil
+}
+
+func (r *fakeTaskRepository) SetRetryAfterAndTags(_ context.Context, id uuid.UUID, retryAfter *time.Time, retryTags []string) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.retryAfters[id] = retryAfter
+	if t, ok := r.tasks[id]; ok {
+		t.RetryAfter = retryAfter
+		t.RetryTags = retryTags
+	}
+	return nil
+}
+
+func (r *fakeTaskRepository) ListRetryReady(_ context.Context) ([]*models.Task, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	now := time.Now()
+	var ready []*models.Task
+	for _, t := range r.tasks {
+		if t.Status == models.TaskStatusQueued && t.RetryAfter != nil && !t.RetryAfter.After(now) {
+			ready = append(ready, t)
+		}
+	}
+	return ready, nil
 }
 
 func (r *fakeTaskRepository) Cancel(_ context.Context, id uuid.UUID, _ string) error {
@@ -739,10 +765,14 @@ func TestScanPendingEntries_ReclaimsAndDeadLetters(t *testing.T) {
 	}
 }
 
-// TestReclaimTask_ReEnqueuesForHealthyWorker verifies that reclaimTask re-XADDs
-// the task message via the Producer so a healthy worker sees it via XREADGROUP.
-// This satisfies AC-5: "Reclaimed task is picked up by a healthy matching worker."
-func TestReclaimTask_ReEnqueuesForHealthyWorker(t *testing.T) {
+// TestReclaimTask_DeferredEnqueueViaRetryAfter verifies that reclaimTask schedules
+// deferred re-enqueue by setting retry_after and retry_tags rather than calling
+// Producer.Enqueue immediately. The ACK of the monitor's pending entry must still
+// happen so the pending list stays clean.
+//
+// The actual re-XADD happens in scanRetryReady once retry_after elapses.
+// This satisfies TASK-010: AC-2 (backoff delay) and the XCLAIM + deferred-enqueue pattern.
+func TestReclaimTask_DeferredEnqueueViaRetryAfter(t *testing.T) {
 	cfg := testCfg()
 	workers := newFakeWorkerRepository()
 	tasks := newFakeTaskRepository()
@@ -767,16 +797,26 @@ func TestReclaimTask_ReEnqueuesForHealthyWorker(t *testing.T) {
 		t.Fatalf("reclaimTask: %v", err)
 	}
 
-	// Producer must have been called to re-enqueue the task.
-	if len(producer.enqueued) == 0 {
-		t.Fatal("reclaimTask: Producer.Enqueue not called — healthy workers cannot pick up re-queued task")
+	// With deferred enqueue, Producer.Enqueue must NOT be called by reclaimTask.
+	// Healthy workers pick up the task only after retry_after elapses (via scanRetryReady).
+	if len(producer.enqueued) != 0 {
+		t.Errorf("reclaimTask: Enqueue called immediately — backoff violated; want deferred enqueue")
 	}
-	msg := producer.enqueued[0]
-	if msg.Task == nil || msg.Task.ID != taskID {
-		t.Errorf("reclaimTask: Enqueue called with unexpected task: %v", msg)
+
+	// retry_after must be set so scanRetryReady can dispatch when the gate opens.
+	if tasks.retryAfters[taskID] == nil {
+		t.Error("reclaimTask: retry_after not set — scanRetryReady cannot dispatch the task")
 	}
-	if len(msg.Tags) != 1 || msg.Tags[0] != "demo" {
-		t.Errorf("reclaimTask: Enqueue called with tags=%v, want [demo]", msg.Tags)
+
+	// retry_tags must record the tag so scanRetryReady knows which stream to target.
+	task, _ := tasks.GetByID(context.Background(), taskID)
+	if task == nil || len(task.RetryTags) == 0 || task.RetryTags[0] != "demo" {
+		t.Errorf("reclaimTask: retry_tags not set to [demo], got %v", func() []string {
+			if task != nil {
+				return task.RetryTags
+			}
+			return nil
+		}())
 	}
 
 	// The monitor's pending entry must be ACKed to keep the pending list clean.
@@ -859,5 +899,334 @@ func TestCheckHeartbeats_BrokerErrorIsNonFatal(t *testing.T) {
 	// Worker must still have been marked down despite the broker error.
 	if len(workers.updates) == 0 {
 		t.Error("checkHeartbeats: WorkerRepository.UpdateStatus not called when broker failed")
+	}
+}
+
+// --- TASK-010 acceptance criterion tests ---
+
+// TestReclaimTask_SetsRetryAfterWithExponentialBackoff verifies AC-2:
+// "Backoff delay applied between retries (exponential: 1s, 2s, 4s)".
+// After reclaimTask with retryCount=0, retry_after must be approximately now+1s.
+func TestReclaimTask_SetsRetryAfterWithExponentialBackoff(t *testing.T) {
+	cfg := testCfg()
+	workers := newFakeWorkerRepository()
+	tasks := newFakeTaskRepository()
+	heartbeat := newFakeHeartbeatStore()
+	scanner := newFakePendingScanner()
+	producer := newFakeProducer()
+	broker := newFakeBroker()
+
+	taskID := uuid.New()
+	tasks.tasks[taskID] = newTask(taskID, models.RetryConfig{MaxRetries: 3, Backoff: models.BackoffExponential})
+	// RetryCount=0 → first retry → delay=1s
+
+	entry := &queue.PendingEntry{
+		StreamID:   "10-1",
+		ConsumerID: "worker-dead",
+		IdleTime:   30 * time.Second,
+		TaskID:     taskID.String(),
+	}
+
+	before := time.Now()
+	m := NewMonitor(cfg, workers, tasks, heartbeat, scanner, producer, broker)
+	if err := m.reclaimTask(context.Background(), entry, "demo"); err != nil {
+		t.Fatalf("reclaimTask: %v", err)
+	}
+
+	// retry_after must have been set.
+	ra := tasks.retryAfters[taskID]
+	if ra == nil {
+		t.Fatal("reclaimTask: retry_after not set — backoff delay not applied")
+	}
+
+	// For retryCount=0 with exponential strategy: delay = 1s.
+	// retry_after must be approximately before+1s (within a 200ms window to allow for test execution time).
+	expectedMin := before.Add(900 * time.Millisecond)
+	expectedMax := before.Add(1100 * time.Millisecond)
+	if ra.Before(expectedMin) || ra.After(expectedMax) {
+		t.Errorf("reclaimTask: retry_after=%v, want approximately %v (±100ms)",
+			*ra, before.Add(time.Second))
+	}
+}
+
+// TestReclaimTask_SetsRetryAfterWithLinearBackoff verifies linear backoff:
+// retryCount=1 → delay=2s.
+func TestReclaimTask_SetsRetryAfterWithLinearBackoff(t *testing.T) {
+	cfg := testCfg()
+	workers := newFakeWorkerRepository()
+	tasks := newFakeTaskRepository()
+	heartbeat := newFakeHeartbeatStore()
+	scanner := newFakePendingScanner()
+	producer := newFakeProducer()
+	broker := newFakeBroker()
+
+	taskID := uuid.New()
+	task := newTask(taskID, models.RetryConfig{MaxRetries: 3, Backoff: models.BackoffLinear})
+	task.RetryCount = 1 // second retry → delay = 2s
+	tasks.tasks[taskID] = task
+
+	entry := &queue.PendingEntry{
+		StreamID:   "11-1",
+		ConsumerID: "worker-dead",
+		IdleTime:   30 * time.Second,
+		TaskID:     taskID.String(),
+	}
+
+	before := time.Now()
+	m := NewMonitor(cfg, workers, tasks, heartbeat, scanner, producer, broker)
+	if err := m.reclaimTask(context.Background(), entry, "demo"); err != nil {
+		t.Fatalf("reclaimTask: %v", err)
+	}
+
+	ra := tasks.retryAfters[taskID]
+	if ra == nil {
+		t.Fatal("reclaimTask: retry_after not set for linear backoff")
+	}
+
+	// linear retryCount=1: delay = 1s*(1+1) = 2s.
+	expectedMin := before.Add(1900 * time.Millisecond)
+	expectedMax := before.Add(2100 * time.Millisecond)
+	if ra.Before(expectedMin) || ra.After(expectedMax) {
+		t.Errorf("reclaimTask: retry_after=%v, want approximately %v (±100ms)",
+			*ra, before.Add(2*time.Second))
+	}
+}
+
+// TestReclaimTask_DoesNotImmediatelyReEnqueue verifies that reclaimTask does NOT
+// re-enqueue the task to Redis when a backoff delay is set.
+// The re-enqueue must be deferred until retry_after elapses (AC-2).
+func TestReclaimTask_DoesNotImmediatelyReEnqueue(t *testing.T) {
+	cfg := testCfg()
+	workers := newFakeWorkerRepository()
+	tasks := newFakeTaskRepository()
+	heartbeat := newFakeHeartbeatStore()
+	scanner := newFakePendingScanner()
+	producer := newFakeProducer()
+	broker := newFakeBroker()
+
+	taskID := uuid.New()
+	tasks.tasks[taskID] = newTask(taskID, models.RetryConfig{MaxRetries: 3, Backoff: models.BackoffExponential})
+
+	entry := &queue.PendingEntry{
+		StreamID:   "12-1",
+		ConsumerID: "worker-dead",
+		IdleTime:   30 * time.Second,
+		TaskID:     taskID.String(),
+	}
+
+	m := NewMonitor(cfg, workers, tasks, heartbeat, scanner, producer, broker)
+	if err := m.reclaimTask(context.Background(), entry, "demo"); err != nil {
+		t.Fatalf("reclaimTask: %v", err)
+	}
+
+	// Producer.Enqueue must NOT have been called — the task is gated by retry_after.
+	if len(producer.enqueued) != 0 {
+		t.Errorf("reclaimTask: Enqueue called %d time(s) before retry_after elapsed — backoff violated",
+			len(producer.enqueued))
+	}
+}
+
+// TestScanRetryReady_ReEnqueuesTasksWhoseRetryAfterHasElapsed verifies that
+// scanRetryReady picks up tasks with elapsed retry_after and re-enqueues them.
+func TestScanRetryReady_ReEnqueuesTasksWhoseRetryAfterHasElapsed(t *testing.T) {
+	cfg := testCfg()
+	workers := newFakeWorkerRepository()
+	tasks := newFakeTaskRepository()
+	heartbeat := newFakeHeartbeatStore()
+	scanner := newFakePendingScanner()
+	producer := newFakeProducer()
+	broker := newFakeBroker()
+
+	taskID := uuid.New()
+	past := time.Now().Add(-500 * time.Millisecond) // retry_after in the past
+	task := &models.Task{
+		ID:          taskID,
+		Status:      models.TaskStatusQueued,
+		RetryConfig: models.RetryConfig{MaxRetries: 3, Backoff: models.BackoffExponential},
+		RetryCount:  1,
+		RetryAfter:  &past,
+		RetryTags:   []string{"demo"}, // stored when reclaimTask set retry_after
+		Input:       map[string]any{},
+	}
+	tasks.tasks[taskID] = task
+
+	m := NewMonitor(cfg, workers, tasks, heartbeat, scanner, producer, broker)
+
+	if err := m.scanRetryReady(context.Background()); err != nil {
+		t.Fatalf("scanRetryReady: %v", err)
+	}
+
+	// The task should have been re-enqueued.
+	if len(producer.enqueued) == 0 {
+		t.Fatal("scanRetryReady: task with elapsed retry_after was not re-enqueued")
+	}
+}
+
+// TestProcessEntry_SkipsTaskWithFutureRetryAfter verifies AC-2 from the scan side:
+// processEntry must not reclaim a task whose retry_after is still in the future.
+func TestProcessEntry_SkipsTaskWithFutureRetryAfter(t *testing.T) {
+	cfg := testCfg()
+	workers := newFakeWorkerRepository()
+	tasks := newFakeTaskRepository()
+	heartbeat := newFakeHeartbeatStore()
+	scanner := newFakePendingScanner()
+	producer := newFakeProducer()
+	broker := newFakeBroker()
+
+	taskID := uuid.New()
+	future := time.Now().Add(10 * time.Second) // retry_after far in the future
+	task := &models.Task{
+		ID:          taskID,
+		Status:      models.TaskStatusQueued,
+		RetryConfig: models.RetryConfig{MaxRetries: 3, Backoff: models.BackoffExponential},
+		RetryCount:  1,
+		RetryAfter:  &future,
+	}
+	tasks.tasks[taskID] = task
+
+	entry := &queue.PendingEntry{
+		StreamID:   "13-1",
+		ConsumerID: "monitor",
+		IdleTime:   30 * time.Second,
+		TaskID:     taskID.String(),
+	}
+
+	m := NewMonitor(cfg, workers, tasks, heartbeat, scanner, producer, broker)
+	if err := m.processEntry(context.Background(), entry, "demo"); err != nil {
+		t.Fatalf("processEntry: %v", err)
+	}
+
+	// No claim or re-enqueue should have happened.
+	if len(scanner.claimed) != 0 {
+		t.Errorf("processEntry: Claim called %d time(s) for task with future retry_after — must be skipped",
+			len(scanner.claimed))
+	}
+}
+
+// TestReclaimTask_UpToMaxRetries verifies AC-1:
+// "Task with {max_retries: 3, backoff: exponential} is retried up to 3 times on infrastructure failure".
+// This test verifies that retrying is allowed as long as RetryCount < MaxRetries.
+func TestReclaimTask_UpToMaxRetries(t *testing.T) {
+	cfg := testCfg()
+	workers := newFakeWorkerRepository()
+	tasks := newFakeTaskRepository()
+	heartbeat := newFakeHeartbeatStore()
+	scanner := newFakePendingScanner()
+	producer := newFakeProducer()
+	broker := newFakeBroker()
+
+	taskID := uuid.New()
+	tasks.tasks[taskID] = &models.Task{
+		ID:          taskID,
+		Status:      models.TaskStatusRunning,
+		RetryConfig: models.RetryConfig{MaxRetries: 3, Backoff: models.BackoffExponential},
+		RetryCount:  2, // two retries done; one more allowed
+	}
+
+	entry := &queue.PendingEntry{
+		StreamID:   "14-1",
+		ConsumerID: "worker-dead",
+		IdleTime:   30 * time.Second,
+		TaskID:     taskID.String(),
+	}
+
+	m := NewMonitor(cfg, workers, tasks, heartbeat, scanner, producer, broker)
+
+	// processEntry with RetryCount=2, MaxRetries=3: should reclaim (not dead-letter).
+	if err := m.processEntry(context.Background(), entry, "demo"); err != nil {
+		t.Fatalf("processEntry: %v", err)
+	}
+
+	// Must have incremented retry count (reclaim path) not dead-lettered.
+	if tasks.retryCounts[taskID] == 0 {
+		t.Error("processEntry: IncrementRetryCount not called — task should have been reclaimed (retry 3 of 3)")
+	}
+	if len(producer.deadLettered) != 0 {
+		t.Error("processEntry: task was dead-lettered but retries were not exhausted (RetryCount=2, MaxRetries=3)")
+	}
+}
+
+// TestProcessEntry_DeadLettersWhenRetriesExhausted verifies AC-4:
+// "Task that exhausts retries transitions to 'failed' and is placed in dead letter queue".
+func TestProcessEntry_DeadLettersWhenRetriesExhausted(t *testing.T) {
+	cfg := testCfg()
+	workers := newFakeWorkerRepository()
+	tasks := newFakeTaskRepository()
+	heartbeat := newFakeHeartbeatStore()
+	scanner := newFakePendingScanner()
+	producer := newFakeProducer()
+	broker := newFakeBroker()
+
+	taskID := uuid.New()
+	tasks.tasks[taskID] = &models.Task{
+		ID:          taskID,
+		Status:      models.TaskStatusRunning,
+		RetryConfig: models.RetryConfig{MaxRetries: 3, Backoff: models.BackoffExponential},
+		RetryCount:  3, // all retries exhausted
+	}
+
+	entry := &queue.PendingEntry{
+		StreamID:   "15-1",
+		ConsumerID: "worker-dead",
+		IdleTime:   30 * time.Second,
+		TaskID:     taskID.String(),
+	}
+
+	m := NewMonitor(cfg, workers, tasks, heartbeat, scanner, producer, broker)
+	if err := m.processEntry(context.Background(), entry, "demo"); err != nil {
+		t.Fatalf("processEntry: %v", err)
+	}
+
+	// Must be dead-lettered and marked failed.
+	if len(producer.deadLettered) == 0 {
+		t.Fatal("processEntry: task not dead-lettered after exhausting max_retries=3")
+	}
+
+	failed := false
+	for _, u := range tasks.statusUpdates {
+		if u.id == taskID && u.status == models.TaskStatusFailed {
+			failed = true
+			break
+		}
+	}
+	if !failed {
+		t.Error("processEntry: task status not set to 'failed' after retries exhausted")
+	}
+}
+
+// TestRetryCountVisibleInTaskState verifies AC-5:
+// "Retry count is visible in task state".
+// After reclaimTask, the task's RetryCount in the repository must be incremented.
+func TestRetryCountVisibleInTaskState(t *testing.T) {
+	cfg := testCfg()
+	workers := newFakeWorkerRepository()
+	tasks := newFakeTaskRepository()
+	heartbeat := newFakeHeartbeatStore()
+	scanner := newFakePendingScanner()
+	producer := newFakeProducer()
+	broker := newFakeBroker()
+
+	taskID := uuid.New()
+	tasks.tasks[taskID] = newTask(taskID, models.RetryConfig{MaxRetries: 3, Backoff: models.BackoffExponential})
+
+	entry := &queue.PendingEntry{
+		StreamID:   "16-1",
+		ConsumerID: "worker-dead",
+		IdleTime:   30 * time.Second,
+		TaskID:     taskID.String(),
+	}
+
+	m := NewMonitor(cfg, workers, tasks, heartbeat, scanner, producer, broker)
+	if err := m.reclaimTask(context.Background(), entry, "demo"); err != nil {
+		t.Fatalf("reclaimTask: %v", err)
+	}
+
+	// RetryCount must be visible in the task record (AC-5).
+	task, _ := tasks.GetByID(context.Background(), taskID)
+	if task == nil {
+		t.Fatal("GetByID returned nil for task that should exist")
+	}
+	if task.RetryCount != 1 {
+		t.Errorf("task.RetryCount = %d, want 1 — retry count must be visible in task state", task.RetryCount)
 	}
 }

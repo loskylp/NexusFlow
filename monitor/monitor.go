@@ -1,16 +1,24 @@
 // Package monitor implements the NexusFlow Monitor service.
-// The Monitor runs two periodic loops:
+// The Monitor runs three periodic loops:
 //  1. Heartbeat checker — detects workers that have stopped sending heartbeats
 //     and marks them as "down" in PostgreSQL and Redis Pub/Sub.
 //  2. Pending entry scanner — identifies tasks pending on downed workers
-//     and reclaims them via XCLAIM for reassignment to healthy workers.
+//     and reclaims them via XCLAIM; schedules deferred re-enqueue via backoff.
+//  3. Retry-ready scanner — re-enqueues tasks whose backoff delay has elapsed.
+//
+// Infrastructure failure retry flow (TASK-010):
+//  - reclaimTask: XCLAIM → IncrementRetryCount → SetRetryAfterAndTags → ACK pending entry
+//  - scanRetryReady: when retry_after <= now, re-XADD to Redis and clear retry_after
+//
+// Process errors (connector failures) are XACK'd by the worker directly and never
+// enter the Monitor reclaim path (Domain Invariant 2, ADR-003).
 //
 // Configuration (ADR-002):
 //
 //	HeartbeatTimeout:    15 seconds (3 missed heartbeats at 5s interval)
 //	PendingScanInterval: 10 seconds
 //
-// See: ADR-002, TASK-009 (Cycle 2)
+// See: ADR-002, TASK-009, TASK-010 (Cycle 2)
 package monitor
 
 import (
@@ -109,6 +117,9 @@ func (m *Monitor) Run(ctx context.Context) error {
 			}
 			if err := m.scanPendingEntries(ctx); err != nil {
 				log.Printf("monitor: scanPendingEntries error: %v", err)
+			}
+			if err := m.scanRetryReady(ctx); err != nil {
+				log.Printf("monitor: scanRetryReady error: %v", err)
 			}
 		}
 	}
@@ -249,10 +260,14 @@ func (m *Monitor) collectAllTags(ctx context.Context) ([]string, error) {
 }
 
 // processEntry decides whether to reclaim or dead-letter a single pending entry.
-// Loads the task from PostgreSQL to check retry counts.
+// Loads the task from PostgreSQL to check retry counts and retry_after gate.
 //
-// If the task is not found in PostgreSQL (e.g. deleted after enqueue), the entry
-// is skipped with a log message — we cannot reclaim a task that no longer exists.
+// Skip conditions (entry is left in place):
+//   - Task not found in PostgreSQL (deleted after enqueue).
+//   - Task has retry_after set to a future time (backoff delay has not elapsed).
+//
+// Reclaim condition: RetryCount < MaxRetries (and retry_after is nil or in the past).
+// Dead-letter condition: RetryCount >= MaxRetries.
 func (m *Monitor) processEntry(ctx context.Context, entry *queue.PendingEntry, tag string) error {
 	taskID, err := uuid.Parse(entry.TaskID)
 	if err != nil {
@@ -268,6 +283,15 @@ func (m *Monitor) processEntry(ctx context.Context, entry *queue.PendingEntry, t
 		return nil
 	}
 
+	// Skip tasks whose backoff delay has not yet elapsed. The Monitor already
+	// claimed and ACKed this entry during a previous scan cycle; the task is
+	// in "queued" status in the DB waiting for retry_after to pass.
+	// scanRetryReady will re-enqueue it when the gate opens.
+	if task.RetryAfter != nil && task.RetryAfter.After(time.Now()) {
+		log.Printf("monitor.processEntry: task %s has retry_after=%v — skipping (backoff not elapsed)", taskID, *task.RetryAfter)
+		return nil
+	}
+
 	maxRetries := task.RetryConfig.MaxRetries
 	if maxRetries <= 0 {
 		maxRetries = models.DefaultRetryConfig().MaxRetries
@@ -279,19 +303,26 @@ func (m *Monitor) processEntry(ctx context.Context, entry *queue.PendingEntry, t
 	return m.reclaimTask(ctx, entry, tag)
 }
 
-// reclaimTask reclaims a pending task from a downed worker and re-queues it for
-// pickup by a healthy worker.
+// reclaimTask reclaims a pending task from a downed worker and schedules it for
+// retry after the configured backoff delay.
 //
 // Sequence:
 //  1. XCLAIM: transfer the pending entry to the monitor consumer.
-//  2. IncrementRetryCount: bump the retry counter in PostgreSQL.
-//  3. UpdateStatus("queued"): mark the task available for consumption.
-//  4. Enqueue: re-XADD the task message to its stream so healthy workers see it via XREADGROUP.
+//  2. IncrementRetryCount: bump the retry counter in PostgreSQL (pre-increment).
+//     The backoff delay is computed from the pre-increment RetryCount so that:
+//     retry 1 → 1s, retry 2 → 2s, retry 3 → 4s (exponential).
+//  3. SetRetryAfterAndTags: record when the task may next be dispatched and which
+//     stream(s) to dispatch it to. The tag from the current pending entry is stored
+//     so scanRetryReady can re-enqueue to the correct stream(s).
+//  4. UpdateStatus("queued"): mark the task available for eventual re-dispatch.
 //  5. AcknowledgePending: XACK the monitor's claimed entry so the pending list stays clean.
+//     The actual re-XADD is deferred to scanRetryReady (called on each scan tick)
+//     once retry_after has elapsed.
 //
-// Steps 4 and 5 are necessary because XREADGROUP ">" only delivers entries that have
-// never been delivered to any consumer; a message in a consumer's pending list is not
-// re-delivered automatically. XACK + re-XADD is the correct XCLAIM + requeue pattern.
+// This design separates the XCLAIM/claim step from the re-enqueue step, inserting a
+// configurable delay between them. It satisfies Domain Invariant 2: infrastructure
+// failures (worker death) trigger this path; process errors are XACK'd by the worker
+// directly and never reach the Monitor reclaim path.
 //
 // Args:
 //
@@ -300,7 +331,9 @@ func (m *Monitor) processEntry(ctx context.Context, entry *queue.PendingEntry, t
 //	tag:   The stream tag the entry belongs to.
 //
 // Postconditions:
-//   - On success: task is re-queued and will be picked up by the next healthy matching worker.
+//   - On success: task.RetryCount is incremented; task.RetryAfter = now + backoffDelay;
+//     task.RetryTags = [tag]; task.Status = "queued".
+//   - The task will be re-enqueued to Redis by scanRetryReady once retry_after elapses.
 func (m *Monitor) reclaimTask(ctx context.Context, entry *queue.PendingEntry, tag string) error {
 	idleThreshold := m.cfg.HeartbeatTimeout
 	if idleThreshold <= 0 {
@@ -317,40 +350,116 @@ func (m *Monitor) reclaimTask(ctx context.Context, entry *queue.PendingEntry, ta
 		return fmt.Errorf("reclaimTask: parse taskID %q: %w", entry.TaskID, err)
 	}
 
-	// Step 2: Increment the retry counter before re-queuing so the updated count is
-	// visible to the next worker that picks up the task.
+	// Load the task to read its current RetryCount (pre-increment) for backoff computation.
+	task, err := m.tasks.GetByID(ctx, taskID)
+	if err != nil {
+		return fmt.Errorf("reclaimTask: GetByID(%s) for backoff: %w", taskID, err)
+	}
+	if task == nil {
+		return fmt.Errorf("reclaimTask: task %s not found", taskID)
+	}
+
+	// Compute the backoff delay from the pre-increment retry count so the first
+	// retry uses 1s, the second uses 2s (exponential), etc.
+	preIncrementCount := task.RetryCount
+	backoffStrategy := task.RetryConfig.Backoff
+	if backoffStrategy == "" {
+		backoffStrategy = models.DefaultRetryConfig().Backoff
+	}
+	delay := computeBackoffDelay(backoffStrategy, preIncrementCount)
+	retryAfter := time.Now().Add(delay)
+
+	// Step 2: Increment the retry counter so the updated count is visible to
+	// the next worker that picks up the task after the backoff elapses.
 	if _, err := m.tasks.IncrementRetryCount(ctx, taskID); err != nil {
 		return fmt.Errorf("reclaimTask: IncrementRetryCount(%s): %w", taskID, err)
 	}
 
-	// Step 3: Transition status back to "queued".
-	if err := m.tasks.UpdateStatus(ctx, taskID, models.TaskStatusQueued, "reclaimed by monitor after worker failure", nil); err != nil {
+	// Step 3: Record retry_after and the stream tag(s) for deferred re-enqueue.
+	if err := m.tasks.SetRetryAfterAndTags(ctx, taskID, &retryAfter, []string{tag}); err != nil {
+		return fmt.Errorf("reclaimTask: SetRetryAfterAndTags(%s): %w", taskID, err)
+	}
+
+	// Step 4: Transition status to "queued" so the task is visible as pending retry.
+	if err := m.tasks.UpdateStatus(ctx, taskID, models.TaskStatusQueued, "reclaimed by monitor after worker failure — waiting for backoff delay", nil); err != nil {
 		return fmt.Errorf("reclaimTask: UpdateStatus(%s -> queued): %w", taskID, err)
 	}
 
-	// Step 4: Re-XADD the task to the stream so healthy workers see it via XREADGROUP ">".
-	// Load the current task record to build the ProducerMessage envelope.
-	task, err := m.tasks.GetByID(ctx, taskID)
-	if err != nil {
-		return fmt.Errorf("reclaimTask: GetByID(%s) for re-enqueue: %w", taskID, err)
-	}
-	if task == nil {
-		return fmt.Errorf("reclaimTask: task %s not found for re-enqueue", taskID)
-	}
-	if _, err := m.producer.Enqueue(ctx, &queue.ProducerMessage{
-		Task: task,
-		Tags: []string{tag},
-	}); err != nil {
-		return fmt.Errorf("reclaimTask: Enqueue(%s, tag=%q): %w", taskID, tag, err)
-	}
-
 	// Step 5: ACK the monitor's claimed entry to keep the pending list clean.
+	// The actual re-XADD to Redis is deferred to scanRetryReady (once retry_after elapses).
 	if err := m.scanner.AcknowledgePending(ctx, tag, entry.StreamID); err != nil {
-		// Non-fatal: the task is already re-queued. Log and continue.
+		// Non-fatal: the task is already gated by retry_after. Log and continue.
 		log.Printf("monitor.reclaimTask: AcknowledgePending(%q, %q): %v — pending entry may linger", tag, entry.StreamID, err)
 	}
 
-	log.Printf("monitor: reclaimed task %s (stream=%q, entry=%q) — re-enqueued for retry", taskID, tag, entry.StreamID)
+	log.Printf("monitor: reclaimed task %s (stream=%q, entry=%q) — retry scheduled after %v (delay=%v)",
+		taskID, tag, entry.StreamID, retryAfter.Format(time.RFC3339), delay)
+	return nil
+}
+
+// scanRetryReady finds tasks in "queued" status whose retry_after has elapsed and
+// re-enqueues them to Redis so healthy workers can pick them up via XREADGROUP.
+//
+// This is the second half of the deferred-retry pattern: reclaimTask sets retry_after
+// and ACKs the pending entry; scanRetryReady fires the re-XADD once the gate opens.
+//
+// For each retry-ready task:
+//  1. Re-XADD the task to each of its recorded RetryTags streams via producer.Enqueue.
+//  2. Clear retry_after (set to nil) so the task is not double-dispatched on the next scan.
+//
+// Errors on individual tasks are logged and skipped; the scan continues.
+//
+// Complexity: O(retry-ready tasks) PostgreSQL reads + O(tags) Redis XADD per task.
+func (m *Monitor) scanRetryReady(ctx context.Context) error {
+	tasks, err := m.tasks.ListRetryReady(ctx)
+	if err != nil {
+		return fmt.Errorf("monitor.scanRetryReady: ListRetryReady: %w", err)
+	}
+
+	for _, task := range tasks {
+		if err := m.dispatchRetryReadyTask(ctx, task); err != nil {
+			log.Printf("monitor.scanRetryReady: dispatchRetryReadyTask(task=%s): %v", task.ID, err)
+		}
+	}
+	return nil
+}
+
+// dispatchRetryReadyTask re-enqueues a single retry-ready task to Redis and clears
+// its retry_after gate to prevent duplicate dispatch on the next scan tick.
+//
+// Args:
+//
+//	ctx:  Request context.
+//	task: A task whose RetryAfter has elapsed and RetryTags is populated.
+//
+// Postconditions:
+//   - On success: task is re-XADD'd to each RetryTag stream; task.RetryAfter = nil.
+//   - On Enqueue failure: retry_after is NOT cleared (will be retried next scan).
+func (m *Monitor) dispatchRetryReadyTask(ctx context.Context, task *models.Task) error {
+	if len(task.RetryTags) == 0 {
+		log.Printf("monitor.dispatchRetryReadyTask: task %s has no retry_tags — cannot re-enqueue; clearing retry_after", task.ID)
+		// Clear the gate even without tags to avoid the task being stuck indefinitely.
+		_ = m.tasks.SetRetryAfterAndTags(ctx, task.ID, nil, nil)
+		return fmt.Errorf("task %s has no retry_tags", task.ID)
+	}
+
+	// Re-XADD the task to its recorded stream(s).
+	if _, err := m.producer.Enqueue(ctx, &queue.ProducerMessage{
+		Task: task,
+		Tags: task.RetryTags,
+	}); err != nil {
+		return fmt.Errorf("Enqueue(task=%s, tags=%v): %w", task.ID, task.RetryTags, err)
+	}
+
+	// Clear retry_after so the task is not dispatched again on the next scan tick.
+	if err := m.tasks.SetRetryAfterAndTags(ctx, task.ID, nil, nil); err != nil {
+		// Non-fatal: the task is already re-enqueued. Log and continue.
+		// The next scan will find it again, but producer.Enqueue with the same tags
+		// is idempotent at the stream level (duplicate XADD produces a unique message ID).
+		log.Printf("monitor.dispatchRetryReadyTask: SetRetryAfterAndTags(nil) for task %s: %v", task.ID, err)
+	}
+
+	log.Printf("monitor: dispatched retry-ready task %s to streams %v", task.ID, task.RetryTags)
 	return nil
 }
 

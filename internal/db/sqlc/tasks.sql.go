@@ -29,7 +29,7 @@ const createTask = `-- name: CreateTask :one
 
 INSERT INTO tasks (id, pipeline_id, chain_id, user_id, status, retry_config, retry_count, execution_id, worker_id, input, created_at, updated_at)
 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
-RETURNING id, pipeline_id, chain_id, user_id, status, retry_config, retry_count, execution_id, worker_id, input, created_at, updated_at
+RETURNING id, pipeline_id, chain_id, user_id, status, retry_config, retry_count, retry_after, retry_tags, execution_id, worker_id, input, created_at, updated_at
 `
 
 type CreateTaskParams struct {
@@ -74,6 +74,8 @@ func (q *Queries) CreateTask(ctx context.Context, arg CreateTaskParams) (Task, e
 		&i.Status,
 		&i.RetryConfig,
 		&i.RetryCount,
+		&i.RetryAfter,
+		&i.RetryTags,
 		&i.ExecutionID,
 		&i.WorkerID,
 		&i.Input,
@@ -84,7 +86,7 @@ func (q *Queries) CreateTask(ctx context.Context, arg CreateTaskParams) (Task, e
 }
 
 const getTaskByID = `-- name: GetTaskByID :one
-SELECT id, pipeline_id, chain_id, user_id, status, retry_config, retry_count, execution_id, worker_id, input, created_at, updated_at FROM tasks WHERE id = $1 LIMIT 1
+SELECT id, pipeline_id, chain_id, user_id, status, retry_config, retry_count, retry_after, retry_tags, execution_id, worker_id, input, created_at, updated_at FROM tasks WHERE id = $1 LIMIT 1
 `
 
 func (q *Queries) GetTaskByID(ctx context.Context, id uuid.UUID) (Task, error) {
@@ -98,6 +100,8 @@ func (q *Queries) GetTaskByID(ctx context.Context, id uuid.UUID) (Task, error) {
 		&i.Status,
 		&i.RetryConfig,
 		&i.RetryCount,
+		&i.RetryAfter,
+		&i.RetryTags,
 		&i.ExecutionID,
 		&i.WorkerID,
 		&i.Input,
@@ -180,7 +184,7 @@ func (q *Queries) InsertTaskStateLog(ctx context.Context, arg InsertTaskStateLog
 }
 
 const listAllTasks = `-- name: ListAllTasks :many
-SELECT id, pipeline_id, chain_id, user_id, status, retry_config, retry_count, execution_id, worker_id, input, created_at, updated_at FROM tasks ORDER BY created_at DESC
+SELECT id, pipeline_id, chain_id, user_id, status, retry_config, retry_count, retry_after, retry_tags, execution_id, worker_id, input, created_at, updated_at FROM tasks ORDER BY created_at DESC
 `
 
 func (q *Queries) ListAllTasks(ctx context.Context) ([]Task, error) {
@@ -200,6 +204,8 @@ func (q *Queries) ListAllTasks(ctx context.Context) ([]Task, error) {
 			&i.Status,
 			&i.RetryConfig,
 			&i.RetryCount,
+			&i.RetryAfter,
+			&i.RetryTags,
 			&i.ExecutionID,
 			&i.WorkerID,
 			&i.Input,
@@ -217,7 +223,7 @@ func (q *Queries) ListAllTasks(ctx context.Context) ([]Task, error) {
 }
 
 const listTasksByUser = `-- name: ListTasksByUser :many
-SELECT id, pipeline_id, chain_id, user_id, status, retry_config, retry_count, execution_id, worker_id, input, created_at, updated_at FROM tasks WHERE user_id = $1 ORDER BY created_at DESC
+SELECT id, pipeline_id, chain_id, user_id, status, retry_config, retry_count, retry_after, retry_tags, execution_id, worker_id, input, created_at, updated_at FROM tasks WHERE user_id = $1 ORDER BY created_at DESC
 `
 
 func (q *Queries) ListTasksByUser(ctx context.Context, userID uuid.UUID) ([]Task, error) {
@@ -237,6 +243,74 @@ func (q *Queries) ListTasksByUser(ctx context.Context, userID uuid.UUID) ([]Task
 			&i.Status,
 			&i.RetryConfig,
 			&i.RetryCount,
+			&i.RetryAfter,
+			&i.RetryTags,
+			&i.ExecutionID,
+			&i.WorkerID,
+			&i.Input,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const setTaskRetryAfterAndTags = `-- name: SetTaskRetryAfterAndTags :exec
+UPDATE tasks
+SET retry_after = $2,
+    retry_tags  = $3,
+    updated_at  = NOW()
+WHERE id = $1
+`
+
+// SetTaskRetryAfterAndTagsParams holds the parameters for the SetTaskRetryAfterAndTags query.
+// RetryAfter gates re-enqueue (NULL = immediately retryable).
+// RetryTags records which streams the task must be re-enqueued to when RetryAfter elapses.
+type SetTaskRetryAfterAndTagsParams struct {
+	ID         uuid.UUID          `db:"id" json:"id"`
+	RetryAfter pgtype.Timestamptz `db:"retry_after" json:"retry_after"`
+	RetryTags  []string           `db:"retry_tags" json:"retry_tags"`
+}
+
+func (q *Queries) SetTaskRetryAfterAndTags(ctx context.Context, arg SetTaskRetryAfterAndTagsParams) error {
+	_, err := q.db.Exec(ctx, setTaskRetryAfterAndTags, arg.ID, arg.RetryAfter, arg.RetryTags)
+	return err
+}
+
+const listRetryReadyTasks = `-- name: ListRetryReadyTasks :many
+SELECT id, pipeline_id, chain_id, user_id, status, retry_config, retry_count, retry_after, retry_tags, execution_id, worker_id, input, created_at, updated_at
+FROM tasks
+WHERE status = 'queued'
+  AND retry_after IS NOT NULL
+  AND retry_after <= NOW()
+ORDER BY retry_after ASC
+`
+
+func (q *Queries) ListRetryReadyTasks(ctx context.Context) ([]Task, error) {
+	rows, err := q.db.Query(ctx, listRetryReadyTasks)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Task
+	for rows.Next() {
+		var i Task
+		if err := rows.Scan(
+			&i.ID,
+			&i.PipelineID,
+			&i.ChainID,
+			&i.UserID,
+			&i.Status,
+			&i.RetryConfig,
+			&i.RetryCount,
+			&i.RetryAfter,
+			&i.RetryTags,
 			&i.ExecutionID,
 			&i.WorkerID,
 			&i.Input,

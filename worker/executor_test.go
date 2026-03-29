@@ -147,6 +147,14 @@ func (r *fakeTaskRepo) GetStateLog(ctx context.Context, taskID uuid.UUID) ([]*mo
 	return log, nil
 }
 
+func (r *fakeTaskRepo) SetRetryAfterAndTags(_ context.Context, _ uuid.UUID, _ *time.Time, _ []string) error {
+	return nil
+}
+
+func (r *fakeTaskRepo) ListRetryReady(_ context.Context) ([]*models.Task, error) {
+	return []*models.Task{}, nil
+}
+
 // getTransitions returns all recorded transitions for a task in order.
 func (r *fakeTaskRepo) getTransitions(taskID uuid.UUID) []statusTransition {
 	r.mu.Lock()
