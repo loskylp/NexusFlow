@@ -8,15 +8,15 @@
 
 ## Where We Are
 
-Cycle 2 execution in progress. TASK-018 (Sink atomicity with idempotency) built by Builder (2026-03-28). 28 unit tests passing. Three atomic sink connectors (Database, S3, File) with idempotency guards, migration 000003, registered in worker main. Dispatching to Verifier for initial verification.
+Cycle 2 execution in progress. TASK-018 (Sink atomicity with idempotency) verified PASS (2026-03-28, 5/5 AC, CI green). Dispatching TASK-012 (Task cancellation) to Builder.
 
-Cycle 2 scope: 10 tasks -- Core System Completion. 1 of 10 complete, 1 pending verification.
+Cycle 2 scope: 10 tasks -- Core System Completion. 2 of 10 complete (TASK-009, TASK-018). Next: TASK-012.
 
 ## Active Work
 
-**Agent in control:** Verifier (dispatched for TASK-018 initial verification)
-**Current task:** TASK-018 -- Sink atomicity with idempotency
-**Waiting for:** Verifier to complete TASK-018 verification
+**Agent in control:** Builder (dispatched for TASK-012)
+**Current task:** TASK-012 -- Task cancellation
+**Waiting for:** Builder to complete TASK-012 implementation
 **Blocker:** None
 
 ---
@@ -32,7 +32,7 @@ Cycle 2 scope: 10 tasks -- Core System Completion. 1 of 10 complete, 1 pending v
 | TASK-014 | Pipeline chain definition | None (depends on Cycle 1: TASK-013, TASK-007) | Pending |
 | TASK-016 | Log production and dual storage | None (depends on Cycle 1: TASK-007, TASK-015) | Pending |
 | TASK-017 | Admin user management | None (depends on Cycle 1: TASK-003) | Pending |
-| TASK-018 | Sink atomicity with idempotency | None (depends on Cycle 1: TASK-007) | BUILT -- PENDING VERIFICATION |
+| TASK-018 | Sink atomicity with idempotency | None (depends on Cycle 1: TASK-007) | COMPLETE (Verifier PASS, 2026-03-28) |
 | TASK-026 | Schema mapping validation at design time | None (depends on Cycle 1: TASK-013) | Pending |
 
 **Cycle 2 dependency layers (sequential execution):**
@@ -112,7 +112,7 @@ Note: Scaffolder not re-invoked -- Cycle 1 Scaffolder already scaffolded full pr
 
 ## Iterate Loop State
 
-No active iterate loop. TASK-009 passed on first iteration. TASK-018 built, dispatching to Verifier for initial verification (iteration 1).
+No active iterate loop. TASK-009 passed on first iteration. TASK-018 passed on first iteration. TASK-012 dispatched to Builder (iteration 1).
 
 ---
 
@@ -135,7 +135,7 @@ No active iterate loop. TASK-009 passed on first iteration. TASK-018 built, disp
 
 | Metric | Value |
 |---|---|
-| Tasks completed | 1 of 10 |
+| Tasks completed | 2 of 10 |
 | Average iterations to PASS | -- |
 | Tasks that hit max iterations | 0 |
 | Escalations to Nexus | 0 |
