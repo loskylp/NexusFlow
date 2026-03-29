@@ -8,15 +8,15 @@
 
 ## Where We Are
 
-Cycle 2 execution in progress. TASK-016 verified PASS. 6 of 9 tasks complete. Dispatching TASK-017 (Admin user management) to Builder.
+Cycle 2 execution in progress. TASK-017 built by Builder -- 15 unit tests passing, no deviations. 6 of 9 tasks verified PASS. TASK-017 now BUILT, dispatching to Verifier for initial verification.
 
-Cycle 2 scope: 9 tasks -- Core System Completion. 6 of 9 verified PASS (TASK-009, TASK-018, TASK-012, TASK-014, TASK-010, TASK-016). TASK-017 next -- dispatching to Builder.
+Cycle 2 scope: 9 tasks -- Core System Completion. 6 of 9 verified PASS (TASK-009, TASK-018, TASK-012, TASK-014, TASK-010, TASK-016). TASK-017 BUILT -- routing to Verifier.
 
 ## Active Work
 
-**Agent in control:** Builder (dispatched for TASK-017)
+**Agent in control:** Verifier (dispatched for TASK-017 initial verification)
 **Current task:** TASK-017 -- Admin user management
-**Waiting for:** Builder to implement TASK-017
+**Waiting for:** Verifier to verify TASK-017
 **Blocker:** None
 
 ---
@@ -31,7 +31,7 @@ Cycle 2 scope: 9 tasks -- Core System Completion. 6 of 9 verified PASS (TASK-009
 | TASK-012 | Task cancellation | None (depends on Cycle 1: TASK-005, TASK-007) | COMPLETE (Verifier PASS, 2026-03-29) |
 | TASK-014 | Pipeline chain definition | None (depends on Cycle 1: TASK-013, TASK-007) | COMPLETE (Verifier PASS, 2026-03-29) |
 | TASK-016 | Log production and dual storage | None (depends on Cycle 1: TASK-007, TASK-015) | COMPLETE (Verifier PASS, 2026-03-29) |
-| TASK-017 | Admin user management | None (depends on Cycle 1: TASK-003) | IN PROGRESS -- Builder dispatched |
+| TASK-017 | Admin user management | None (depends on Cycle 1: TASK-003) | BUILT -- Verifier dispatched |
 | TASK-018 | Sink atomicity with idempotency | None (depends on Cycle 1: TASK-007) | COMPLETE (Verifier PASS, 2026-03-28) |
 | TASK-026 | Schema mapping validation at design time | None (depends on Cycle 1: TASK-013) | Pending |
 
@@ -112,7 +112,7 @@ Note: Scaffolder not re-invoked -- Cycle 1 Scaffolder already scaffolded full pr
 
 ## Iterate Loop State
 
-No active iterate loop. TASK-009 passed on first iteration. TASK-018 passed on first iteration. TASK-012 passed on iteration 2 (re-verification after Builder fix). TASK-014 passed on first iteration. TASK-010 passed on first iteration. TASK-016 passed on first iteration. TASK-017 dispatched to Builder (iteration 1 of 4).
+No active iterate loop. TASK-009 passed on first iteration. TASK-018 passed on first iteration. TASK-012 passed on iteration 2 (re-verification after Builder fix). TASK-014 passed on first iteration. TASK-010 passed on first iteration. TASK-016 passed on first iteration. TASK-017 built by Builder, dispatched to Verifier (iteration 1 of 4).
 
 ---
 
