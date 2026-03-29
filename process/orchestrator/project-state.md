@@ -8,15 +8,15 @@
 
 ## Where We Are
 
-Cycle 2 execution in progress. TASK-014 (Pipeline chain definition) verified PASS (2026-03-29), CI green. Dispatching TASK-010 (Infrastructure retry with backoff) to Builder.
+Cycle 2 execution in progress. TASK-010 (Infrastructure retry with backoff) implementation complete -- Builder delivered backoff computation, deferred re-enqueue via retry_after column, scanRetryReady loop, migration 000005. 26 monitor tests passing, go build/vet clean. Dispatching to Verifier for initial verification.
 
-Cycle 2 scope: 9 tasks -- Core System Completion. 4 of 9 verified PASS (TASK-009, TASK-018, TASK-012, TASK-014). TASK-010 dispatched to Builder.
+Cycle 2 scope: 9 tasks -- Core System Completion. 4 of 9 verified PASS (TASK-009, TASK-018, TASK-012, TASK-014). TASK-010 BUILT, pending verification.
 
 ## Active Work
 
-**Agent in control:** Builder (dispatched for TASK-010)
+**Agent in control:** Verifier (dispatched for TASK-010 initial verification)
 **Current task:** TASK-010 -- Infrastructure retry with backoff
-**Waiting for:** Builder to complete TASK-010 implementation
+**Waiting for:** Verifier to complete TASK-010 verification
 **Blocker:** None
 
 ---
@@ -26,7 +26,7 @@ Cycle 2 scope: 9 tasks -- Core System Completion. 4 of 9 verified PASS (TASK-009
 | Task | Description | Dependencies (Cycle 2) | Status |
 |---|---|---|---|
 | TASK-009 | Monitor service -- heartbeat checking and failover | None (depends on Cycle 1: TASK-004, TASK-006, TASK-007) | COMPLETE (Verifier PASS, 2026-03-28) |
-| TASK-010 | Infrastructure retry with backoff | TASK-009 | IN PROGRESS -- Builder dispatched |
+| TASK-010 | Infrastructure retry with backoff | TASK-009 | BUILT -- Verifier dispatched |
 | TASK-011 | Dead letter queue with cascading cancellation | TASK-009, TASK-010, TASK-014 | Pending |
 | TASK-012 | Task cancellation | None (depends on Cycle 1: TASK-005, TASK-007) | COMPLETE (Verifier PASS, 2026-03-29) |
 | TASK-014 | Pipeline chain definition | None (depends on Cycle 1: TASK-013, TASK-007) | COMPLETE (Verifier PASS, 2026-03-29) |
@@ -112,7 +112,7 @@ Note: Scaffolder not re-invoked -- Cycle 1 Scaffolder already scaffolded full pr
 
 ## Iterate Loop State
 
-No active iterate loop. TASK-009 passed on first iteration. TASK-018 passed on first iteration. TASK-012 passed on iteration 2 (re-verification after Builder fix). TASK-014 passed on first iteration. TASK-010 dispatched to Builder (iteration 1).
+No active iterate loop. TASK-009 passed on first iteration. TASK-018 passed on first iteration. TASK-012 passed on iteration 2 (re-verification after Builder fix). TASK-014 passed on first iteration. TASK-010 built, dispatched to Verifier (iteration 1 of 4).
 
 ---
 
