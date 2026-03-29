@@ -42,3 +42,9 @@ SELECT * FROM task_state_log WHERE task_id = $1 ORDER BY timestamp ASC;
 -- name: InsertTaskStateLog :exec
 INSERT INTO task_state_log (id, task_id, from_state, to_state, reason, timestamp)
 VALUES ($1, $2, $3, $4, $5, $6);
+
+-- name: ListTasksByPipelineAndStatuses :many
+SELECT * FROM tasks
+WHERE pipeline_id = $1
+  AND status = ANY($2::text[])
+ORDER BY created_at DESC;

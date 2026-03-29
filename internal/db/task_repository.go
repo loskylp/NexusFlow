@@ -248,6 +248,35 @@ func (r *PgTaskRepository) ListRetryReady(ctx context.Context) ([]*models.Task, 
 	return tasks, nil
 }
 
+// ListByPipelineAndStatuses implements TaskRepository.ListByPipelineAndStatuses.
+// Returns all tasks for the given pipeline whose status is in the provided set.
+// Used by the Monitor to find non-terminal tasks in downstream pipelines for cascading
+// cancellation (TASK-011, REQ-012).
+//
+// Returns an empty (non-nil) slice when no matching tasks exist.
+func (r *PgTaskRepository) ListByPipelineAndStatuses(ctx context.Context, pipelineID uuid.UUID, statuses []models.TaskStatus) ([]*models.Task, error) {
+	strStatuses := make([]string, len(statuses))
+	for i, s := range statuses {
+		strStatuses[i] = string(s)
+	}
+	rows, err := r.queries.ListTasksByPipelineAndStatuses(ctx, sqlcdb.ListTasksByPipelineAndStatusesParams{
+		PipelineID: uuid.NullUUID{UUID: pipelineID, Valid: true},
+		Statuses:   strStatuses,
+	})
+	if err != nil {
+		return nil, err
+	}
+	tasks := make([]*models.Task, 0, len(rows))
+	for _, row := range rows {
+		t, err := toModelTask(row)
+		if err != nil {
+			return nil, err
+		}
+		tasks = append(tasks, t)
+	}
+	return tasks, nil
+}
+
 // Cancel implements TaskRepository.Cancel.
 // Sets the task status to "cancelled". Does not verify cancel authority — that is
 // the service layer's responsibility (Domain Invariant 8).

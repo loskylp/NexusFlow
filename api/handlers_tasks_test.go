@@ -135,6 +135,10 @@ func (r *stubTaskRepo) ListRetryReady(_ context.Context) ([]*models.Task, error)
 	return []*models.Task{}, nil
 }
 
+func (r *stubTaskRepo) ListByPipelineAndStatuses(_ context.Context, _ uuid.UUID, _ []models.TaskStatus) ([]*models.Task, error) {
+	return []*models.Task{}, nil
+}
+
 // stubPipelineRepo is an in-memory PipelineRepository for testing.
 type stubPipelineRepo struct {
 	pipelines map[uuid.UUID]*models.Pipeline

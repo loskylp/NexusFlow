@@ -45,6 +45,7 @@ type Monitor struct {
 	cfg       *config.Config
 	workers   db.WorkerRepository
 	tasks     db.TaskRepository
+	chains    db.ChainRepository
 	heartbeat queue.HeartbeatStore
 	scanner   queue.PendingScanner
 	producer  queue.Producer
@@ -58,17 +59,22 @@ type Monitor struct {
 //	cfg:       Runtime configuration (HeartbeatTimeout, PendingScanInterval).
 //	workers:   WorkerRepository for marking workers down.
 //	tasks:     TaskRepository for retry count checks and status transitions.
+//	chains:    ChainRepository for pipeline chain lookup during cascading cancellation.
+//	           May be nil when cascading cancellation is not required (e.g. unit tests
+//	           that only exercise heartbeat or retry logic).
 //	heartbeat: HeartbeatStore for ZRANGEBYSCORE queries on workers:active.
 //	scanner:   PendingScanner for XPENDING and XCLAIM operations.
 //	producer:  Producer for routing exhausted-retry tasks to queue:dead-letter.
 //	broker:    SSE Broker for publishing worker and task events after failover.
 //
 // Preconditions:
-//   - All arguments are non-nil and their underlying connections are open.
+//   - cfg, workers, tasks, heartbeat, scanner, producer must be non-nil.
+//   - chains may be nil; when nil, cascadeCancelDownstream is a no-op.
 func NewMonitor(
 	cfg *config.Config,
 	workers db.WorkerRepository,
 	tasks db.TaskRepository,
+	chains db.ChainRepository,
 	heartbeat queue.HeartbeatStore,
 	scanner queue.PendingScanner,
 	producer queue.Producer,
@@ -78,6 +84,7 @@ func NewMonitor(
 		cfg:       cfg,
 		workers:   workers,
 		tasks:     tasks,
+		chains:    chains,
 		heartbeat: heartbeat,
 		scanner:   scanner,
 		producer:  producer,
@@ -464,8 +471,8 @@ func (m *Monitor) dispatchRetryReadyTask(ctx context.Context, task *models.Task)
 }
 
 // deadLetterTask moves a task with exhausted retries to the dead letter queue.
-// Updates the task status to "failed" and enqueues a dead-letter entry.
-// Cascading cancellation for PipelineChain tasks is implemented in TASK-011.
+// Updates the task status to "failed", enqueues a dead-letter entry, and triggers
+// cascading cancellation for all downstream tasks in the same pipeline chain (TASK-011).
 //
 // Args:
 //
@@ -475,11 +482,23 @@ func (m *Monitor) dispatchRetryReadyTask(ctx context.Context, task *models.Task)
 //
 // Postconditions:
 //   - On success: task is in queue:dead-letter; task.Status = "failed".
-//   - Cascading chain cancellation: deferred to TASK-011 (Cycle 2).
+//   - If the task belongs to a pipeline chain: all downstream non-terminal tasks
+//     in the chain are cancelled with reason "upstream task failed" (REQ-012).
+//   - Cascading cancellation errors are logged but do not abort the dead-letter flow.
 func (m *Monitor) deadLetterTask(ctx context.Context, entry *queue.PendingEntry, tag string) error {
 	taskID, err := uuid.Parse(entry.TaskID)
 	if err != nil {
 		return fmt.Errorf("deadLetterTask: parse taskID %q: %w", entry.TaskID, err)
+	}
+
+	// Load the task before marking it failed so we can read its PipelineID for
+	// cascade lookup — UpdateStatus does not return the updated task.
+	task, err := m.tasks.GetByID(ctx, taskID)
+	if err != nil {
+		return fmt.Errorf("deadLetterTask: GetByID(%s): %w", taskID, err)
+	}
+	if task == nil {
+		return fmt.Errorf("deadLetterTask: task %s not found", taskID)
 	}
 
 	reason := fmt.Sprintf("retries exhausted after worker failure (stream=%q, entry=%q)", tag, entry.StreamID)
@@ -495,5 +514,126 @@ func (m *Monitor) deadLetterTask(ctx context.Context, entry *queue.PendingEntry,
 	}
 
 	log.Printf("monitor: task %s dead-lettered (stream=%q, entry=%q)", taskID, tag, entry.StreamID)
+
+	// Trigger cascading cancellation. Errors here are non-fatal: the task is already
+	// dead-lettered. Log and continue so a cascade lookup failure does not mask the
+	// primary dead-letter event.
+	if err := m.cascadeCancelDownstream(ctx, task); err != nil {
+		log.Printf("monitor: cascadeCancelDownstream(task=%s): %v — dead-letter succeeded; cascade partial", taskID, err)
+	}
+
+	return nil
+}
+
+// cascadeCancelDownstream cancels all non-terminal tasks in pipelines that follow
+// the given task's pipeline in the same chain. Called after a task is dead-lettered
+// so that downstream work that depends on failed upstream output is halted promptly.
+//
+// If the task has no PipelineID, or the pipeline is not part of any chain, or the
+// pipeline is the last step in the chain, this is a no-op.
+//
+// For each downstream pipeline in the chain (ordered by position after the failing
+// pipeline): all tasks in submitted/queued/assigned/running states are cancelled with
+// reason "upstream task failed", and a task SSE event is published for each.
+//
+// Args:
+//
+//	ctx:  Request context.
+//	task: The failed task whose downstream chain members should be cancelled.
+//
+// Postconditions:
+//   - On success: all non-terminal tasks in downstream pipelines are cancelled.
+//   - SSE events are published for each cancelled task (fire-and-forget; publish errors
+//     are logged but do not abort the cancellation loop).
+func (m *Monitor) cascadeCancelDownstream(ctx context.Context, task *models.Task) error {
+	// No chains repository wired — standalone configuration; nothing to do.
+	if m.chains == nil {
+		return nil
+	}
+
+	// Task has no pipeline reference (e.g. pipeline was deleted); cannot look up chain.
+	if task.PipelineID == nil {
+		return nil
+	}
+
+	// Find the chain containing this pipeline. Returns nil when the pipeline is standalone.
+	chain, err := m.chains.FindByPipeline(ctx, *task.PipelineID)
+	if err != nil {
+		return fmt.Errorf("cascadeCancelDownstream: FindByPipeline(%s): %w", *task.PipelineID, err)
+	}
+	if chain == nil {
+		// Standalone pipeline — no cascade required (REQ-012 AC-2).
+		return nil
+	}
+
+	// Walk the chain from the failing pipeline's position to the end, cancelling tasks
+	// in each downstream pipeline. chain.PipelineIDs is ordered by position (0-based).
+	failingPipelineID := *task.PipelineID
+	foundFailing := false
+	for _, pipelineID := range chain.PipelineIDs {
+		if !foundFailing {
+			if pipelineID == failingPipelineID {
+				foundFailing = true
+			}
+			continue // skip pipelines up to and including the failing one
+		}
+
+		// pipelineID is downstream of the failing pipeline; cancel its non-terminal tasks.
+		if err := m.cancelNonTerminalTasksForPipeline(ctx, pipelineID); err != nil {
+			// Log but continue: best-effort cancellation of remaining downstream pipelines.
+			log.Printf("monitor: cascadeCancelDownstream: cancelNonTerminalTasksForPipeline(pipeline=%s): %v", pipelineID, err)
+		}
+	}
+
+	return nil
+}
+
+// nonTerminalStatuses are the task states that are eligible for cascading cancellation.
+// Terminal states (completed, failed, cancelled) are already in a final state and
+// must not be transitioned.
+var nonTerminalStatuses = []models.TaskStatus{
+	models.TaskStatusSubmitted,
+	models.TaskStatusQueued,
+	models.TaskStatusAssigned,
+	models.TaskStatusRunning,
+}
+
+// cancelNonTerminalTasksForPipeline cancels all tasks in non-terminal states for the
+// given pipeline. Each cancellation is recorded in the task_state_log with reason
+// "upstream task failed". A task SSE event is published for each cancelled task.
+//
+// Args:
+//
+//	ctx:        Request context.
+//	pipelineID: The pipeline whose non-terminal tasks are to be cancelled.
+//
+// Postconditions:
+//   - On success: all matched tasks are in status "cancelled".
+//   - SSE publish errors are non-fatal and are logged (fire-and-forget per ADR-007).
+func (m *Monitor) cancelNonTerminalTasksForPipeline(ctx context.Context, pipelineID uuid.UUID) error {
+	tasks, err := m.tasks.ListByPipelineAndStatuses(ctx, pipelineID, nonTerminalStatuses)
+	if err != nil {
+		return fmt.Errorf("ListByPipelineAndStatuses(pipeline=%s): %w", pipelineID, err)
+	}
+
+	const cascadeReason = "upstream task failed"
+
+	for _, t := range tasks {
+		if err := m.tasks.Cancel(ctx, t.ID, cascadeReason); err != nil {
+			log.Printf("monitor: cancelNonTerminalTasksForPipeline: Cancel(task=%s): %v — skipping", t.ID, err)
+			continue
+		}
+
+		// Publish SSE event so the GUI reflects the cancellation in real time (NFR-003).
+		t.Status = models.TaskStatusCancelled
+		if m.broker != nil {
+			if pubErr := m.broker.PublishTaskEvent(ctx, t, cascadeReason); pubErr != nil {
+				log.Printf("monitor: cancelNonTerminalTasksForPipeline: PublishTaskEvent(task=%s): %v", t.ID, pubErr)
+			}
+		}
+
+		log.Printf("monitor: cascade-cancelled task %s (pipeline=%s)", t.ID, pipelineID)
+	}
+
 	return nil
 }

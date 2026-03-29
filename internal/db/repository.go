@@ -167,6 +167,13 @@ type TaskRepository interface {
 
 	// GetStateLog returns all state transition log entries for a Task in chronological order.
 	GetStateLog(ctx context.Context, taskID uuid.UUID) ([]*models.TaskStateLog, error)
+
+	// ListByPipelineAndStatuses returns all Tasks whose pipeline_id matches the given pipelineID
+	// and whose status is in the provided set. Used by the Monitor to locate non-terminal tasks
+	// in downstream pipelines when performing cascading cancellation (TASK-011, REQ-012).
+	//
+	// Returns an empty slice (not nil) when no matching tasks exist.
+	ListByPipelineAndStatuses(ctx context.Context, pipelineID uuid.UUID, statuses []models.TaskStatus) ([]*models.Task, error)
 }
 
 // WorkerRepository provides read and write access to the workers table.

@@ -327,6 +327,55 @@ func (q *Queries) ListRetryReadyTasks(ctx context.Context) ([]Task, error) {
 	return items, nil
 }
 
+const listTasksByPipelineAndStatuses = `-- name: ListTasksByPipelineAndStatuses :many
+SELECT id, pipeline_id, chain_id, user_id, status, retry_config, retry_count, retry_after, retry_tags, execution_id, worker_id, input, created_at, updated_at FROM tasks
+WHERE pipeline_id = $1
+  AND status = ANY($2::text[])
+ORDER BY created_at DESC
+`
+
+type ListTasksByPipelineAndStatusesParams struct {
+	PipelineID uuid.NullUUID `db:"pipeline_id" json:"pipeline_id"`
+	Statuses   []string      `db:"statuses" json:"statuses"`
+}
+
+// ListTasksByPipelineAndStatuses returns all tasks for the given pipeline whose status
+// is in the provided set. Used by the Monitor for cascading cancellation (TASK-011).
+func (q *Queries) ListTasksByPipelineAndStatuses(ctx context.Context, arg ListTasksByPipelineAndStatusesParams) ([]Task, error) {
+	rows, err := q.db.Query(ctx, listTasksByPipelineAndStatuses, arg.PipelineID, arg.Statuses)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Task
+	for rows.Next() {
+		var i Task
+		if err := rows.Scan(
+			&i.ID,
+			&i.PipelineID,
+			&i.ChainID,
+			&i.UserID,
+			&i.Status,
+			&i.RetryConfig,
+			&i.RetryCount,
+			&i.RetryAfter,
+			&i.RetryTags,
+			&i.ExecutionID,
+			&i.WorkerID,
+			&i.Input,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const updateTaskStatus = `-- name: UpdateTaskStatus :exec
 UPDATE tasks
 SET status     = $2,

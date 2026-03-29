@@ -67,6 +67,7 @@ func main() {
 	// Build repositories.
 	workerRepo := db.NewPgWorkerRepository(pool)
 	taskRepo := db.NewPgTaskRepository(pool)
+	chainRepo := db.NewPgChainRepository(pool)
 
 	// RedisQueue satisfies HeartbeatStore, PendingScanner, and Producer simultaneously.
 	redisQueue := queue.NewRedisQueue(redisClient)
@@ -79,6 +80,7 @@ func main() {
 		cfg,
 		workerRepo,
 		taskRepo,
+		chainRepo,
 		redisQueue, // HeartbeatStore
 		redisQueue, // PendingScanner
 		redisQueue, // Producer

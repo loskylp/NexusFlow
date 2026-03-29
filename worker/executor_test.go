@@ -155,6 +155,10 @@ func (r *fakeTaskRepo) ListRetryReady(_ context.Context) ([]*models.Task, error)
 	return []*models.Task{}, nil
 }
 
+func (r *fakeTaskRepo) ListByPipelineAndStatuses(_ context.Context, _ uuid.UUID, _ []models.TaskStatus) ([]*models.Task, error) {
+	return []*models.Task{}, nil
+}
+
 // getTransitions returns all recorded transitions for a task in order.
 func (r *fakeTaskRepo) getTransitions(taskID uuid.UUID) []statusTransition {
 	r.mu.Lock()

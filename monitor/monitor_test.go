@@ -181,6 +181,24 @@ func (r *fakeTaskRepository) GetStateLog(_ context.Context, _ uuid.UUID) ([]*mod
 	return nil, nil
 }
 
+func (r *fakeTaskRepository) ListByPipelineAndStatuses(_ context.Context, pipelineID uuid.UUID, statuses []models.TaskStatus) ([]*models.Task, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	statusSet := make(map[models.TaskStatus]struct{}, len(statuses))
+	for _, s := range statuses {
+		statusSet[s] = struct{}{}
+	}
+	var out []*models.Task
+	for _, t := range r.tasks {
+		if t.PipelineID != nil && *t.PipelineID == pipelineID {
+			if _, ok := statusSet[t.Status]; ok {
+				out = append(out, t)
+			}
+		}
+	}
+	return out, nil
+}
+
 // fakeHeartbeatStore implements queue.HeartbeatStore for testing.
 type fakeHeartbeatStore struct {
 	mu      sync.Mutex
@@ -353,6 +371,75 @@ func (b *fakeBroker) PublishSinkSnapshot(_ context.Context, _ *models.SinkSnapsh
 	return nil
 }
 
+// fakeChainRepository implements db.ChainRepository for testing cascading cancellation.
+type fakeChainRepository struct {
+	mu     sync.Mutex
+	chains map[uuid.UUID]*models.Chain // chain ID -> chain
+	// byPipeline maps pipeline ID -> chain (for FindByPipeline)
+	byPipeline map[uuid.UUID]*models.Chain
+}
+
+func newFakeChainRepository() *fakeChainRepository {
+	return &fakeChainRepository{
+		chains:     make(map[uuid.UUID]*models.Chain),
+		byPipeline: make(map[uuid.UUID]*models.Chain),
+	}
+}
+
+// addChain registers a chain and indexes all its pipelines for FindByPipeline lookups.
+func (r *fakeChainRepository) addChain(chain *models.Chain) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.chains[chain.ID] = chain
+	for _, pid := range chain.PipelineIDs {
+		r.byPipeline[pid] = chain
+	}
+}
+
+func (r *fakeChainRepository) Create(_ context.Context, chain *models.Chain) (*models.Chain, error) {
+	r.addChain(chain)
+	return chain, nil
+}
+
+func (r *fakeChainRepository) GetByID(_ context.Context, id uuid.UUID) (*models.Chain, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	c, ok := r.chains[id]
+	if !ok {
+		return nil, nil
+	}
+	return c, nil
+}
+
+func (r *fakeChainRepository) FindByPipeline(_ context.Context, pipelineID uuid.UUID) (*models.Chain, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	c, ok := r.byPipeline[pipelineID]
+	if !ok {
+		return nil, nil
+	}
+	return c, nil
+}
+
+func (r *fakeChainRepository) GetNextPipeline(_ context.Context, chainID uuid.UUID, pipelineID uuid.UUID) (*uuid.UUID, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	chain, ok := r.chains[chainID]
+	if !ok {
+		return nil, nil
+	}
+	for i, pid := range chain.PipelineIDs {
+		if pid == pipelineID {
+			if i+1 < len(chain.PipelineIDs) {
+				next := chain.PipelineIDs[i+1]
+				return &next, nil
+			}
+			return nil, nil // last step
+		}
+	}
+	return nil, nil
+}
+
 // --- helpers ---
 
 // testCfg returns a minimal config suitable for unit tests.
@@ -386,7 +473,7 @@ func TestNewMonitor_NonNilDependencies(t *testing.T) {
 	producer := newFakeProducer()
 	broker := newFakeBroker()
 
-	m := NewMonitor(cfg, workers, tasks, heartbeat, scanner, producer, broker)
+	m := NewMonitor(cfg, workers, tasks, nil, heartbeat, scanner, producer, broker)
 
 	if m == nil {
 		t.Fatal("NewMonitor: returned nil")
@@ -425,7 +512,7 @@ func TestCheckHeartbeats_MarksExpiredWorkerDown(t *testing.T) {
 		Tags:   []string{"demo"},
 	}
 
-	m := NewMonitor(cfg, workers, tasks, heartbeat, scanner, producer, broker)
+	m := NewMonitor(cfg, workers, tasks, nil, heartbeat, scanner, producer, broker)
 
 	ctx := context.Background()
 	if err := m.checkHeartbeats(ctx); err != nil {
@@ -464,7 +551,7 @@ func TestCheckHeartbeats_RemovesExpiredWorkerFromHeartbeatStore(t *testing.T) {
 		Tags:   []string{"demo"},
 	}
 
-	m := NewMonitor(cfg, workers, tasks, heartbeat, scanner, producer, broker)
+	m := NewMonitor(cfg, workers, tasks, nil, heartbeat, scanner, producer, broker)
 
 	if err := m.checkHeartbeats(context.Background()); err != nil {
 		t.Fatalf("checkHeartbeats: %v", err)
@@ -498,7 +585,7 @@ func TestCheckHeartbeats_PublishesWorkerDownEvent(t *testing.T) {
 		Tags:   []string{"demo"},
 	}
 
-	m := NewMonitor(cfg, workers, tasks, heartbeat, scanner, producer, broker)
+	m := NewMonitor(cfg, workers, tasks, nil, heartbeat, scanner, producer, broker)
 
 	if err := m.checkHeartbeats(context.Background()); err != nil {
 		t.Fatalf("checkHeartbeats: %v", err)
@@ -527,7 +614,7 @@ func TestCheckHeartbeats_HealthyWorkerIgnored(t *testing.T) {
 	healthyWorkerID := "worker-healthy-1"
 	heartbeat.active[healthyWorkerID] = time.Now() // fresh heartbeat
 
-	m := NewMonitor(cfg, workers, tasks, heartbeat, scanner, producer, broker)
+	m := NewMonitor(cfg, workers, tasks, nil, heartbeat, scanner, producer, broker)
 
 	if err := m.checkHeartbeats(context.Background()); err != nil {
 		t.Fatalf("checkHeartbeats: %v", err)
@@ -559,7 +646,7 @@ func TestReclaimTask_IncrementsRetryCount(t *testing.T) {
 		TaskID:     taskID.String(),
 	}
 
-	m := NewMonitor(cfg, workers, tasks, heartbeat, scanner, producer, broker)
+	m := NewMonitor(cfg, workers, tasks, nil, heartbeat, scanner, producer, broker)
 
 	if err := m.reclaimTask(context.Background(), entry, "demo"); err != nil {
 		t.Fatalf("reclaimTask: %v", err)
@@ -591,7 +678,7 @@ func TestReclaimTask_TransitionsTaskToQueued(t *testing.T) {
 		TaskID:     taskID.String(),
 	}
 
-	m := NewMonitor(cfg, workers, tasks, heartbeat, scanner, producer, broker)
+	m := NewMonitor(cfg, workers, tasks, nil, heartbeat, scanner, producer, broker)
 
 	if err := m.reclaimTask(context.Background(), entry, "demo"); err != nil {
 		t.Fatalf("reclaimTask: %v", err)
@@ -630,7 +717,7 @@ func TestReclaimTask_ClaimsPendingEntry(t *testing.T) {
 		TaskID:     taskID.String(),
 	}
 
-	m := NewMonitor(cfg, workers, tasks, heartbeat, scanner, producer, broker)
+	m := NewMonitor(cfg, workers, tasks, nil, heartbeat, scanner, producer, broker)
 
 	if err := m.reclaimTask(context.Background(), entry, "demo"); err != nil {
 		t.Fatalf("reclaimTask: %v", err)
@@ -674,7 +761,7 @@ func TestDeadLetterTask_ExhaustedRetries(t *testing.T) {
 		TaskID:     taskID.String(),
 	}
 
-	m := NewMonitor(cfg, workers, tasks, heartbeat, scanner, producer, broker)
+	m := NewMonitor(cfg, workers, tasks, nil, heartbeat, scanner, producer, broker)
 
 	if err := m.deadLetterTask(context.Background(), entry, "demo"); err != nil {
 		t.Fatalf("deadLetterTask: %v", err)
@@ -745,7 +832,7 @@ func TestScanPendingEntries_ReclaimsAndDeadLetters(t *testing.T) {
 		IdleTime: 30 * time.Second, TaskID: taskID2.String(),
 	})
 
-	m := NewMonitor(cfg, workers, tasks, heartbeat, scanner, producer, broker)
+	m := NewMonitor(cfg, workers, tasks, nil, heartbeat, scanner, producer, broker)
 
 	if err := m.scanPendingEntries(context.Background()); err != nil {
 		t.Fatalf("scanPendingEntries: %v", err)
@@ -791,7 +878,7 @@ func TestReclaimTask_DeferredEnqueueViaRetryAfter(t *testing.T) {
 		TaskID:     taskID.String(),
 	}
 
-	m := NewMonitor(cfg, workers, tasks, heartbeat, scanner, producer, broker)
+	m := NewMonitor(cfg, workers, tasks, nil, heartbeat, scanner, producer, broker)
 
 	if err := m.reclaimTask(context.Background(), entry, "demo"); err != nil {
 		t.Fatalf("reclaimTask: %v", err)
@@ -843,7 +930,7 @@ func TestRun_StopsOnContextCancel(t *testing.T) {
 	producer := newFakeProducer()
 	broker := newFakeBroker()
 
-	m := NewMonitor(cfg, workers, tasks, heartbeat, scanner, producer, broker)
+	m := NewMonitor(cfg, workers, tasks, nil, heartbeat, scanner, producer, broker)
 
 	ctx, cancel := context.WithCancel(context.Background())
 
@@ -887,7 +974,7 @@ func TestCheckHeartbeats_BrokerErrorIsNonFatal(t *testing.T) {
 		Tags:   []string{"demo"},
 	}
 
-	m := NewMonitor(cfg, workers, tasks, heartbeat, scanner, producer, broker)
+	m := NewMonitor(cfg, workers, tasks, nil, heartbeat, scanner, producer, broker)
 
 	// Broker publish fails, but checkHeartbeats must still return nil and
 	// continue processing (fire-and-forget SSE events per ADR-007).
@@ -928,7 +1015,7 @@ func TestReclaimTask_SetsRetryAfterWithExponentialBackoff(t *testing.T) {
 	}
 
 	before := time.Now()
-	m := NewMonitor(cfg, workers, tasks, heartbeat, scanner, producer, broker)
+	m := NewMonitor(cfg, workers, tasks, nil, heartbeat, scanner, producer, broker)
 	if err := m.reclaimTask(context.Background(), entry, "demo"); err != nil {
 		t.Fatalf("reclaimTask: %v", err)
 	}
@@ -973,7 +1060,7 @@ func TestReclaimTask_SetsRetryAfterWithLinearBackoff(t *testing.T) {
 	}
 
 	before := time.Now()
-	m := NewMonitor(cfg, workers, tasks, heartbeat, scanner, producer, broker)
+	m := NewMonitor(cfg, workers, tasks, nil, heartbeat, scanner, producer, broker)
 	if err := m.reclaimTask(context.Background(), entry, "demo"); err != nil {
 		t.Fatalf("reclaimTask: %v", err)
 	}
@@ -1014,7 +1101,7 @@ func TestReclaimTask_DoesNotImmediatelyReEnqueue(t *testing.T) {
 		TaskID:     taskID.String(),
 	}
 
-	m := NewMonitor(cfg, workers, tasks, heartbeat, scanner, producer, broker)
+	m := NewMonitor(cfg, workers, tasks, nil, heartbeat, scanner, producer, broker)
 	if err := m.reclaimTask(context.Background(), entry, "demo"); err != nil {
 		t.Fatalf("reclaimTask: %v", err)
 	}
@@ -1050,7 +1137,7 @@ func TestScanRetryReady_ReEnqueuesTasksWhoseRetryAfterHasElapsed(t *testing.T) {
 	}
 	tasks.tasks[taskID] = task
 
-	m := NewMonitor(cfg, workers, tasks, heartbeat, scanner, producer, broker)
+	m := NewMonitor(cfg, workers, tasks, nil, heartbeat, scanner, producer, broker)
 
 	if err := m.scanRetryReady(context.Background()); err != nil {
 		t.Fatalf("scanRetryReady: %v", err)
@@ -1091,7 +1178,7 @@ func TestProcessEntry_SkipsTaskWithFutureRetryAfter(t *testing.T) {
 		TaskID:     taskID.String(),
 	}
 
-	m := NewMonitor(cfg, workers, tasks, heartbeat, scanner, producer, broker)
+	m := NewMonitor(cfg, workers, tasks, nil, heartbeat, scanner, producer, broker)
 	if err := m.processEntry(context.Background(), entry, "demo"); err != nil {
 		t.Fatalf("processEntry: %v", err)
 	}
@@ -1130,7 +1217,7 @@ func TestReclaimTask_UpToMaxRetries(t *testing.T) {
 		TaskID:     taskID.String(),
 	}
 
-	m := NewMonitor(cfg, workers, tasks, heartbeat, scanner, producer, broker)
+	m := NewMonitor(cfg, workers, tasks, nil, heartbeat, scanner, producer, broker)
 
 	// processEntry with RetryCount=2, MaxRetries=3: should reclaim (not dead-letter).
 	if err := m.processEntry(context.Background(), entry, "demo"); err != nil {
@@ -1172,7 +1259,7 @@ func TestProcessEntry_DeadLettersWhenRetriesExhausted(t *testing.T) {
 		TaskID:     taskID.String(),
 	}
 
-	m := NewMonitor(cfg, workers, tasks, heartbeat, scanner, producer, broker)
+	m := NewMonitor(cfg, workers, tasks, nil, heartbeat, scanner, producer, broker)
 	if err := m.processEntry(context.Background(), entry, "demo"); err != nil {
 		t.Fatalf("processEntry: %v", err)
 	}
@@ -1216,7 +1303,7 @@ func TestRetryCountVisibleInTaskState(t *testing.T) {
 		TaskID:     taskID.String(),
 	}
 
-	m := NewMonitor(cfg, workers, tasks, heartbeat, scanner, producer, broker)
+	m := NewMonitor(cfg, workers, tasks, nil, heartbeat, scanner, producer, broker)
 	if err := m.reclaimTask(context.Background(), entry, "demo"); err != nil {
 		t.Fatalf("reclaimTask: %v", err)
 	}
@@ -1228,5 +1315,351 @@ func TestRetryCountVisibleInTaskState(t *testing.T) {
 	}
 	if task.RetryCount != 1 {
 		t.Errorf("task.RetryCount = %d, want 1 — retry count must be visible in task state", task.RetryCount)
+	}
+}
+
+// --- TASK-011 acceptance criterion tests ---
+
+// TestDeadLetterTask_CascadeCancelsDownstreamTasks verifies AC-2:
+// Pipeline chain A -> B -> C: when task A enters the dead letter queue,
+// tasks B and C are cancelled with reason "upstream task failed".
+func TestDeadLetterTask_CascadeCancelsDownstreamTasks(t *testing.T) {
+	cfg := testCfg()
+	workers := newFakeWorkerRepository()
+	tasks := newFakeTaskRepository()
+	heartbeat := newFakeHeartbeatStore()
+	scanner := newFakePendingScanner()
+	producer := newFakeProducer()
+	broker := newFakeBroker()
+	chains := newFakeChainRepository()
+
+	// Set up three pipelines in a chain: A -> B -> C.
+	pipelineA := uuid.New()
+	pipelineB := uuid.New()
+	pipelineC := uuid.New()
+
+	chain := &models.Chain{
+		ID:          uuid.New(),
+		Name:        "test-chain",
+		UserID:      uuid.New(),
+		PipelineIDs: []uuid.UUID{pipelineA, pipelineB, pipelineC},
+	}
+	chains.addChain(chain)
+
+	// Task A is the failing task (will be dead-lettered).
+	taskAID := uuid.New()
+	taskA := &models.Task{
+		ID:          taskAID,
+		PipelineID:  &pipelineA,
+		Status:      models.TaskStatusRunning,
+		RetryConfig: models.RetryConfig{MaxRetries: 3},
+		RetryCount:  3,
+	}
+	tasks.tasks[taskAID] = taskA
+
+	// Task B is queued downstream.
+	taskBID := uuid.New()
+	taskB := &models.Task{
+		ID:         taskBID,
+		PipelineID: &pipelineB,
+		Status:     models.TaskStatusQueued,
+		RetryConfig: models.RetryConfig{MaxRetries: 3},
+	}
+	tasks.tasks[taskBID] = taskB
+
+	// Task C is submitted downstream.
+	taskCID := uuid.New()
+	taskC := &models.Task{
+		ID:         taskCID,
+		PipelineID: &pipelineC,
+		Status:     models.TaskStatusSubmitted,
+		RetryConfig: models.RetryConfig{MaxRetries: 3},
+	}
+	tasks.tasks[taskCID] = taskC
+
+	entry := &queue.PendingEntry{
+		StreamID:   "100-1",
+		ConsumerID: "worker-dead",
+		IdleTime:   30 * time.Second,
+		TaskID:     taskAID.String(),
+	}
+
+	m := NewMonitor(cfg, workers, tasks, chains, heartbeat, scanner, producer, broker)
+
+	if err := m.deadLetterTask(context.Background(), entry, "demo"); err != nil {
+		t.Fatalf("deadLetterTask: %v", err)
+	}
+
+	// Task A must be dead-lettered and failed.
+	if len(producer.deadLettered) == 0 {
+		t.Fatal("deadLetterTask: EnqueueDeadLetter not called for task A")
+	}
+	if producer.deadLettered[0].taskID != taskAID.String() {
+		t.Errorf("deadLetterTask: dead-lettered taskID=%q, want %q", producer.deadLettered[0].taskID, taskAID.String())
+	}
+
+	// Task B must be cancelled.
+	if tasks.tasks[taskBID].Status != models.TaskStatusCancelled {
+		t.Errorf("cascade: task B status=%q, want %q", tasks.tasks[taskBID].Status, models.TaskStatusCancelled)
+	}
+
+	// Task C must be cancelled.
+	if tasks.tasks[taskCID].Status != models.TaskStatusCancelled {
+		t.Errorf("cascade: task C status=%q, want %q", tasks.tasks[taskCID].Status, models.TaskStatusCancelled)
+	}
+}
+
+// TestDeadLetterTask_StandaloneTaskNoCascade verifies AC-3:
+// A standalone task (not part of any chain) enters the dead letter queue
+// without cascading cancellation.
+func TestDeadLetterTask_StandaloneTaskNoCascade(t *testing.T) {
+	cfg := testCfg()
+	workers := newFakeWorkerRepository()
+	tasks := newFakeTaskRepository()
+	heartbeat := newFakeHeartbeatStore()
+	scanner := newFakePendingScanner()
+	producer := newFakeProducer()
+	broker := newFakeBroker()
+	chains := newFakeChainRepository() // empty — no chains defined
+
+	// Task is standalone: has a pipeline but pipeline is not in any chain.
+	standalonePipeline := uuid.New()
+	taskID := uuid.New()
+	tasks.tasks[taskID] = &models.Task{
+		ID:          taskID,
+		PipelineID:  &standalonePipeline,
+		Status:      models.TaskStatusRunning,
+		RetryConfig: models.RetryConfig{MaxRetries: 3},
+		RetryCount:  3,
+	}
+
+	// An unrelated queued task that must NOT be cancelled.
+	otherPipeline := uuid.New()
+	otherTaskID := uuid.New()
+	tasks.tasks[otherTaskID] = &models.Task{
+		ID:         otherTaskID,
+		PipelineID: &otherPipeline,
+		Status:     models.TaskStatusQueued,
+		RetryConfig: models.RetryConfig{MaxRetries: 3},
+	}
+
+	entry := &queue.PendingEntry{
+		StreamID:   "101-1",
+		ConsumerID: "worker-dead",
+		IdleTime:   30 * time.Second,
+		TaskID:     taskID.String(),
+	}
+
+	m := NewMonitor(cfg, workers, tasks, chains, heartbeat, scanner, producer, broker)
+
+	if err := m.deadLetterTask(context.Background(), entry, "demo"); err != nil {
+		t.Fatalf("deadLetterTask: %v", err)
+	}
+
+	// Task must be dead-lettered.
+	if len(producer.deadLettered) == 0 {
+		t.Fatal("deadLetterTask: EnqueueDeadLetter not called")
+	}
+
+	// Other task must NOT have been cancelled (no cascade for standalone).
+	if tasks.tasks[otherTaskID].Status == models.TaskStatusCancelled {
+		t.Error("cascade: unrelated task was incorrectly cancelled for standalone pipeline")
+	}
+}
+
+// TestDeadLetterTask_CascadePublishesSSEEvents verifies that SSE task events are
+// published for each task cancelled as part of cascading cancellation (NFR-003).
+func TestDeadLetterTask_CascadePublishesSSEEvents(t *testing.T) {
+	cfg := testCfg()
+	workers := newFakeWorkerRepository()
+	tasks := newFakeTaskRepository()
+	heartbeat := newFakeHeartbeatStore()
+	scanner := newFakePendingScanner()
+	producer := newFakeProducer()
+	broker := newFakeBroker()
+	chains := newFakeChainRepository()
+
+	pipelineA := uuid.New()
+	pipelineB := uuid.New()
+
+	chain := &models.Chain{
+		ID:          uuid.New(),
+		Name:        "sse-chain",
+		UserID:      uuid.New(),
+		PipelineIDs: []uuid.UUID{pipelineA, pipelineB},
+	}
+	chains.addChain(chain)
+
+	taskAID := uuid.New()
+	taskA := &models.Task{
+		ID:          taskAID,
+		PipelineID:  &pipelineA,
+		Status:      models.TaskStatusRunning,
+		RetryConfig: models.RetryConfig{MaxRetries: 3},
+		RetryCount:  3,
+	}
+	tasks.tasks[taskAID] = taskA
+
+	taskBID := uuid.New()
+	taskB := &models.Task{
+		ID:         taskBID,
+		PipelineID: &pipelineB,
+		Status:     models.TaskStatusRunning,
+		RetryConfig: models.RetryConfig{MaxRetries: 3},
+	}
+	tasks.tasks[taskBID] = taskB
+
+	entry := &queue.PendingEntry{
+		StreamID:   "102-1",
+		ConsumerID: "worker-dead",
+		IdleTime:   30 * time.Second,
+		TaskID:     taskAID.String(),
+	}
+
+	m := NewMonitor(cfg, workers, tasks, chains, heartbeat, scanner, producer, broker)
+
+	if err := m.deadLetterTask(context.Background(), entry, "demo"); err != nil {
+		t.Fatalf("deadLetterTask: %v", err)
+	}
+
+	// At least one SSE task event must have been published for the cancelled downstream task.
+	broker.mu.Lock()
+	taskEventCount := len(broker.taskEvents)
+	broker.mu.Unlock()
+
+	if taskEventCount == 0 {
+		t.Fatal("cascade: no SSE task events published for downstream cancellation")
+	}
+
+	// The published event must carry status "cancelled".
+	broker.mu.Lock()
+	defer broker.mu.Unlock()
+	for _, evt := range broker.taskEvents {
+		if evt.ID == taskBID && evt.Status != models.TaskStatusCancelled {
+			t.Errorf("cascade: SSE event for task B has status=%q, want %q", evt.Status, models.TaskStatusCancelled)
+		}
+	}
+}
+
+// TestDeadLetterTask_CascadeOnlyDownstreamNotUpstream verifies that cascading
+// cancellation affects only pipelines AFTER the failing pipeline in the chain,
+// not the failing pipeline itself or any upstream pipelines.
+// Chain: A -> B -> C; task B fails; only task C should be cancelled.
+func TestDeadLetterTask_CascadeOnlyDownstreamNotUpstream(t *testing.T) {
+	cfg := testCfg()
+	workers := newFakeWorkerRepository()
+	tasks := newFakeTaskRepository()
+	heartbeat := newFakeHeartbeatStore()
+	scanner := newFakePendingScanner()
+	producer := newFakeProducer()
+	broker := newFakeBroker()
+	chains := newFakeChainRepository()
+
+	pipelineA := uuid.New()
+	pipelineB := uuid.New()
+	pipelineC := uuid.New()
+
+	chain := &models.Chain{
+		ID:          uuid.New(),
+		Name:        "middle-chain",
+		UserID:      uuid.New(),
+		PipelineIDs: []uuid.UUID{pipelineA, pipelineB, pipelineC},
+	}
+	chains.addChain(chain)
+
+	// Task A is upstream and completed — must not be touched.
+	taskAID := uuid.New()
+	taskA := &models.Task{
+		ID:          taskAID,
+		PipelineID:  &pipelineA,
+		Status:      models.TaskStatusCompleted,
+		RetryConfig: models.RetryConfig{MaxRetries: 3},
+	}
+	tasks.tasks[taskAID] = taskA
+
+	// Task B is the failing task (middle of chain).
+	taskBID := uuid.New()
+	taskB := &models.Task{
+		ID:          taskBID,
+		PipelineID:  &pipelineB,
+		Status:      models.TaskStatusRunning,
+		RetryConfig: models.RetryConfig{MaxRetries: 3},
+		RetryCount:  3,
+	}
+	tasks.tasks[taskBID] = taskB
+
+	// Task C is downstream and queued — must be cancelled.
+	taskCID := uuid.New()
+	taskC := &models.Task{
+		ID:         taskCID,
+		PipelineID: &pipelineC,
+		Status:     models.TaskStatusQueued,
+		RetryConfig: models.RetryConfig{MaxRetries: 3},
+	}
+	tasks.tasks[taskCID] = taskC
+
+	entry := &queue.PendingEntry{
+		StreamID:   "103-1",
+		ConsumerID: "worker-dead",
+		IdleTime:   30 * time.Second,
+		TaskID:     taskBID.String(),
+	}
+
+	m := NewMonitor(cfg, workers, tasks, chains, heartbeat, scanner, producer, broker)
+
+	if err := m.deadLetterTask(context.Background(), entry, "demo"); err != nil {
+		t.Fatalf("deadLetterTask: %v", err)
+	}
+
+	// Task A (upstream, completed) must remain completed.
+	if tasks.tasks[taskAID].Status != models.TaskStatusCompleted {
+		t.Errorf("cascade: upstream task A was incorrectly modified: status=%q", tasks.tasks[taskAID].Status)
+	}
+
+	// Task C (downstream) must be cancelled.
+	if tasks.tasks[taskCID].Status != models.TaskStatusCancelled {
+		t.Errorf("cascade: downstream task C status=%q, want %q", tasks.tasks[taskCID].Status, models.TaskStatusCancelled)
+	}
+}
+
+// TestDeadLetterTask_NilChainsIsNoop verifies that when chains is nil (standalone
+// monitor configuration), deadLetterTask succeeds without panicking or performing
+// any cascade operations.
+func TestDeadLetterTask_NilChainsIsNoop(t *testing.T) {
+	cfg := testCfg()
+	workers := newFakeWorkerRepository()
+	tasks := newFakeTaskRepository()
+	heartbeat := newFakeHeartbeatStore()
+	scanner := newFakePendingScanner()
+	producer := newFakeProducer()
+	broker := newFakeBroker()
+
+	pipelineID := uuid.New()
+	taskID := uuid.New()
+	tasks.tasks[taskID] = &models.Task{
+		ID:          taskID,
+		PipelineID:  &pipelineID,
+		Status:      models.TaskStatusRunning,
+		RetryConfig: models.RetryConfig{MaxRetries: 3},
+		RetryCount:  3,
+	}
+
+	entry := &queue.PendingEntry{
+		StreamID:   "104-1",
+		ConsumerID: "worker-dead",
+		IdleTime:   30 * time.Second,
+		TaskID:     taskID.String(),
+	}
+
+	// nil chains — cascadeCancelDownstream must be a no-op.
+	m := NewMonitor(cfg, workers, tasks, nil, heartbeat, scanner, producer, broker)
+
+	if err := m.deadLetterTask(context.Background(), entry, "demo"); err != nil {
+		t.Fatalf("deadLetterTask with nil chains: unexpected error: %v", err)
+	}
+
+	// Task must still be dead-lettered normally.
+	if len(producer.deadLettered) == 0 {
+		t.Fatal("deadLetterTask: EnqueueDeadLetter not called when chains is nil")
 	}
 }
