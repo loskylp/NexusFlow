@@ -30,6 +30,7 @@ import (
 	"github.com/nxlabs/nexusflow/internal/config"
 	"github.com/nxlabs/nexusflow/internal/db"
 	"github.com/nxlabs/nexusflow/internal/queue"
+	"github.com/nxlabs/nexusflow/internal/sse"
 	"github.com/redis/go-redis/v9"
 
 	workerPkg "github.com/nxlabs/nexusflow/worker"
@@ -101,9 +102,21 @@ func main() {
 	chainEnqueuer := workerPkg.NewWorkerChainEnqueuer(taskRepo, redisQueue, cfg.WorkerTags)
 	chainTrigger := workerPkg.NewChainTrigger(chainRepo, chainEnqueuer, redisQueue)
 
+	// Construct the SSE broker for task event publication and log line fan-out (TASK-015, TASK-016).
+	// The broker connects to the same Redis instance and publishes to events:tasks:* and events:logs:*.
+	runCtxForBroker, runCancelForBroker := context.WithCancel(context.Background())
+	sseBroker := sse.NewRedisBroker(redisClient)
+	go func() {
+		if err := sseBroker.Start(runCtxForBroker); err != nil {
+			log.Printf("worker: SSE broker exited: %v", err)
+		}
+	}()
+
+	// Construct the LogPublisher (TASK-016).
+	// Writes log lines to Redis Streams (hot storage) and publishes to events:logs:{taskId} for SSE.
+	logPublisher := workerPkg.NewRedisLogPublisher(redisClient, sseBroker)
+
 	// Construct the worker.
-	// broker is nil until TASK-015 (SSE infrastructure) is implemented.
-	// When broker is nil, the Worker skips event publication silently.
 	w := workerPkg.NewWorkerWithPipelines(
 		cfg,
 		taskRepo,
@@ -111,10 +124,10 @@ func main() {
 		pipelineRepo,
 		redisQueue, // Consumer
 		redisQueue, // HeartbeatStore
-		nil,        // Broker — wired in TASK-015
+		sseBroker,  // TaskEventBroker — wired in TASK-015
 		connectorRegistry,
 		redisQueue, // CancellationStore — TASK-012
-	).WithChainTrigger(chainTrigger)
+	).WithChainTrigger(chainTrigger).WithLogPublisher(logPublisher)
 
 	// Run blocks until SIGTERM/SIGINT.
 	runCtx, runCancel := context.WithCancel(context.Background())
@@ -131,11 +144,13 @@ func main() {
 	case sig := <-quit:
 		log.Printf("worker: received signal %s — shutting down", sig)
 		runCancel()
+		runCancelForBroker() // stop SSE broker goroutine
 		if err := <-errCh; err != nil {
 			log.Printf("worker: Run returned: %v", err)
 		}
 	case err := <-errCh:
 		runCancel()
+		runCancelForBroker()
 		if err != nil {
 			log.Fatalf("worker: Run failed: %v", err)
 		}

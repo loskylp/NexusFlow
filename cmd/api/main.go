@@ -79,6 +79,7 @@ func main() {
 
 	// Wire TASK-005 dependencies: TaskRepository, PipelineRepository, and queue Producer.
 	taskRepo := db.NewPgTaskRepository(pool)
+	taskLogRepo := db.NewPgTaskLogRepository(pool)
 	pipelineRepo := db.NewPgPipelineRepository(pool)
 	workerRepo := db.NewPgWorkerRepository(pool)
 	chainRepo := db.NewPgChainRepository(pool)
@@ -97,7 +98,9 @@ func main() {
 	mainCtx, mainCancel := context.WithCancel(context.Background())
 	defer mainCancel()
 
-	broker := sse.NewRedisBroker(redisClient).WithTaskRepo(taskRepo)
+	broker := sse.NewRedisBroker(redisClient).
+		WithTaskRepo(taskRepo).
+		WithLogRepo(taskLogRepo)
 	go func() {
 		if err := broker.Start(mainCtx); err != nil {
 			log.Printf("api: SSE broker exited: %v", err)
@@ -105,12 +108,19 @@ func main() {
 	}()
 	log.Printf("api: SSE broker started")
 
+	// Start the background log sync goroutine (TASK-016, ADR-008).
+	// Copies log entries from Redis Streams (hot storage) to PostgreSQL (cold storage)
+	// every 60 seconds. Shuts down cleanly when mainCtx is cancelled.
+	api.StartLogSync(mainCtx, redisClient, taskLogRepo)
+	log.Printf("api: log sync started")
+
 	srv := api.NewServer(
 		cfg,
 		pool,
 		redisClient,
 		userRepo,
 		taskRepo,
+		taskLogRepo,
 		pipelineRepo,
 		workerRepo,
 		chainRepo,

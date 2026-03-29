@@ -26,6 +26,7 @@ type Server struct {
 	redis         *redis.Client
 	users         db.UserRepository
 	tasks         db.TaskRepository
+	taskLogs      db.TaskLogRepository
 	pipelines     db.PipelineRepository
 	workers       db.WorkerRepository
 	chains        db.ChainRepository
@@ -44,6 +45,7 @@ type Server struct {
 //	redis:         go-redis client for health checks.
 //	users:         UserRepository backed by PostgreSQL.
 //	tasks:         TaskRepository backed by PostgreSQL.
+//	taskLogs:      TaskLogRepository for cold log storage (TASK-016).
 //	pipelines:     PipelineRepository backed by PostgreSQL.
 //	workers:       WorkerRepository backed by PostgreSQL.
 //	chains:        ChainRepository backed by PostgreSQL (TASK-014).
@@ -60,6 +62,7 @@ func NewServer(
 	redisClient *redis.Client,
 	users db.UserRepository,
 	tasks db.TaskRepository,
+	taskLogs db.TaskLogRepository,
 	pipelines db.PipelineRepository,
 	workers db.WorkerRepository,
 	chains db.ChainRepository,
@@ -74,6 +77,7 @@ func NewServer(
 		redis:         redisClient,
 		users:         users,
 		tasks:         tasks,
+		taskLogs:      taskLogs,
 		pipelines:     pipelines,
 		workers:       workers,
 		chains:        chains,
@@ -97,6 +101,7 @@ func NewServer(
 //	GET    /api/tasks                  — TaskHandler.List        (TASK-008, Cycle 2) — authenticated
 //	GET    /api/tasks/{id}             — TaskHandler.Get         (TASK-008, Cycle 2) — authenticated
 //	POST   /api/tasks/{id}/cancel      — TaskHandler.Cancel      (TASK-012, Cycle 2) — authenticated
+//	GET    /api/tasks/{id}/logs        — LogHandler.GetLogs      (TASK-016) — authenticated
 //	GET    /api/pipelines              — PipelineHandler.List    (TASK-013) — authenticated
 //	POST   /api/pipelines              — PipelineHandler.Create  (TASK-013) — authenticated
 //	GET    /api/pipelines/{id}         — PipelineHandler.Get     (TASK-013) — authenticated
@@ -136,6 +141,10 @@ func (s *Server) Handler() http.Handler {
 		protected.Get("/api/tasks", taskH.List)
 		protected.Get("/api/tasks/{id}", taskH.Get)
 		protected.Post("/api/tasks/{id}/cancel", taskH.Cancel)
+
+		// Log history endpoint (TASK-016).
+		logH := &LogHandler{server: s}
+		protected.Get("/api/tasks/{id}/logs", logH.GetLogs)
 
 		pipelineH := &PipelineHandler{server: s}
 		protected.Post("/api/pipelines", pipelineH.Create)

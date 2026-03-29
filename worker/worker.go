@@ -47,6 +47,9 @@ type Worker struct {
 	// chainTrigger fires downstream chain tasks on task completion (TASK-014).
 	// May be nil when chain support is not wired (e.g. tests without chain dependencies).
 	chainTrigger *ChainTrigger
+	// logPublisher writes log lines to Redis Streams and fires SSE events (TASK-016).
+	// May be nil; when nil, log production is skipped silently.
+	logPublisher LogPublisher
 }
 
 // NewWorker constructs a Worker with all required dependencies.
@@ -148,6 +151,24 @@ func (w *Worker) WithChainTrigger(trigger *ChainTrigger) *Worker {
 		panic("worker.WithChainTrigger: trigger must not be nil")
 	}
 	w.chainTrigger = trigger
+	return w
+}
+
+// WithLogPublisher attaches a LogPublisher that receives log lines produced during
+// pipeline phase execution (TASK-016). When not attached, log production is disabled.
+//
+// Args:
+//
+//	publisher: The LogPublisher to use. Must not be nil.
+//
+// Returns:
+//
+//	The same Worker instance (fluent API for construction-time wiring).
+func (w *Worker) WithLogPublisher(publisher LogPublisher) *Worker {
+	if publisher == nil {
+		panic("worker.WithLogPublisher: publisher must not be nil")
+	}
+	w.logPublisher = publisher
 	return w
 }
 
@@ -404,44 +425,57 @@ func (w *Worker) runPipeline(ctx context.Context, message *queue.TaskMessage, ta
 	}
 
 	// Phase 1: DataSource
+	w.emitLog(ctx, taskID, "INFO", "datasource", fmt.Sprintf("starting DataSource(%s)", pipeline.DataSourceConfig.ConnectorType))
 	dsRecords, err := w.runDataSource(ctx, pipeline, message)
 	if err != nil {
+		w.emitLog(ctx, taskID, "ERROR", "datasource", fmt.Sprintf("DataSource(%s) failed: %v", pipeline.DataSourceConfig.ConnectorType, err))
 		return &domainErrorWrapper{cause: err}
 	}
+	w.emitLog(ctx, taskID, "INFO", "datasource", fmt.Sprintf("DataSource(%s) produced %d records", pipeline.DataSourceConfig.ConnectorType, len(dsRecords)))
 
 	// Cancellation check between DataSource and Process (REQ-010, TASK-012).
 	// A cancelled flag set by the API handler triggers a graceful domain-level halt.
 	if w.checkCancellation(ctx, taskID) {
+		w.emitLog(ctx, taskID, "WARN", "datasource", "task cancelled after DataSource phase")
 		return &domainErrorWrapper{cause: fmt.Errorf("task cancelled")}
 	}
 
 	// Apply DataSource -> Process schema mapping.
 	processRecords, err := w.applyMappingsToSlice(dsRecords, pipeline.ProcessConfig.InputMappings)
 	if err != nil {
+		w.emitLog(ctx, taskID, "ERROR", "process", fmt.Sprintf("schema mapping DataSource->Process failed: %v", err))
 		return &domainErrorWrapper{cause: fmt.Errorf("DataSource->Process schema mapping: %w", err)}
 	}
 
 	// Phase 2: Process
+	w.emitLog(ctx, taskID, "INFO", "process", fmt.Sprintf("starting Process(%s) with %d records", pipeline.ProcessConfig.ConnectorType, len(processRecords)))
 	transformedRecords, err := w.runProcess(ctx, pipeline, processRecords)
 	if err != nil {
+		w.emitLog(ctx, taskID, "ERROR", "process", fmt.Sprintf("Process(%s) failed: %v", pipeline.ProcessConfig.ConnectorType, err))
 		return &domainErrorWrapper{cause: err}
 	}
+	w.emitLog(ctx, taskID, "INFO", "process", fmt.Sprintf("Process(%s) produced %d records", pipeline.ProcessConfig.ConnectorType, len(transformedRecords)))
 
 	// Cancellation check between Process and Sink (REQ-010, TASK-012).
 	if w.checkCancellation(ctx, taskID) {
+		w.emitLog(ctx, taskID, "WARN", "process", "task cancelled after Process phase")
 		return &domainErrorWrapper{cause: fmt.Errorf("task cancelled")}
 	}
 
 	// Apply Process -> Sink schema mapping.
 	sinkRecords, err := w.applyMappingsToSlice(transformedRecords, pipeline.SinkConfig.InputMappings)
 	if err != nil {
+		w.emitLog(ctx, taskID, "ERROR", "sink", fmt.Sprintf("schema mapping Process->Sink failed: %v", err))
 		return &domainErrorWrapper{cause: fmt.Errorf("Process->Sink schema mapping: %w", err)}
 	}
 
 	// Phase 3: Sink
+	w.emitLog(ctx, taskID, "INFO", "sink", fmt.Sprintf("starting Sink(%s) with %d records", pipeline.SinkConfig.ConnectorType, len(sinkRecords)))
 	if err := w.runSink(ctx, taskID, pipeline, sinkRecords, message.ExecutionID); err != nil {
+		w.emitLog(ctx, taskID, "ERROR", "sink", fmt.Sprintf("Sink(%s) failed: %v", pipeline.SinkConfig.ConnectorType, err))
 		return &domainErrorWrapper{cause: err}
 	}
+	w.emitLog(ctx, taskID, "INFO", "sink", fmt.Sprintf("Sink(%s) committed %d records", pipeline.SinkConfig.ConnectorType, len(sinkRecords)))
 
 	return nil
 }
@@ -794,6 +828,28 @@ func (w *Worker) checkCancellation(ctx context.Context, taskID uuid.UUID) bool {
 		return false
 	}
 	return cancelled
+}
+
+// emitLog produces a log line for the given task and publishes it via the worker's
+// LogPublisher. When the LogPublisher is nil, the call is a no-op so that workers
+// without log publishing configured continue to function correctly.
+// Errors are logged and discarded (fire-and-forget per ADR-007).
+//
+// Args:
+//
+//	ctx:     Execution context.
+//	taskID:  The task currently executing.
+//	level:   Severity: INFO, WARN, or ERROR.
+//	phase:   Pipeline phase: "datasource", "process", or "sink".
+//	message: Human-readable description of the event.
+func (w *Worker) emitLog(ctx context.Context, taskID uuid.UUID, level, phase, message string) {
+	if w.logPublisher == nil {
+		return
+	}
+	entry := NewLogLine(taskID, level, phase, message, time.Now().UTC())
+	if err := w.logPublisher.Publish(ctx, entry); err != nil {
+		log.Printf("worker: task %s: emitLog(%s, %s): %v", taskID, phase, level, err)
+	}
 }
 
 // isDomainError returns true when err is a domainErrorWrapper, meaning the failure is
