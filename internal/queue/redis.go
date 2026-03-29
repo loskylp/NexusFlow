@@ -237,19 +237,126 @@ func (q *RedisQueue) InitGroups(ctx context.Context, tags []string) error {
 // --- PendingScanner ---
 
 // ListPendingOlderThan implements PendingScanner.ListPendingOlderThan.
-// Uses XPENDING IDLE to find messages exceeding olderThan idle time.
+// Executes XPENDING with the IDLE filter to find messages whose idle time exceeds
+// olderThan. Uses the extended XPENDING form: XPENDING <stream> <group> IDLE
+// <minIdleMs> - + COUNT <max> to avoid reading the entire pending list.
+//
+// Returns an empty slice when no pending entries exceed the idle threshold.
+// Skips entries whose payload cannot be parsed to a TaskID (malformed entries
+// are logged and skipped rather than halting the scan loop).
+//
 // See: ADR-002, TASK-009
 func (q *RedisQueue) ListPendingOlderThan(ctx context.Context, tag string, olderThan time.Duration) ([]*PendingEntry, error) {
-	// TODO: Implement in TASK-009
-	panic("not implemented")
+	stream := TaskQueueStream(tag)
+	minIdle := olderThan.Milliseconds()
+
+	// XPENDING <stream> <group> IDLE <minIdleMs> - + COUNT <n>
+	// Returns entries older than minIdle regardless of which consumer owns them.
+	result, err := q.client.XPendingExt(ctx, &redis.XPendingExtArgs{
+		Stream: stream,
+		Group:  ConsumerGroupName,
+		Idle:   time.Duration(minIdle) * time.Millisecond,
+		Start:  "-",
+		End:    "+",
+		Count:  100,
+	}).Result()
+	if err != nil {
+		if errors.Is(err, redis.Nil) {
+			// Stream or group does not exist yet — no pending entries.
+			return nil, nil
+		}
+		// Check for NOGROUP error (group does not exist).
+		if strings.Contains(err.Error(), "NOGROUP") {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("queue.ListPendingOlderThan: XPENDING on stream %q: %w", stream, err)
+	}
+
+	entries := make([]*PendingEntry, 0, len(result))
+	for _, xp := range result {
+		// Retrieve the message payload to extract the TaskID.
+		msgs, err := q.client.XRange(ctx, stream, xp.ID, xp.ID).Result()
+		if err != nil || len(msgs) == 0 {
+			// Message may have been ACKed between XPENDING and XRANGE — skip.
+			continue
+		}
+
+		taskID := extractTaskID(msgs[0])
+		if taskID == "" {
+			// Malformed message — skip rather than halt the scan loop.
+			continue
+		}
+
+		entries = append(entries, &PendingEntry{
+			StreamID:   xp.ID,
+			ConsumerID: xp.Consumer,
+			IdleTime:   xp.Idle,
+			TaskID:     taskID,
+		})
+	}
+	return entries, nil
+}
+
+// extractTaskID extracts the taskId field from a stream message payload.
+// The payload is stored as JSON under the "payload" field key (see Enqueue).
+// Returns an empty string when the payload is missing or unparseable.
+func extractTaskID(msg redis.XMessage) string {
+	raw, ok := msg.Values["payload"]
+	if !ok {
+		return ""
+	}
+	payloadStr := fmt.Sprintf("%v", raw)
+	var tm TaskMessage
+	if err := json.Unmarshal([]byte(payloadStr), &tm); err != nil {
+		return ""
+	}
+	return tm.TaskID
 }
 
 // Claim implements PendingScanner.Claim.
-// Uses XCLAIM to atomically reassign the message to a healthy worker.
+// Executes XCLAIM to atomically transfer ownership of a pending stream message
+// to the monitor's consumer. The minIdleTime guard prevents false-positive claims
+// on recently active messages.
+//
+// Postconditions:
+//   - On success: the message is in newConsumerID's pending list.
+//   - On redis.Nil: the message was already ACKed; treated as success (idempotent).
+//
 // See: ADR-002, TASK-009
 func (q *RedisQueue) Claim(ctx context.Context, tag string, streamID string, newConsumerID string, minIdleTime time.Duration) error {
-	// TODO: Implement in TASK-009
-	panic("not implemented")
+	stream := TaskQueueStream(tag)
+	_, err := q.client.XClaim(ctx, &redis.XClaimArgs{
+		Stream:   stream,
+		Group:    ConsumerGroupName,
+		Consumer: newConsumerID,
+		MinIdle:  minIdleTime,
+		Messages: []string{streamID},
+	}).Result()
+	if err != nil {
+		if errors.Is(err, redis.Nil) {
+			// Message was already ACKed between XPENDING and XCLAIM — treat as success.
+			return nil
+		}
+		return fmt.Errorf("queue.Claim: XCLAIM stream %q message %q to %q: %w", stream, streamID, newConsumerID, err)
+	}
+	return nil
+}
+
+// AcknowledgePending implements PendingScanner.AcknowledgePending.
+// Sends XACK to remove a message from the pending entry list after the Monitor
+// has finished processing it. Called after Claim + re-enqueue or dead-letter
+// so the monitor consumer's pending list remains empty.
+//
+// Postconditions:
+//   - On success: the message is no longer in any consumer's pending list.
+//
+// See: ADR-002, TASK-009
+func (q *RedisQueue) AcknowledgePending(ctx context.Context, tag string, streamID string) error {
+	stream := TaskQueueStream(tag)
+	if err := q.client.XAck(ctx, stream, ConsumerGroupName, streamID).Err(); err != nil {
+		return fmt.Errorf("queue.AcknowledgePending: XACK stream %q message %q: %w", stream, streamID, err)
+	}
+	return nil
 }
 
 // --- HeartbeatStore ---
@@ -276,18 +383,36 @@ func (q *RedisQueue) RecordHeartbeat(ctx context.Context, workerID string) error
 
 // ListExpired implements HeartbeatStore.ListExpired.
 // Executes: ZRANGEBYSCORE workers:active -inf <cutoff_unix>
+// Returns worker IDs whose last heartbeat timestamp (Unix score) is before cutoff.
+//
+// Postconditions:
+//   - Returns an empty slice (not nil) when no workers are expired.
+//
 // See: ADR-002, TASK-009
 func (q *RedisQueue) ListExpired(ctx context.Context, cutoff time.Time) ([]string, error) {
-	// TODO: Implement in TASK-009
-	panic("not implemented")
+	members, err := q.client.ZRangeByScore(ctx, WorkersActiveKey, &redis.ZRangeBy{
+		Min: "-inf",
+		Max: fmt.Sprintf("%d", cutoff.Unix()),
+	}).Result()
+	if err != nil {
+		if errors.Is(err, redis.Nil) {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("queue.ListExpired: ZRANGEBYSCORE %s -inf %d: %w", WorkersActiveKey, cutoff.Unix(), err)
+	}
+	return members, nil
 }
 
 // Remove implements HeartbeatStore.Remove.
 // Executes: ZREM workers:active <workerID>
+// Idempotent: returns nil if the member does not exist.
+//
 // See: ADR-002, TASK-009
 func (q *RedisQueue) Remove(ctx context.Context, workerID string) error {
-	// TODO: Implement in TASK-009
-	panic("not implemented")
+	if err := q.client.ZRem(ctx, WorkersActiveKey, workerID).Err(); err != nil {
+		return fmt.Errorf("queue.Remove: ZREM %s %q: %w", WorkersActiveKey, workerID, err)
+	}
+	return nil
 }
 
 // --- EventPublisher ---

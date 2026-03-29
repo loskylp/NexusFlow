@@ -1,9 +1,13 @@
 // Command monitor is the entry point for the NexusFlow Monitor service.
 // The Monitor runs as a single instance; it is not horizontally scaled.
 //
-// TASK-001 implementation: loads config, connects to Redis (with retry logging
-// on failure), logs "monitor starting", and blocks on SIGTERM/SIGINT.
-// Full monitor heartbeat and pending-entry scan loops are implemented in TASK-009 (Cycle 2).
+// Startup sequence:
+//  1. Load config (DATABASE_URL, REDIS_URL required)
+//  2. Connect to PostgreSQL (run migrations)
+//  3. Connect to Redis (verify with PING)
+//  4. Build WorkerRepository, TaskRepository, HeartbeatStore, PendingScanner, Producer
+//  5. Build SSE RedisBroker
+//  6. Construct Monitor and call Run (blocks until SIGTERM/SIGINT)
 //
 // See: ADR-002, ADR-004, ADR-005, TASK-009 (Cycle 2)
 package main
@@ -17,6 +21,10 @@ import (
 	"time"
 
 	"github.com/nxlabs/nexusflow/internal/config"
+	"github.com/nxlabs/nexusflow/internal/db"
+	"github.com/nxlabs/nexusflow/internal/queue"
+	"github.com/nxlabs/nexusflow/internal/sse"
+	monitorPkg "github.com/nxlabs/nexusflow/monitor"
 	"github.com/redis/go-redis/v9"
 )
 
@@ -32,29 +40,75 @@ func main() {
 	log.Printf("monitor: heartbeat-timeout=%v pending-scan-interval=%v env=%q",
 		cfg.HeartbeatTimeout, cfg.PendingScanInterval, cfg.Env)
 
-	// Connect Redis. Ping to verify connectivity; log and continue on failure.
+	// Connect to PostgreSQL. Migrations run automatically on successful connection.
+	startupCtx, startupCancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer startupCancel()
+
+	pool, err := db.New(startupCtx, cfg.DatabaseURL)
+	if err != nil {
+		log.Fatalf("monitor: postgres: %v", err)
+	}
+	defer pool.Close()
+	log.Printf("monitor: postgres connected")
+
+	// Connect Redis.
 	redisOpts, err := redis.ParseURL(cfg.RedisURL)
 	if err != nil {
 		log.Fatalf("monitor: invalid REDIS_URL %q: %v", cfg.RedisURL, err)
 	}
 	redisClient := redis.NewClient(redisOpts)
-	defer redisClient.Close()
+	defer func() { _ = redisClient.Close() }()
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-	if err := redisClient.Ping(ctx).Err(); err != nil {
-		log.Printf("monitor: Redis not reachable at startup: %v (will retry)", err)
-	} else {
-		log.Printf("monitor: Redis connected at %s", cfg.RedisURL)
+	if err := redisClient.Ping(startupCtx).Err(); err != nil {
+		log.Fatalf("monitor: redis not reachable: %v", err)
 	}
+	log.Printf("monitor: redis connected at %s", cfg.RedisURL)
 
-	// Monitor.Run is wired in TASK-009 (Cycle 2).
-	// Block until signal so the container stays alive.
-	log.Printf("monitor: ready — monitoring disabled until TASK-009")
+	// Build repositories.
+	workerRepo := db.NewPgWorkerRepository(pool)
+	taskRepo := db.NewPgTaskRepository(pool)
+
+	// RedisQueue satisfies HeartbeatStore, PendingScanner, and Producer simultaneously.
+	redisQueue := queue.NewRedisQueue(redisClient)
+
+	// Build SSE broker for publishing worker-down and task-failed events.
+	broker := sse.NewRedisBroker(redisClient)
+
+	// Construct the monitor with all dependencies fully wired.
+	m := monitorPkg.NewMonitor(
+		cfg,
+		workerRepo,
+		taskRepo,
+		redisQueue, // HeartbeatStore
+		redisQueue, // PendingScanner
+		redisQueue, // Producer
+		broker,
+	)
+
+	// Run blocks until SIGTERM/SIGINT.
+	runCtx, runCancel := context.WithCancel(context.Background())
 
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGTERM, syscall.SIGINT)
-	<-quit
+
+	errCh := make(chan error, 1)
+	go func() {
+		errCh <- m.Run(runCtx)
+	}()
+
+	select {
+	case sig := <-quit:
+		log.Printf("monitor: received signal %s — shutting down", sig)
+		runCancel()
+		if err := <-errCh; err != nil {
+			log.Printf("monitor: Run returned: %v", err)
+		}
+	case err := <-errCh:
+		runCancel()
+		if err != nil {
+			log.Fatalf("monitor: Run failed: %v", err)
+		}
+	}
 
 	log.Printf("monitor: stopped cleanly")
 }

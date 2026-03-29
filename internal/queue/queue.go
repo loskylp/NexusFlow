@@ -153,6 +153,20 @@ type PendingScanner interface {
 	//   - On success: the message is now in newConsumerID's pending list.
 	//   - On failure: error returned; the original consumer retains the message.
 	Claim(ctx context.Context, tag string, streamID string, newConsumerID string, minIdleTime time.Duration) error
+
+	// AcknowledgePending sends XACK to remove a claimed message from the pending entry
+	// list after the Monitor has finished processing it (either re-enqueued or dead-lettered).
+	// Must be called after Claim to prevent the entry from accumulating indefinitely
+	// in the monitor consumer's pending list.
+	//
+	// Args:
+	//   ctx:      Request context.
+	//   tag:      The capability tag stream the message was read from.
+	//   streamID: The Redis stream message ID to acknowledge.
+	//
+	// Postconditions:
+	//   - On success: the message is no longer in any consumer's pending list.
+	AcknowledgePending(ctx context.Context, tag string, streamID string) error
 }
 
 // PendingEntry describes a message in the pending entry list (XPENDING output).
