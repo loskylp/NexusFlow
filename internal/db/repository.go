@@ -194,6 +194,53 @@ type TaskLogRepository interface {
 	ListByTask(ctx context.Context, taskID uuid.UUID, afterID string) ([]*models.TaskLog, error)
 }
 
+// ChainRepository provides create and read access to the chains and chain_steps tables.
+// Chains are strictly linear: each pipeline appears at most once per chain.
+// The database enforces linearity via UNIQUE(chain_id, pipeline_id) and UNIQUE(chain_id, position).
+// See: REQ-014, ADR-003, TASK-014
+type ChainRepository interface {
+	// Create inserts a new Chain and its steps in a single atomic operation.
+	// PipelineIDs must have at least two entries (a chain of one is not meaningful).
+	// Duplicate pipeline IDs within PipelineIDs are rejected before insertion.
+	//
+	// Args:
+	//   ctx:   Request context.
+	//   chain: Populated Chain struct with ID, Name, UserID, and PipelineIDs set.
+	//          The position of each ID in the slice is its step position (0-based).
+	//
+	// Returns:
+	//   The persisted Chain with database-populated timestamps.
+	//   An error if the insertion fails.
+	Create(ctx context.Context, chain *models.Chain) (*models.Chain, error)
+
+	// GetByID retrieves a Chain by primary key including its ordered PipelineIDs.
+	// Returns nil, nil if no chain with the given ID exists.
+	GetByID(ctx context.Context, id uuid.UUID) (*models.Chain, error)
+
+	// FindByPipeline returns the Chain that contains the given pipeline_id, or nil if none.
+	// Used by the chain trigger to determine whether a completed task's pipeline is chained.
+	//
+	// Args:
+	//   ctx:        Request context.
+	//   pipelineID: The pipeline whose chain membership is being queried.
+	//
+	// Returns:
+	//   The Chain containing pipelineID, or nil if the pipeline is not in any chain.
+	FindByPipeline(ctx context.Context, pipelineID uuid.UUID) (*models.Chain, error)
+
+	// GetNextPipeline returns the pipeline_id that immediately follows pipelineID in chainID.
+	// Returns nil when pipelineID is the last step in the chain.
+	//
+	// Args:
+	//   ctx:        Request context.
+	//   chainID:    The chain to inspect.
+	//   pipelineID: The current pipeline whose successor is sought.
+	//
+	// Returns:
+	//   Pointer to the next pipeline UUID, or nil if pipelineID is the last step.
+	GetNextPipeline(ctx context.Context, chainID uuid.UUID, pipelineID uuid.UUID) (*uuid.UUID, error)
+}
+
 // Sentinel errors returned by repository methods.
 var (
 	// ErrNotFound is returned when the requested entity does not exist.

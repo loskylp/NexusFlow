@@ -28,6 +28,7 @@ type Server struct {
 	tasks         db.TaskRepository
 	pipelines     db.PipelineRepository
 	workers       db.WorkerRepository
+	chains        db.ChainRepository
 	producer      queue.Producer
 	sessions      queue.SessionStore
 	broker        sse.Broker
@@ -45,6 +46,7 @@ type Server struct {
 //	tasks:         TaskRepository backed by PostgreSQL.
 //	pipelines:     PipelineRepository backed by PostgreSQL.
 //	workers:       WorkerRepository backed by PostgreSQL.
+//	chains:        ChainRepository backed by PostgreSQL (TASK-014).
 //	producer:      Queue Producer for enqueuing tasks into Redis Streams.
 //	sessions:      SessionStore backed by Redis for auth middleware.
 //	broker:        SSE Broker for real-time event distribution.
@@ -60,6 +62,7 @@ func NewServer(
 	tasks db.TaskRepository,
 	pipelines db.PipelineRepository,
 	workers db.WorkerRepository,
+	chains db.ChainRepository,
 	producer queue.Producer,
 	sessions queue.SessionStore,
 	broker sse.Broker,
@@ -73,6 +76,7 @@ func NewServer(
 		tasks:         tasks,
 		pipelines:     pipelines,
 		workers:       workers,
+		chains:        chains,
 		producer:      producer,
 		sessions:      sessions,
 		broker:        broker,
@@ -99,6 +103,8 @@ func NewServer(
 //	PUT    /api/pipelines/{id}         — PipelineHandler.Update  (TASK-013) — authenticated
 //	DELETE /api/pipelines/{id}         — PipelineHandler.Delete  (TASK-013) — authenticated
 //	GET    /api/workers                — WorkerHandler.List      (TASK-025) — authenticated
+//	POST   /api/chains                 — ChainHandler.Create     (TASK-014) — authenticated
+//	GET    /api/chains/{id}            — ChainHandler.Get        (TASK-014) — authenticated
 //	GET    /events/tasks               — SSEHandler.Tasks        (TASK-015) — authenticated
 //	GET    /events/workers             — SSEHandler.Workers      (TASK-015) — authenticated
 //	GET    /events/tasks/{id}/logs     — SSEHandler.Logs         (TASK-015) — authenticated
@@ -140,6 +146,11 @@ func (s *Server) Handler() http.Handler {
 
 		workerH := &WorkerHandler{server: s}
 		protected.Get("/api/workers", workerH.List)
+
+		// Chain routes (TASK-014).
+		chainH := &ChainHandler{server: s}
+		protected.Post("/api/chains", chainH.Create)
+		protected.Get("/api/chains/{id}", chainH.Get)
 
 		// SSE routes (TASK-015).
 		sseH := &SSEHandler{server: s}

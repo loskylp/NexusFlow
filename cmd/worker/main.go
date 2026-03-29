@@ -84,6 +84,7 @@ func main() {
 	workerRepo := db.NewPgWorkerRepository(pool)
 	taskRepo := db.NewPgTaskRepository(pool)
 	pipelineRepo := db.NewPgPipelineRepository(pool)
+	chainRepo := db.NewPgChainRepository(pool)
 	redisQueue := queue.NewRedisQueue(redisClient)
 
 	// Build connector registry and register connectors.
@@ -93,6 +94,12 @@ func main() {
 	connectorRegistry := workerPkg.NewDefaultConnectorRegistry()
 	workerPkg.RegisterDemoConnectors(connectorRegistry)
 	workerPkg.RegisterAtomicSinkConnectors(connectorRegistry)
+
+	// Construct the chain trigger (TASK-014, ADR-003).
+	// WorkerChainEnqueuer creates and enqueues downstream tasks when a chained task completes.
+	// RedisQueue.SetNX provides the SET-NX idempotency guard per ADR-003.
+	chainEnqueuer := workerPkg.NewWorkerChainEnqueuer(taskRepo, redisQueue, cfg.WorkerTags)
+	chainTrigger := workerPkg.NewChainTrigger(chainRepo, chainEnqueuer, redisQueue)
 
 	// Construct the worker.
 	// broker is nil until TASK-015 (SSE infrastructure) is implemented.
@@ -107,7 +114,7 @@ func main() {
 		nil,        // Broker — wired in TASK-015
 		connectorRegistry,
 		redisQueue, // CancellationStore — TASK-012
-	)
+	).WithChainTrigger(chainTrigger)
 
 	// Run blocks until SIGTERM/SIGINT.
 	runCtx, runCancel := context.WithCancel(context.Background())

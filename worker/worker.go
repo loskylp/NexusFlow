@@ -44,6 +44,9 @@ type Worker struct {
 	broker        TaskEventBroker
 	connectors    ConnectorRegistry
 	cancellations queue.CancellationStore
+	// chainTrigger fires downstream chain tasks on task completion (TASK-014).
+	// May be nil when chain support is not wired (e.g. tests without chain dependencies).
+	chainTrigger *ChainTrigger
 }
 
 // NewWorker constructs a Worker with all required dependencies.
@@ -127,6 +130,25 @@ func NewWorkerWithPipelines(
 		connectors:    connectors,
 		cancellations: cancellations,
 	}
+}
+
+// WithChainTrigger attaches a ChainTrigger to the worker.
+// The trigger is called after each task successfully completes to fire downstream
+// chain tasks (REQ-014, ADR-003). When not attached, chain triggering is disabled.
+//
+// Args:
+//
+//	trigger: The ChainTrigger to use. Must not be nil.
+//
+// Returns:
+//
+//	The same Worker instance (fluent API for construction-time wiring).
+func (w *Worker) WithChainTrigger(trigger *ChainTrigger) *Worker {
+	if trigger == nil {
+		panic("worker.WithChainTrigger: trigger must not be nil")
+	}
+	w.chainTrigger = trigger
+	return w
 }
 
 // Run starts the worker process. Blocks until ctx is cancelled.
@@ -349,6 +371,11 @@ func (w *Worker) executeTask(ctx context.Context, message *queue.TaskMessage) {
 		// Data was written; best-effort: do NOT ack so Monitor can verify.
 		return
 	}
+
+	// Fire chain trigger: if this task's pipeline is in a chain, submit the next task.
+	// Errors are logged but do not prevent ack — the task itself completed successfully.
+	// Idempotency is guaranteed by the SET-NX guard inside ChainTrigger (ADR-003).
+	w.fireChainTrigger(ctx, message, taskID)
 
 	w.ackMessage(ctx, message)
 }
@@ -634,6 +661,47 @@ func (w *Worker) ackMessage(ctx context.Context, message *queue.TaskMessage) {
 		}
 		// Log but continue trying other tags.
 		log.Printf("worker: XACK error on stream queue:%s for message %q: %v", tag, message.StreamID, err)
+	}
+}
+
+// fireChainTrigger invokes the ChainTrigger after a task completes successfully.
+// Resolves the pipelineID from the TaskMessage and the userID from the task record,
+// then delegates to ChainTrigger.OnTaskCompleted.
+//
+// Errors are logged and do not prevent message acknowledgement: the task itself
+// completed; the chain trigger is a best-effort side effect. If the trigger fails
+// transiently, the at-least-once delivery model (ADR-003) may redeliver the message,
+// but the SET-NX idempotency guard will prevent duplicate downstream tasks.
+//
+// Args:
+//
+//	ctx:     Execution context.
+//	message: The task message that completed; carries PipelineID and TaskID.
+//	taskID:  Parsed task UUID (already validated before this call).
+func (w *Worker) fireChainTrigger(ctx context.Context, message *queue.TaskMessage, taskID uuid.UUID) {
+	if w.chainTrigger == nil {
+		return
+	}
+
+	pipelineID, err := uuid.Parse(message.PipelineID)
+	if err != nil {
+		log.Printf("worker: chain trigger: malformed pipelineID %q on task %s: %v", message.PipelineID, taskID, err)
+		return
+	}
+
+	// Retrieve userID from the task record.
+	var userID uuid.UUID
+	if w.tasks != nil {
+		task, taskErr := w.tasks.GetByID(ctx, taskID)
+		if taskErr != nil || task == nil {
+			log.Printf("worker: chain trigger: could not load task %s for userID: %v", taskID, taskErr)
+			return
+		}
+		userID = task.UserID
+	}
+
+	if err := w.chainTrigger.OnTaskCompleted(ctx, taskID, pipelineID, userID); err != nil {
+		log.Printf("worker: chain trigger: OnTaskCompleted(task=%s, pipeline=%s): %v", taskID, pipelineID, err)
 	}
 }
 

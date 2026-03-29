@@ -81,6 +81,7 @@ func main() {
 	taskRepo := db.NewPgTaskRepository(pool)
 	pipelineRepo := db.NewPgPipelineRepository(pool)
 	workerRepo := db.NewPgWorkerRepository(pool)
+	chainRepo := db.NewPgChainRepository(pool)
 	q := queue.NewRedisQueue(redisClient)
 
 	// Seed the initial admin user if no users exist (TASK-003, AC-7).
@@ -112,6 +113,7 @@ func main() {
 		taskRepo,
 		pipelineRepo,
 		workerRepo,
+		chainRepo,
 		q,
 		sessionStore,
 		broker,

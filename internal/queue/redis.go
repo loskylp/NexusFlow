@@ -462,6 +462,31 @@ func (q *RedisQueue) CheckCancelFlag(ctx context.Context, taskID string) (bool, 
 	return true, nil
 }
 
+// --- ChainIdempotencyStore ---
+
+// SetNX atomically sets the given key in Redis with a 24-hour TTL
+// if and only if the key does not already exist (Redis SET-NX semantics).
+// Returns true when the key was set (first caller wins), false when the key
+// already exists (duplicate event — the caller should skip the side effect).
+//
+// This method satisfies the worker.ChainIdempotencyStore interface.
+// Key format convention: "chain-trigger:{taskID}:{nextPipelineID}"
+// TTL: 24 hours — long enough to suppress re-delivery within any realistic redelivery window.
+//
+// Postconditions:
+//   - true returned: key is now set; caller should proceed with the downstream task.
+//   - false returned: key was already set; caller must NOT produce a duplicate side effect.
+//   - error returned: Redis connectivity failure; caller must not proceed.
+//
+// See: ADR-003, TASK-014
+func (q *RedisQueue) SetNX(ctx context.Context, key string) (bool, error) {
+	ok, err := q.client.SetNX(ctx, key, "1", 24*time.Hour).Result()
+	if err != nil {
+		return false, fmt.Errorf("queue.SetNX: SETNX %s: %w", key, err)
+	}
+	return ok, nil
+}
+
 // --- Key helpers (public) ---
 
 // CancelFlagKey returns the Redis key used to signal a running task to stop.

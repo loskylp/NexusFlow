@@ -155,6 +155,19 @@ type PipelineChain struct {
 	CreatedAt   time.Time   `json:"createdAt"   db:"created_at"`
 }
 
+// Chain is the normalised pipeline chain stored in the chains + chain_steps tables
+// (migration 000004). It supersedes PipelineChain for the TASK-014 implementation.
+// PipelineIDs is ordered by position: index 0 is the first pipeline to execute.
+// Chains are strictly linear: no pipeline appears more than once; no branching.
+// See: REQ-014, ADR-003, TASK-014
+type Chain struct {
+	ID          uuid.UUID   `json:"id"          db:"id"`
+	Name        string      `json:"name"        db:"name"`
+	UserID      uuid.UUID   `json:"userId"      db:"user_id"`
+	PipelineIDs []uuid.UUID `json:"pipelineIds" db:"-"` // assembled from chain_steps rows
+	CreatedAt   time.Time   `json:"createdAt"   db:"created_at"`
+}
+
 // Task is the primary unit of work in NexusFlow.
 // A Task references a Pipeline and carries input parameters. It transitions through
 // the lifecycle states defined by TaskStatus.
