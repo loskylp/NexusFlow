@@ -15,6 +15,7 @@ import (
 	"github.com/nxlabs/nexusflow/internal/auth"
 	"github.com/nxlabs/nexusflow/internal/db"
 	"github.com/nxlabs/nexusflow/internal/models"
+	"github.com/nxlabs/nexusflow/internal/pipeline"
 )
 
 // PipelineHandler handles pipeline CRUD REST endpoints.
@@ -43,7 +44,9 @@ type updatePipelineRequest struct {
 
 // Create handles POST /api/pipelines.
 // Creates a pipeline with DataSource, Process, and Sink config, plus schema mappings.
-// Design-time validation of schema mappings is a Cycle 2 concern (TASK-026).
+// Schema mappings are validated at design time (TASK-026, ADR-008): all SourceFields in
+// ProcessConfig.InputMappings must exist in DataSourceConfig.OutputSchema, and all
+// SourceFields in SinkConfig.InputMappings must exist in ProcessConfig.OutputSchema.
 //
 // Request body:
 //
@@ -57,7 +60,7 @@ type updatePipelineRequest struct {
 // Responses:
 //
 //	201 Created:       { pipeline }
-//	400 Bad Request:   malformed JSON or missing required fields
+//	400 Bad Request:   malformed JSON, missing required fields, or invalid schema mapping
 //	401 Unauthorized:  no valid session
 //	500 Internal:      database failure
 //
@@ -66,6 +69,7 @@ type updatePipelineRequest struct {
 //
 // Postconditions:
 //   - On 201: pipeline exists in PostgreSQL with user_id = session.UserID.
+//   - On 400 (schema mapping error): no pipeline is persisted.
 func (h *PipelineHandler) Create(w http.ResponseWriter, r *http.Request) {
 	sess := auth.SessionFromContext(r.Context())
 	if sess == nil {
@@ -84,7 +88,17 @@ func (h *PipelineHandler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	pipeline := &models.Pipeline{
+	candidate := models.Pipeline{
+		DataSourceConfig: req.DataSourceConfig,
+		ProcessConfig:    req.ProcessConfig,
+		SinkConfig:       req.SinkConfig,
+	}
+	if err := pipeline.ValidateSchemaMappings(candidate); err != nil {
+		writeError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	p := &models.Pipeline{
 		ID:               uuid.New(),
 		Name:             req.Name,
 		UserID:           sess.UserID,
@@ -93,7 +107,7 @@ func (h *PipelineHandler) Create(w http.ResponseWriter, r *http.Request) {
 		SinkConfig:       req.SinkConfig,
 	}
 
-	created, err := h.server.pipelines.Create(r.Context(), pipeline)
+	created, err := h.server.pipelines.Create(r.Context(), p)
 	if err != nil {
 		log.Printf("pipeline.Create: %v", err)
 		writeError(w, http.StatusInternalServerError, "internal error")
@@ -194,12 +208,16 @@ func (h *PipelineHandler) Get(w http.ResponseWriter, r *http.Request) {
 
 // Update handles PUT /api/pipelines/{id}.
 // Replaces the pipeline's mutable fields (name, phase configs, schema mappings).
+// Schema mappings are validated at design time (TASK-026, ADR-008) before any
+// database write: all SourceFields in ProcessConfig.InputMappings must exist in
+// DataSourceConfig.OutputSchema, and all SourceFields in SinkConfig.InputMappings
+// must exist in ProcessConfig.OutputSchema.
 // Ownership enforcement: non-owner, non-admin callers receive 403.
 //
 // Responses:
 //
 //	200 OK:           { pipeline }  — updated pipeline
-//	400 Bad Request:  malformed JSON or invalid {id}
+//	400 Bad Request:  malformed JSON, invalid {id}, or invalid schema mapping
 //	401 Unauthorized: no valid session
 //	403 Forbidden:    caller does not own the pipeline and is not Admin
 //	404 Not Found:    pipeline does not exist
@@ -234,6 +252,16 @@ func (h *PipelineHandler) Update(w http.ResponseWriter, r *http.Request) {
 
 	if !canAccessPipeline(sess, existing) {
 		writeError(w, http.StatusForbidden, "forbidden")
+		return
+	}
+
+	candidate := models.Pipeline{
+		DataSourceConfig: req.DataSourceConfig,
+		ProcessConfig:    req.ProcessConfig,
+		SinkConfig:       req.SinkConfig,
+	}
+	if err := pipeline.ValidateSchemaMappings(candidate); err != nil {
+		writeError(w, http.StatusBadRequest, err.Error())
 		return
 	}
 

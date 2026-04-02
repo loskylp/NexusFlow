@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -838,5 +839,221 @@ func TestDelete_UnauthenticatedReturns401(t *testing.T) {
 
 	if rec.Code != http.StatusUnauthorized {
 		t.Errorf("expected 401, got %d", rec.Code)
+	}
+}
+
+// --- Schema mapping validation tests (TASK-026) ---
+
+// bodyWithMappings builds a pipeline request body with explicit schema mappings.
+// dsSchema is the DataSource OutputSchema; procMappings are the Process InputMappings;
+// procSchema is the Process OutputSchema; sinkMappings are the Sink InputMappings.
+func bodyWithMappings(name string, dsSchema []string, procMappings []any, procSchema []string, sinkMappings []any) map[string]any {
+	return map[string]any{
+		"name": name,
+		"dataSourceConfig": map[string]any{
+			"connectorType": "demo",
+			"config":        map[string]any{},
+			"outputSchema":  dsSchema,
+		},
+		"processConfig": map[string]any{
+			"connectorType": "demo",
+			"config":        map[string]any{},
+			"inputMappings": procMappings,
+			"outputSchema":  procSchema,
+		},
+		"sinkConfig": map[string]any{
+			"connectorType": "demo",
+			"config":        map[string]any{},
+			"inputMappings": sinkMappings,
+		},
+	}
+}
+
+// TestCreate_ValidSchemaMappingsReturn201 verifies AC-2:
+// POST /api/pipelines with fully valid schema mappings returns 201.
+func TestCreate_ValidSchemaMappingsReturn201(t *testing.T) {
+	repo := newCapturingPipelineRepo()
+	srv := newPipelineTestServer(repo)
+	h := &PipelineHandler{server: srv}
+
+	userID := uuid.New()
+	body := bodyWithMappings(
+		"valid-mapped-pipe",
+		[]string{"userId", "amount"},
+		[]any{
+			map[string]any{"sourceField": "userId", "targetField": "uid"},
+			map[string]any{"sourceField": "amount", "targetField": "val"},
+		},
+		[]string{"uid", "val"},
+		[]any{
+			map[string]any{"sourceField": "uid", "targetField": "dest_uid"},
+			map[string]any{"sourceField": "val", "targetField": "dest_val"},
+		},
+	)
+
+	rec := httptest.NewRecorder()
+	h.Create(rec, pipelineRequest(t, http.MethodPost, "/api/pipelines", body, userSession(userID)))
+
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("expected 201 for valid mappings, got %d: %s", rec.Code, rec.Body.String())
+	}
+}
+
+// TestCreate_InvalidProcessMappingReturns400 verifies AC-1, AC-3, AC-4:
+// POST /api/pipelines with a process input mapping referencing a missing source field
+// returns 400 with an error message identifying the field.
+func TestCreate_InvalidProcessMappingReturns400(t *testing.T) {
+	repo := newCapturingPipelineRepo()
+	srv := newPipelineTestServer(repo)
+	h := &PipelineHandler{server: srv}
+
+	userID := uuid.New()
+	body := bodyWithMappings(
+		"bad-process-mapping",
+		[]string{"userId"}, // DataSource only declares "userId"
+		[]any{
+			map[string]any{"sourceField": "userId", "targetField": "uid"},
+			map[string]any{"sourceField": "nonexistent", "targetField": "x"}, // invalid
+		},
+		[]string{"uid"},
+		[]any{},
+	)
+
+	rec := httptest.NewRecorder()
+	h.Create(rec, pipelineRequest(t, http.MethodPost, "/api/pipelines", body, userSession(userID)))
+
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("expected 400 for invalid process mapping, got %d: %s", rec.Code, rec.Body.String())
+	}
+
+	var errResp map[string]string
+	if err := json.NewDecoder(rec.Body).Decode(&errResp); err != nil {
+		t.Fatalf("decode error response: %v", err)
+	}
+	errMsg, ok := errResp["error"]
+	if !ok {
+		t.Fatal("response missing 'error' field")
+	}
+	if !strings.Contains(errMsg, "nonexistent") {
+		t.Errorf("error message should name the missing field 'nonexistent'; got: %s", errMsg)
+	}
+}
+
+// TestCreate_InvalidSinkMappingReturns400 verifies AC-1, AC-3, AC-4:
+// POST /api/pipelines with a sink input mapping referencing a missing process output
+// field returns 400 with an error message identifying the field.
+func TestCreate_InvalidSinkMappingReturns400(t *testing.T) {
+	repo := newCapturingPipelineRepo()
+	srv := newPipelineTestServer(repo)
+	h := &PipelineHandler{server: srv}
+
+	userID := uuid.New()
+	body := bodyWithMappings(
+		"bad-sink-mapping",
+		[]string{"raw"},
+		[]any{
+			map[string]any{"sourceField": "raw", "targetField": "processed"},
+		},
+		[]string{"processed"}, // Process only declares "processed"
+		[]any{
+			map[string]any{"sourceField": "processed", "targetField": "dest"},
+			map[string]any{"sourceField": "ghost", "targetField": "x"}, // invalid
+		},
+	)
+
+	rec := httptest.NewRecorder()
+	h.Create(rec, pipelineRequest(t, http.MethodPost, "/api/pipelines", body, userSession(userID)))
+
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("expected 400 for invalid sink mapping, got %d: %s", rec.Code, rec.Body.String())
+	}
+
+	var errResp map[string]string
+	if err := json.NewDecoder(rec.Body).Decode(&errResp); err != nil {
+		t.Fatalf("decode error response: %v", err)
+	}
+	errMsg, ok := errResp["error"]
+	if !ok {
+		t.Fatal("response missing 'error' field")
+	}
+	if !strings.Contains(errMsg, "ghost") {
+		t.Errorf("error message should name the missing field 'ghost'; got: %s", errMsg)
+	}
+}
+
+// TestUpdate_InvalidProcessMappingReturns400 verifies AC-1, AC-3:
+// PUT /api/pipelines/{id} with an invalid process mapping returns 400.
+func TestUpdate_InvalidProcessMappingReturns400(t *testing.T) {
+	repo := newCapturingPipelineRepo()
+
+	userID := uuid.New()
+	p := minimalPipeline(userID)
+	repo.add(p)
+
+	srv := newPipelineTestServer(repo)
+	h := &PipelineHandler{server: srv}
+
+	body := bodyWithMappings(
+		"updated-bad-mapping",
+		[]string{"fieldA"},
+		[]any{
+			map[string]any{"sourceField": "missing_on_update", "targetField": "x"},
+		},
+		[]string{},
+		[]any{},
+	)
+
+	req := pipelineRequest(t, http.MethodPut, "/api/pipelines/"+p.ID.String(), body, userSession(userID))
+	req = withChiID(req, p.ID.String())
+
+	rec := httptest.NewRecorder()
+	h.Update(rec, req)
+
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("expected 400 for invalid update mapping, got %d: %s", rec.Code, rec.Body.String())
+	}
+
+	var errResp map[string]string
+	if err := json.NewDecoder(rec.Body).Decode(&errResp); err != nil {
+		t.Fatalf("decode error response: %v", err)
+	}
+	errMsg := errResp["error"]
+	if !strings.Contains(errMsg, "missing_on_update") {
+		t.Errorf("error message should name the missing field; got: %s", errMsg)
+	}
+}
+
+// TestUpdate_ValidSchemaMappingsReturn200 verifies AC-2:
+// PUT /api/pipelines/{id} with valid schema mappings returns 200.
+func TestUpdate_ValidSchemaMappingsReturn200(t *testing.T) {
+	repo := newCapturingPipelineRepo()
+
+	userID := uuid.New()
+	p := minimalPipeline(userID)
+	repo.add(p)
+
+	srv := newPipelineTestServer(repo)
+	h := &PipelineHandler{server: srv}
+
+	body := bodyWithMappings(
+		"updated-valid-mapping",
+		[]string{"src"},
+		[]any{
+			map[string]any{"sourceField": "src", "targetField": "mid"},
+		},
+		[]string{"mid"},
+		[]any{
+			map[string]any{"sourceField": "mid", "targetField": "dst"},
+		},
+	)
+
+	req := pipelineRequest(t, http.MethodPut, "/api/pipelines/"+p.ID.String(), body, userSession(userID))
+	req = withChiID(req, p.ID.String())
+
+	rec := httptest.NewRecorder()
+	h.Update(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected 200 for valid update mapping, got %d: %s", rec.Code, rec.Body.String())
 	}
 }
