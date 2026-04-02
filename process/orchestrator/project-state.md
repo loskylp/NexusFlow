@@ -1,24 +1,30 @@
 # Project State
 **Manifest version:** v1 | **Profile:** Critical
-**Current phase:** EXECUTION -- Cycle 2
+**Current phase:** EXECUTION -- Cycle 2 COMPLETE
 **Current cycle:** 2
-**Last updated:** 2026-03-30
+**Last updated:** 2026-04-01
 
 ---
 
 ## Where We Are
 
-Cycle 2 execution in progress. 8 of 9 tasks verified PASS. TASK-026 (Schema mapping validation at design time) Builder complete (2026-03-30), dispatched to Verifier.
+Cycle 2 execution COMPLETE. All 9 of 9 tasks verified PASS. TASK-026 (Schema mapping validation at design time) was the final task -- verified PASS on 2026-04-01.
 
-Cycle 2 scope: 9 tasks -- Core System Completion. 8 of 9 verified PASS (TASK-009, TASK-018, TASK-012, TASK-014, TASK-010, TASK-016, TASK-017, TASK-011). TASK-026 Builder complete, Verifier dispatched. This is the FINAL Cycle 2 task -- after Verifier PASS, route to Sentinel for cycle-level security review.
+**Next steps (sequential):**
+1. Route to Sentinel for cycle-level security review (per Manifest: Critical profile requires Sentinel before Demo Sign-off)
+2. Collect Sentinel Security Report
+3. Prepare Demo Sign-off Briefing (Cycle 2)
+4. Present Demo Sign-off to Nexus
+
+**Awaiting:** Nexus acknowledgement to proceed with Sentinel dispatch.
 
 ## Active Work
 
-**Agent in control:** Verifier (dispatched for TASK-026)
-**Current task:** TASK-026 -- Schema mapping validation at design time
-**Waiting for:** Verifier to verify TASK-026
+**Agent in control:** Orchestrator (gate checkpoint)
+**Current task:** None -- all Cycle 2 tasks COMPLETE
+**Waiting for:** Nexus approval to route to Sentinel for cycle-level security review
 **Blocker:** None
-**Next after Verifier PASS:** Sentinel cycle-level security review (TASK-026 is the final Cycle 2 task)
+**Total project progress:** 24 of 24 tasks complete across Cycles 1 and 2
 
 ---
 
@@ -34,25 +40,23 @@ Cycle 2 scope: 9 tasks -- Core System Completion. 8 of 9 verified PASS (TASK-009
 | TASK-016 | Log production and dual storage | None (depends on Cycle 1: TASK-007, TASK-015) | COMPLETE (Verifier PASS, 2026-03-29) |
 | TASK-017 | Admin user management | None (depends on Cycle 1: TASK-003) | COMPLETE (Verifier PASS, 2026-03-29) |
 | TASK-018 | Sink atomicity with idempotency | None (depends on Cycle 1: TASK-007) | COMPLETE (Verifier PASS, 2026-03-28) |
-| TASK-026 | Schema mapping validation at design time | None (depends on Cycle 1: TASK-013) | Builder COMPLETE -- Verifier dispatched |
+| TASK-026 | Schema mapping validation at design time | None (depends on Cycle 1: TASK-013) | COMPLETE (Verifier PASS, 2026-04-01) |
 
 **Cycle 2 dependency layers (sequential execution):**
 - Layer 0 (independent -- depend only on Cycle 1): TASK-009, TASK-012, TASK-014, TASK-018, TASK-016, TASK-017, TASK-026
 - Layer 1: TASK-010 (depends on TASK-009)
 - Layer 2: TASK-011 (depends on TASK-009, TASK-010, TASK-014)
 
-**Execution order (planned):**
-1. TASK-009 -- Monitor service (P1/HH, critical path: TASK-010 and TASK-011 depend on it)
-2. TASK-018 -- Sink atomicity (P1/HH, high-risk, independent)
-3. TASK-012 -- Task cancellation (P1/MH, independent)
-4. TASK-014 -- Pipeline chain definition (P1/MH, independent; TASK-011 depends on it)
-5. TASK-010 -- Infrastructure retry (P1/MH, depends on TASK-009)
-6. TASK-016 -- Log production (P1/MH, independent)
-7. TASK-017 -- Admin user management (P1/LH, quick win, independent)
-8. TASK-011 -- Dead letter queue (P1/MH, depends on TASK-009, TASK-010, TASK-014)
-9. TASK-026 -- Schema validation (P2/LM, independent)
-
-Note: TASK-011 is placed after TASK-010 and TASK-014 due to dependency chain. Other independent tasks are interleaved to maximize progress while dependencies resolve.
+**Execution order (actual):**
+1. TASK-009 -- Monitor service (PASS, iteration 1)
+2. TASK-018 -- Sink atomicity (PASS, iteration 1)
+3. TASK-012 -- Task cancellation (PASS, iteration 2 -- re-verification after Builder fix)
+4. TASK-014 -- Pipeline chain definition (PASS, iteration 1)
+5. TASK-010 -- Infrastructure retry (PASS, iteration 1)
+6. TASK-016 -- Log production (PASS, iteration 1)
+7. TASK-017 -- Admin user management (PASS, iteration 1)
+8. TASK-011 -- Dead letter queue (PASS, iteration 1)
+9. TASK-026 -- Schema validation (PASS, iteration 1)
 
 ---
 
@@ -88,13 +92,14 @@ Note: TASK-011 is placed after TASK-010 and TASK-014 due to dependency chain. Ot
 | Architecture Gate | 2026-03-26 | APPROVED | Architecture v2 approved. AUDIT-006 closed as NOT APPLICABLE (no templates). All other architecture approved. |
 | Plan Gate | 2026-03-26 | APPROVED | Plan v2.1: 39 tasks across 5 cycles. v1.0.0 = Cycles 1-3 (31 tasks), v1.1.0 = Cycles 4-5 (8 tasks). Cycle 1 = 14 tasks. Approval authorizes full execution sequence. |
 | Demo Sign-off -- Cycle 1 | 2026-03-27 | APPROVED | 15 tasks verified PASS (14 original + TASK-008 planning correction). Sentinel PASS WITH CONDITIONS. Staging deployed. |
+| Demo Sign-off -- Cycle 2 | -- | PENDING | 9/9 tasks verified PASS. Awaiting Sentinel review, then Nexus sign-off. |
 | Go-Live -- v1.0.0 | -- | -- | |
 
 ---
 
 ## Pending Decisions
 
-None. Nexus skipped Methodologist retrospective and directed immediate Cycle 2 start.
+Nexus approval to dispatch Sentinel for Cycle 2 security review, followed by Demo Sign-off.
 
 ---
 
@@ -102,10 +107,10 @@ None. Nexus skipped Methodologist retrospective and directed immediate Cycle 2 s
 
 Per Plan Gate approval (authorizes full execution sequence), the execution sequence is:
 
-1. **Builder tasks** in dependency-aware order (see execution order above)
-2. **Verifier** after each Builder task (Full mode -- staging available from Cycle 1)
-3. **Sentinel** cycle-level security review after all tasks pass Verifier
-4. **Demo Sign-off** -- present to Nexus
+1. **Builder tasks** in dependency-aware order -- ALL COMPLETE
+2. **Verifier** after each Builder task (Full mode -- staging available from Cycle 1) -- ALL PASS
+3. **Sentinel** cycle-level security review after all tasks pass Verifier -- NEXT
+4. **Demo Sign-off** -- present to Nexus -- AFTER SENTINEL
 
 Note: Scaffolder not re-invoked -- Cycle 1 Scaffolder already scaffolded full project structure including Cycle 2 task stubs. Sequential execution model (one Builder task at a time).
 
@@ -113,7 +118,7 @@ Note: Scaffolder not re-invoked -- Cycle 1 Scaffolder already scaffolded full pr
 
 ## Iterate Loop State
 
-No active iterate loop. TASK-009 passed on first iteration. TASK-018 passed on first iteration. TASK-012 passed on iteration 2 (re-verification after Builder fix). TASK-014 passed on first iteration. TASK-010 passed on first iteration. TASK-016 passed on first iteration. TASK-017 passed on first iteration. TASK-011 passed on first iteration. TASK-026 Builder complete, Verifier dispatched (iteration 1 of 4).
+No active iterate loop. All 9 Cycle 2 tasks verified PASS. Iteration counts: TASK-009 (1), TASK-018 (1), TASK-012 (2), TASK-014 (1), TASK-010 (1), TASK-016 (1), TASK-017 (1), TASK-011 (1), TASK-026 (1).
 
 ---
 
@@ -136,10 +141,12 @@ No active iterate loop. TASK-009 passed on first iteration. TASK-018 passed on f
 
 | Metric | Value |
 |---|---|
-| Tasks completed | 8 of 9 |
-| Average iterations to PASS | -- |
+| Tasks completed | 9 of 9 |
+| Average iterations to PASS | 1.11 (9 tasks: 8 at 1 iteration, 1 at 2 iterations) |
 | Tasks that hit max iterations | 0 |
 | Escalations to Nexus | 0 |
+| Gate rejections this cycle | 0 |
+| Backward cascade triggered | No |
 
 ---
 
@@ -148,7 +155,7 @@ No active iterate loop. TASK-009 passed on first iteration. TASK-018 passed on f
 | ID | Source | Description | Status |
 |---|---|---|---|
 | OBS-005 | TASK-001 | npm audit reports 2 moderate vulnerabilities in frontend deps | Open -- pending Sentinel review |
-| OBS-007 | TASK-002 | task_logs has no explicit PRIMARY KEY due to partitioned table constraint; id is NOT NULL with gen_random_uuid() | Open -- awareness for TASK-016 |
+| OBS-007 | TASK-002 | task_logs has no explicit PRIMARY KEY due to partitioned table constraint; id is NOT NULL with gen_random_uuid() | Open -- awareness for TASK-016 (now COMPLETE; OBS-016-A references this) |
 | OBS-010 | TASK-004 | RedisQueue.Close() not wired -- no graceful shutdown caller yet | Open -- pending wiring |
 | OBS-011 | TASK-004 | Malformed stream entries silently skipped; pending list may accumulate stale entries | Open -- awareness for future DLQ enhancement |
 | OBS-012 | TASK-004 | ReadTasks batch size fixed at 10 -- configurable batch size deferred | Open -- awareness for future refactor |
@@ -163,14 +170,43 @@ No active iterate loop. TASK-009 passed on first iteration. TASK-018 passed on f
 | OBS-025 | TASK-029 | Watchtower mounts /root/.docker/config.json for ghcr.io auth | Open -- evaluate before first staging deploy |
 | OBS-026 | TASK-029 | IMAGE_TAG and Watchtower interplay not documented inline in .env.example | Open -- minor documentation improvement |
 
+## Cycle 2 Verifier Observations (New)
+
+| ID | Source | Description | Status |
+|---|---|---|---|
+| OBS-009-1 | TASK-009 | Worker PostgreSQL status does not self-recover after being marked "down" | Open -- awareness |
+| OBS-009-2 | TASK-009 | Stale Redis stream entries from previous test cycles cause harmless monitor log errors | Open -- awareness |
+| OBS-009-3 | TASK-009 | Multi-tag task re-enqueue: reclaimTask re-enqueues on single tag stream only | Open -- awareness for multi-tag scenarios |
+| OBS-018-1 | TASK-018 | InMemoryDedupStore used in all connectors; PgDedupStore adapter needed before production | Open -- production hardening |
+| OBS-018-2 | TASK-018 | InMemoryDatabase used for DatabaseSinkConnector; UseDatabase injection point exists | Open -- production wiring |
+| OBS-018-3 | TASK-018 | DatabaseSinkConnector uses InMemoryDatabase in all contexts; no real pgx pool path | Open -- production wiring |
+| OBS-012-1 | TASK-012 | Race between API cancel and worker completion -- DB trigger enforces correct terminal state | Open -- documented limitation |
+| OBS-014-1 | TASK-014 | tasks.chain_id not set on chain-triggered tasks (FK references legacy table) | Open -- awareness |
+| OBS-014-2 | TASK-014 | Chain trigger fires on any completion, not scoped to specific chain | Open -- awareness for multi-chain scenarios |
+| OBS-014-3 | TASK-014 | No GET /api/chains (list all) endpoint | Open -- known gap, not required by ACs |
+| OBS-016-A | TASK-016 | Duplicate rows on XDEL failure -- deferred to TASK-028 deduplication | Open -- deferred to TASK-028 |
+| OBS-016-B | TASK-016 | Single-instance sync assumption -- SCAN+XRANGE without consumer group | Open -- awareness for multi-instance |
+| OBS-016-C | TASK-016 | BatchInsert partial failure -- re-inserted next cycle, covered by OBS-016-A | Open -- deferred to TASK-028 |
+| OBS-010-1 | TASK-010 | sqlc re-generation deferred -- manually updated files need sqlc generate | Open -- maintenance |
+| OBS-010-2 | TASK-010 | AC-2 actual delay is ~10s (scan interval), not exact backoff value -- by design | Open -- awareness |
+| OBS-010-3 | TASK-010 | retry_tags stores only one tag per task -- correct for single-tag model | Open -- awareness for multi-tag |
+| OBS-011-1 | TASK-011 | Race between cascade and chain trigger -- mutually exclusive terminal states | Open -- documented limitation |
+| OBS-011-2 | TASK-011 | Task B not yet submitted when A fails -- cascade cancels existing tasks only | Open -- expected behaviour |
+| OBS-011-3 | TASK-011 | Manual sqlc edit for ListTasksByPipelineAndStatuses -- re-generate will need update | Open -- maintenance |
+| OBS-017-1 | TASK-017 | Session invalidation eventually consistent on Redis failure -- correct fail-safe | Open -- awareness |
+| OBS-017-2 | TASK-017 | No admin-self-deactivation guard -- not prohibited by REQ-020 | Open -- awareness |
+| OBS-017-3 | TASK-017 | Deactivate idempotency unspecified -- returns 204 on already-deactivated user | Open -- awareness |
+| OBS-026-1 | TASK-026 | First-violation-only semantics -- returns first failing mapping only | Open -- design choice, not a gap |
+| OBS-026-2 | TASK-026 | Type mismatch deferred by design -- field existence only, per ADR-008 | Open -- deliberate limitation |
+
 ---
 
 ## Standing Routing Rules (Cycle 2)
 
 - Scaffolder NOT re-invoked -- full project scaffolded in Cycle 1 (57 files, including Cycle 2 stubs).
 - DevOps Phase 2 (TASK-029) already COMPLETE from Cycle 1 -- Verifier runs in Full mode from the start of Cycle 2.
-- TASK-011 cannot begin until TASK-009, TASK-010, and TASK-014 are all COMPLETE.
-- Sentinel cycle-level review runs after all 10 tasks pass Verifier.
+- TASK-011 cannot begin until TASK-009, TASK-010, and TASK-014 are all COMPLETE. -- SATISFIED
+- Sentinel cycle-level review runs after all 9 tasks pass Verifier. -- READY TO DISPATCH
 
 ---
 
