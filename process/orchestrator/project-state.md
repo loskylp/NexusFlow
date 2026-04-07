@@ -22,15 +22,15 @@ Scaffolding complete (scaffold-manifest v2, 15 files). Cycle 3 execution has beg
 5. Demo Sign-off Briefing (Cycle 3)
 6. Go-Live gate for v1.0.0
 
-**Awaiting:** Builder iteration 2 completion for TASK-023 (FAIL-001 fix).
+**Awaiting:** Verifier re-verification of TASK-023 (iteration 2 fix for AC-4).
 
 ## Active Work
 
-**Agent in control:** Builder (TASK-023, iteration 2)
-**Current task:** TASK-023 -- Pipeline Builder (GUI) -- Builder fix for FAIL-001 (AC-4 aria-label)
-**Waiting for:** Builder to complete TASK-023 iteration 2 fix
+**Agent in control:** Verifier (TASK-023, re-verification scoped to AC-4)
+**Current task:** TASK-023 -- Pipeline Builder (GUI) -- Verifier re-verification after Builder iter 2 fix
+**Waiting for:** Verifier to confirm AC-4 PASS (all 180 tests already green)
 **Blocker:** None
-**Total project progress:** 24 of 31 v1.0.0 tasks complete (Cycles 1-2). 7 tasks remain (Cycle 3). TASK-023 Verifier returned PARTIAL (8/9 AC pass, 1 FAIL on AC-4). Routing Builder for iteration 2 fix.
+**Total project progress:** 24 of 31 v1.0.0 tasks complete (Cycles 1-2). 7 tasks remain (Cycle 3). TASK-023 Builder iter 2 complete (boundaryLabel fix). Dispatching Verifier for re-verification.
 
 ---
 
@@ -38,7 +38,7 @@ Scaffolding complete (scaffold-manifest v2, 15 files). Cycle 3 execution has beg
 
 | Task | Description | Dependencies (all Cycle 1/2 deps satisfied) | Priority | Status |
 |---|---|---|---|---|
-| TASK-023 | Pipeline Builder (GUI) | TASK-019, TASK-013, TASK-026 | P1 HH (do first) | Verifier PARTIAL (iter 1, FAIL on AC-4), Builder iter 2 dispatched |
+| TASK-023 | Pipeline Builder (GUI) | TASK-019, TASK-013, TASK-026 | P1 HH (do first) | Builder iter 2 complete, Verifier re-verification dispatched |
 | TASK-021 | Task Feed and Monitor (GUI) | TASK-019, TASK-005, TASK-008, TASK-012, TASK-013, TASK-015 | P1 MH | Pending |
 | TASK-022 | Log Streamer (GUI) | TASK-019, TASK-015, TASK-016 | P1 MM | Pending |
 | TASK-035 | Task submission via GUI (complete flow) | TASK-021, TASK-013 | P1 LH | Pending |
@@ -139,7 +139,7 @@ Note: Sequential execution model (one Builder task at a time). DevOps Phase 2 (T
 
 ## Iterate Loop State
 
-TASK-023 -- iteration 2 in progress. Iteration 1: Verifier PARTIAL -- 8/9 AC pass, 1 FAIL (AC-4: MappingChip aria-label malformed). 178/180 tests pass, 2 fail. Failure count: 1 AC failing (first iteration with failures). Builder dispatched for fix.
+TASK-023 -- iteration 2 complete. Builder applied boundaryLabel fix. All 180 tests green. Dispatching Verifier for re-verification scoped to AC-4. Iteration 1: 1 AC failing. Iteration 2: Builder reports 0 failing (pending Verifier confirmation).
 
 ---
 
