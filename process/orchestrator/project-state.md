@@ -16,21 +16,21 @@ Scaffolding complete (scaffold-manifest v2, 15 files). Cycle 3 execution has beg
 
 **Next steps (sequential):**
 1. ~~Determine whether Scaffolder re-invocation is needed for Cycle 3~~ DONE
-2. Route first Builder task (TASK-023: Pipeline Builder -- highest priority, P1 HH) -- IN PROGRESS
+2. ~~Route first Builder task (TASK-023: Pipeline Builder -- highest priority, P1 HH)~~ Builder COMPLETE, Verifier dispatched
 3. Execute remaining Cycle 3 tasks in dependency-aware order
 4. Sentinel cycle-level review after all tasks pass Verifier
 5. Demo Sign-off Briefing (Cycle 3)
 6. Go-Live gate for v1.0.0
 
-**Awaiting:** Builder completion for TASK-023.
+**Awaiting:** Verifier report for TASK-023.
 
 ## Active Work
 
-**Agent in control:** Builder (TASK-023)
-**Current task:** TASK-023 -- Pipeline Builder (GUI)
-**Waiting for:** Builder to complete TASK-023
+**Agent in control:** Verifier (TASK-023)
+**Current task:** TASK-023 -- Pipeline Builder (GUI) -- Verifier initial verification
+**Waiting for:** Verifier to complete TASK-023 verification
 **Blocker:** None
-**Total project progress:** 24 of 31 v1.0.0 tasks complete (Cycles 1-2). 7 tasks remain (Cycle 3). TASK-023 dispatched to Builder.
+**Total project progress:** 24 of 31 v1.0.0 tasks complete (Cycles 1-2). 7 tasks remain (Cycle 3). TASK-023 Builder complete (iteration 1, 124 tests pass, typecheck clean), dispatching Verifier.
 
 ---
 
@@ -38,7 +38,7 @@ Scaffolding complete (scaffold-manifest v2, 15 files). Cycle 3 execution has beg
 
 | Task | Description | Dependencies (all Cycle 1/2 deps satisfied) | Priority | Status |
 |---|---|---|---|---|
-| TASK-023 | Pipeline Builder (GUI) | TASK-019, TASK-013, TASK-026 | P1 HH (do first) | Builder dispatched |
+| TASK-023 | Pipeline Builder (GUI) | TASK-019, TASK-013, TASK-026 | P1 HH (do first) | Builder COMPLETE (iter 1), Verifier dispatched |
 | TASK-021 | Task Feed and Monitor (GUI) | TASK-019, TASK-005, TASK-008, TASK-012, TASK-013, TASK-015 | P1 MH | Pending |
 | TASK-022 | Log Streamer (GUI) | TASK-019, TASK-015, TASK-016 | P1 MM | Pending |
 | TASK-035 | Task submission via GUI (complete flow) | TASK-021, TASK-013 | P1 LH | Pending |
@@ -139,7 +139,7 @@ Note: Sequential execution model (one Builder task at a time). DevOps Phase 2 (T
 
 ## Iterate Loop State
 
-TASK-023 -- iteration 1, Builder dispatched. No prior failures.
+TASK-023 -- iteration 1, Builder COMPLETE (124 tests pass, typecheck clean). Verifier dispatched for initial verification. No prior failures.
 
 ---
 
