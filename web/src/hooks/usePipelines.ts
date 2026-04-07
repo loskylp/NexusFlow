@@ -8,7 +8,9 @@
  * See: TASK-023, TASK-024, REQ-022
  */
 
+import { useCallback, useEffect, useState } from 'react'
 import type { Pipeline } from '@/types/domain'
+import { listPipelines } from '@/api/client'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -42,6 +44,25 @@ export interface UsePipelinesReturn {
  *   - User role sees only their own pipelines; Admin sees all (server-enforced).
  */
 export function usePipelines(): UsePipelinesReturn {
-  // TODO: implement
-  throw new Error('Not implemented')
+  const [pipelines, setPipelines] = useState<Pipeline[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [refreshTick, setRefreshTick] = useState(0)
+
+  useEffect(() => {
+    setIsLoading(true)
+    setError(null)
+    listPipelines()
+      .then(setPipelines)
+      .catch((err: unknown) => {
+        setError(err instanceof Error ? err.message : 'Failed to load pipelines')
+      })
+      .finally(() => setIsLoading(false))
+  }, [refreshTick])
+
+  const refresh = useCallback(() => {
+    setRefreshTick(t => t + 1)
+  }, [])
+
+  return { pipelines, isLoading, error, refresh }
 }

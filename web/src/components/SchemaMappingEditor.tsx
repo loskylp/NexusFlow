@@ -19,7 +19,7 @@
  * See: TASK-023, REQ-007, ADR-008, UX Spec (Pipeline Builder — schema mapping editor)
  */
 
-import React from 'react'
+import React, { useEffect, useState } from 'react'
 import type { SchemaMapping } from '@/types/domain'
 
 // ---------------------------------------------------------------------------
@@ -79,8 +79,284 @@ function SchemaMappingEditor({
   onSave,
   onClose,
 }: SchemaMappingEditorProps): React.ReactElement | null {
-  // TODO: implement
-  throw new Error('Not implemented')
+  const [localMappings, setLocalMappings] = useState<SchemaMapping[]>(mappings)
+
+  // Reset local state each time the modal opens with the current mappings.
+  useEffect(() => {
+    if (isOpen) {
+      setLocalMappings(mappings)
+    }
+  }, [isOpen, mappings])
+
+  if (!isOpen) return null
+
+  const sourceFieldSet = new Set(sourceFields)
+
+  /**
+   * isMappingValid returns true when the mapping's sourceField is present in
+   * the source phase's declared outputSchema.
+   */
+  function isMappingValid(mapping: SchemaMapping): boolean {
+    return sourceFields.length === 0 || sourceFieldSet.has(mapping.sourceField)
+  }
+
+  const hasInvalidMappings = localMappings.some(m => !isMappingValid(m))
+  const canSave = !hasInvalidMappings
+
+  /** addMapping appends a blank mapping row to the local list. */
+  function addMapping(): void {
+    setLocalMappings(prev => [
+      ...prev,
+      { sourceField: sourceFields[0] ?? '', targetField: '' },
+    ])
+  }
+
+  /** removeMapping removes the mapping at the given index. */
+  function removeMapping(index: number): void {
+    setLocalMappings(prev => prev.filter((_, i) => i !== index))
+  }
+
+  /** updateSourceField updates the sourceField for the row at index. */
+  function updateSourceField(index: number, value: string): void {
+    setLocalMappings(prev =>
+      prev.map((m, i) => (i === index ? { ...m, sourceField: value } : m))
+    )
+  }
+
+  /** updateTargetField updates the targetField for the row at index. */
+  function updateTargetField(index: number, value: string): void {
+    setLocalMappings(prev =>
+      prev.map((m, i) => (i === index ? { ...m, targetField: value } : m))
+    )
+  }
+
+  /** handleSave validates and calls onSave when the mappings are valid. */
+  function handleSave(): void {
+    if (!canSave) return
+    onSave(localMappings)
+    onClose()
+  }
+
+  return (
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-label={title}
+      style={{
+        position: 'fixed',
+        inset: 0,
+        zIndex: 1000,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: 'rgba(0,0,0,0.4)',
+      }}
+      onClick={(e) => { if (e.target === e.currentTarget) onClose() }}
+    >
+      <div
+        style={{
+          backgroundColor: 'var(--color-surface-panel)',
+          border: '1px solid var(--color-border)',
+          borderRadius: '8px',
+          padding: '24px',
+          minWidth: '520px',
+          maxWidth: '680px',
+          maxHeight: '80vh',
+          overflowY: 'auto',
+          boxShadow: '0 8px 32px rgba(0,0,0,0.24)',
+        }}
+      >
+        {/* Header */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
+          <h2 style={{ margin: 0, fontSize: '16px', fontWeight: 600, color: 'var(--color-text-primary)' }}>
+            {title}
+          </h2>
+          <button
+            aria-label="Close mapping editor"
+            onClick={onClose}
+            style={{
+              background: 'none',
+              border: 'none',
+              fontSize: '18px',
+              cursor: 'pointer',
+              color: 'var(--color-text-secondary)',
+              padding: '4px',
+            }}
+          >
+            ×
+          </button>
+        </div>
+
+        {/* Column headers */}
+        {localMappings.length > 0 && (
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 32px', gap: '8px', marginBottom: '8px' }}>
+            <span style={{ fontSize: '12px', fontFamily: 'var(--font-label)', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--color-text-secondary)' }}>
+              Source Field
+            </span>
+            <span style={{ fontSize: '12px', fontFamily: 'var(--font-label)', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--color-text-secondary)' }}>
+              Target Field
+            </span>
+            <span />
+          </div>
+        )}
+
+        {/* Mapping rows */}
+        {localMappings.length === 0 ? (
+          <div style={{ padding: '24px', textAlign: 'center', color: 'var(--color-text-secondary)', fontSize: '14px' }}>
+            No mappings defined. Click "Add Mapping" to begin.
+          </div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '16px' }}>
+            {localMappings.map((mapping, index) => {
+              const isValid = isMappingValid(mapping)
+              return (
+                <div
+                  key={index}
+                  style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 32px', gap: '8px', alignItems: 'center' }}
+                >
+                  {/* Source field selector */}
+                  <div style={{ position: 'relative' }}>
+                    <select
+                      value={mapping.sourceField}
+                      onChange={e => updateSourceField(index, e.target.value)}
+                      aria-label={`Source field for mapping ${index + 1}`}
+                      title={!isValid ? `"${mapping.sourceField}" is not in the source schema` : undefined}
+                      style={{
+                        width: '100%',
+                        padding: '6px 8px',
+                        fontSize: '13px',
+                        fontFamily: 'var(--font-mono)',
+                        border: `1px solid ${isValid ? 'var(--color-border)' : '#EF4444'}`,
+                        borderRadius: '4px',
+                        backgroundColor: isValid ? 'var(--color-surface-panel)' : '#FEF2F2',
+                        color: 'var(--color-text-primary)',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      {sourceFields.map(f => (
+                        <option key={f} value={f}>{f}</option>
+                      ))}
+                      {/* Preserve a stale value that no longer exists in sourceFields */}
+                      {!sourceFieldSet.has(mapping.sourceField) && mapping.sourceField && (
+                        <option value={mapping.sourceField}>{mapping.sourceField} (invalid)</option>
+                      )}
+                    </select>
+                    {!isValid && (
+                      <span
+                        role="alert"
+                        style={{
+                          position: 'absolute',
+                          bottom: '-18px',
+                          left: 0,
+                          fontSize: '11px',
+                          color: '#DC2626',
+                        }}
+                      >
+                        Not in source schema
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Target field input */}
+                  <input
+                    type="text"
+                    value={mapping.targetField}
+                    onChange={e => updateTargetField(index, e.target.value)}
+                    placeholder="target field name"
+                    aria-label={`Target field for mapping ${index + 1}`}
+                    style={{
+                      padding: '6px 8px',
+                      fontSize: '13px',
+                      fontFamily: 'var(--font-mono)',
+                      border: '1px solid var(--color-border)',
+                      borderRadius: '4px',
+                      backgroundColor: 'var(--color-surface-panel)',
+                      color: 'var(--color-text-primary)',
+                    }}
+                  />
+
+                  {/* Remove button */}
+                  <button
+                    onClick={() => removeMapping(index)}
+                    aria-label={`Remove mapping ${index + 1}`}
+                    title="Remove mapping"
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      cursor: 'pointer',
+                      fontSize: '16px',
+                      color: '#DC2626',
+                      padding: '4px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                  >
+                    ×
+                  </button>
+                </div>
+              )
+            })}
+          </div>
+        )}
+
+        {/* Add mapping button */}
+        <button
+          onClick={addMapping}
+          style={{
+            display: 'block',
+            width: '100%',
+            padding: '8px',
+            marginBottom: '20px',
+            marginTop: localMappings.length > 0 ? '12px' : '0',
+            border: '1px dashed var(--color-border)',
+            borderRadius: '4px',
+            background: 'none',
+            cursor: 'pointer',
+            fontSize: '13px',
+            color: 'var(--color-text-secondary)',
+          }}
+        >
+          + Add Mapping
+        </button>
+
+        {/* Footer actions */}
+        <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+          <button
+            onClick={onClose}
+            style={{
+              padding: '8px 16px',
+              border: '1px solid var(--color-border)',
+              borderRadius: '6px',
+              background: 'none',
+              cursor: 'pointer',
+              fontSize: '14px',
+              color: 'var(--color-text-secondary)',
+            }}
+          >
+            Cancel
+          </button>
+          <button
+            onClick={handleSave}
+            disabled={!canSave}
+            style={{
+              padding: '8px 16px',
+              border: 'none',
+              borderRadius: '6px',
+              backgroundColor: canSave ? '#4F46E5' : '#94A3B8',
+              color: '#FFFFFF',
+              cursor: canSave ? 'pointer' : 'not-allowed',
+              fontSize: '14px',
+              fontWeight: 500,
+              opacity: canSave ? 1 : 0.5,
+            }}
+          >
+            Save Mappings
+          </button>
+        </div>
+      </div>
+    </div>
+  )
 }
 
 export default SchemaMappingEditor

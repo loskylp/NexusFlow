@@ -147,8 +147,12 @@ export async function listTasksWithFilters(params?: {
   pipelineId?: string
   search?: string
 }): Promise<Task[]> {
-  // TODO: implement — build query string from params and call apiFetch
-  throw new Error('Not implemented')
+  const query = new URLSearchParams()
+  if (params?.status) query.set('status', params.status)
+  if (params?.pipelineId) query.set('pipelineId', params.pipelineId)
+  if (params?.search) query.set('search', params.search)
+  const qs = query.toString()
+  return apiFetch<Task[]>(qs ? `/api/tasks?${qs}` : '/api/tasks')
 }
 
 /**
@@ -159,8 +163,7 @@ export async function listTasksWithFilters(params?: {
  * @throws Error with '404' prefix if the task does not exist.
  */
 export async function getTask(taskId: string): Promise<Task> {
-  // TODO: implement
-  throw new Error('Not implemented')
+  return apiFetch<Task>(`/api/tasks/${taskId}`)
 }
 
 /**
@@ -173,8 +176,7 @@ export async function getTask(taskId: string): Promise<Task> {
  * See: REQ-010, TASK-012
  */
 export async function cancelTask(taskId: string): Promise<void> {
-  // TODO: implement
-  throw new Error('Not implemented')
+  return apiFetch<void>(`/api/tasks/${taskId}/cancel`, { method: 'POST' })
 }
 
 /**
@@ -187,8 +189,15 @@ export async function cancelTask(taskId: string): Promise<void> {
  * See: REQ-018, TASK-022, TASK-016
  */
 export async function downloadTaskLogs(taskId: string): Promise<string> {
-  // TODO: implement — apiFetch variant that returns raw text (not JSON)
-  throw new Error('Not implemented')
+  const response = await fetch(`/api/tasks/${taskId}/logs`, {
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
+  })
+  if (!response.ok) {
+    const body = await response.text()
+    throw new Error(`${response.status}: ${body}`)
+  }
+  return response.text()
 }
 
 // --- Pipelines (extended) ---
@@ -201,8 +210,7 @@ export async function downloadTaskLogs(taskId: string): Promise<string> {
  * @throws Error with '404' prefix if the pipeline does not exist.
  */
 export async function getPipeline(pipelineId: string): Promise<Pipeline> {
-  // TODO: implement
-  throw new Error('Not implemented')
+  return apiFetch<Pipeline>(`/api/pipelines/${pipelineId}`)
 }
 
 /**
@@ -221,8 +229,10 @@ export async function updatePipeline(
   pipelineId: string,
   updates: Omit<Pipeline, 'id' | 'userId' | 'createdAt' | 'updatedAt'>
 ): Promise<Pipeline> {
-  // TODO: implement
-  throw new Error('Not implemented')
+  return apiFetch<Pipeline>(`/api/pipelines/${pipelineId}`, {
+    method: 'PUT',
+    body: JSON.stringify(updates),
+  })
 }
 
 /**
@@ -235,8 +245,7 @@ export async function updatePipeline(
  * See: REQ-022, TASK-013
  */
 export async function deletePipeline(pipelineId: string): Promise<void> {
-  // TODO: implement
-  throw new Error('Not implemented')
+  return apiFetch<void>(`/api/pipelines/${pipelineId}`, { method: 'DELETE' })
 }
 
 // --- Users (admin) ---
@@ -248,6 +257,5 @@ export async function deletePipeline(pipelineId: string): Promise<void> {
  * @throws Error with '403' prefix if the caller is not Admin.
  */
 export async function listUsers(): Promise<import('@/types/domain').User[]> {
-  // TODO: implement
-  throw new Error('Not implemented')
+  return apiFetch<import('@/types/domain').User[]>('/api/users')
 }
