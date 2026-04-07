@@ -344,7 +344,10 @@ function ConnectorLine(): React.ReactElement {
 // ---------------------------------------------------------------------------
 
 interface MappingChipProps {
+  /** The visible count label shown in the chip button, e.g. "0 mappings". */
   label: string
+  /** Descriptive boundary label used for the aria-label, e.g. "DataSource → Process". */
+  boundaryLabel: string
   hasErrors: boolean
   errorMessage?: string
   onClick: () => void
@@ -355,15 +358,19 @@ interface MappingChipProps {
  * MappingChip renders the schema mapping indicator between two adjacent phases.
  * Shows a red border and tooltip when there are validation errors.
  * Clicking opens the SchemaMappingEditor (unless read-only).
+ *
+ * The aria-label is derived from boundaryLabel (not the visible count label) so
+ * assistive-technology queries such as getByLabelText(/DataSource → Process mapping/i)
+ * resolve correctly.
  */
-function MappingChip({ label, hasErrors, errorMessage, onClick, readOnly }: MappingChipProps): React.ReactElement {
+function MappingChip({ label, boundaryLabel, hasErrors, errorMessage, onClick, readOnly }: MappingChipProps): React.ReactElement {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', flexShrink: 0 }}>
       <ConnectorLine />
       <button
         onClick={readOnly ? undefined : onClick}
         title={hasErrors ? errorMessage : 'Click to edit schema mapping'}
-        aria-label={`${label} mapping${hasErrors ? ' — has validation errors' : ''}`}
+        aria-label={`${boundaryLabel} mapping${hasErrors ? ' — has validation errors' : ''}`}
         style={{
           padding: '3px 8px',
           fontSize: '11px',
@@ -497,6 +504,7 @@ function PipelineCanvasInner({
                 {value.process !== null && (
                   <MappingChip
                     label={`${value.dataSourceToProcessMappings.length} mapping${value.dataSourceToProcessMappings.length !== 1 ? 's' : ''}`}
+                    boundaryLabel="DataSource → Process"
                     hasErrors={dsToProcessErrors.length > 0}
                     errorMessage={dsToProcessErrorMsg || undefined}
                     onClick={() => setMappingEditorOpen('dataSourceToProcess')}
@@ -538,6 +546,7 @@ function PipelineCanvasInner({
                 {value.sink !== null && (
                   <MappingChip
                     label={`${value.processToSinkMappings.length} mapping${value.processToSinkMappings.length !== 1 ? 's' : ''}`}
+                    boundaryLabel="Process → Sink"
                     hasErrors={processToSinkErrors.length > 0}
                     errorMessage={processToSinkErrorMsg || undefined}
                     onClick={() => setMappingEditorOpen('processToSink')}
