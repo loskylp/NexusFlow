@@ -19,16 +19,11 @@
  * See: TASK-021, ADR-007, REQ-017
  */
 
-// Stub: value imports are used by the implementation, not the stub.
-// The Builder will replace this entire file. Prefixed to satisfy noUnusedLocals.
-import { useCallback as _useCallback, useEffect as _useEffect, useState as _useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import type { Task, TaskStatus, SSEEvent } from '@/types/domain'
-import { listTasksWithFilters as _listTasksWithFilters } from '@/api/client'
-import { useSSE as _useSSE } from './useSSE'
+import { listTasksWithFilters } from '@/api/client'
+import { useSSE } from './useSSE'
 import type { SSEConnectionStatus } from './useSSE'
-
-void _useCallback; void _useEffect; void _useState;
-void _listTasksWithFilters; void _useSSE;
 
 // ---------------------------------------------------------------------------
 // Types
@@ -57,13 +52,23 @@ export interface UseTasksReturn {
   refresh: () => void
 }
 
+/** The set of SSE event types that update an existing task's fields. */
+const STATUS_UPDATE_EVENTS = new Set([
+  'task:queued',
+  'task:assigned',
+  'task:running',
+  'task:completed',
+  'task:failed',
+  'task:cancelled',
+])
+
 // ---------------------------------------------------------------------------
 // Pure helper — merge a single SSE task event into the task list
 // ---------------------------------------------------------------------------
 
 /**
  * mergeTaskEvent applies a single SSE event to the current task list,
- * returning a new array.  The function is pure and creates no side effects.
+ * returning a new array. The function is pure and creates no side effects.
  *
  * Handles:
  *   task:submitted  — adds the task if not already present.
@@ -76,9 +81,19 @@ export interface UseTasksReturn {
  * @param event   - Incoming SSE event from /events/tasks.
  * @returns New task array with the event applied.
  */
-export function mergeTaskEvent(_tasks: Task[], _event: SSEEvent<Task>): Task[] {
-  // TODO: implement
-  throw new Error('Not implemented')
+export function mergeTaskEvent(tasks: Task[], event: SSEEvent<Task>): Task[] {
+  if (event.type === 'task:submitted') {
+    const alreadyPresent = tasks.some(t => t.id === event.payload.id)
+    return alreadyPresent ? tasks : [...tasks, event.payload]
+  }
+
+  if (STATUS_UPDATE_EVENTS.has(event.type)) {
+    return tasks.map(t =>
+      t.id === event.payload.id ? { ...t, ...event.payload } : t
+    )
+  }
+
+  return tasks
 }
 
 // ---------------------------------------------------------------------------
@@ -99,7 +114,41 @@ export function mergeTaskEvent(_tasks: Task[], _event: SSEEvent<Task>): Task[] {
  *   - tasks is updated in place as SSE events arrive.
  *   - isLoading is true only during the initial fetch; SSE updates do not affect it.
  */
-export function useTasks(_filters?: TaskFilters): UseTasksReturn {
-  // TODO: implement
-  throw new Error('Not implemented')
+export function useTasks(filters?: TaskFilters): UseTasksReturn {
+  const [tasks, setTasks] = useState<Task[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [refreshTick, setRefreshTick] = useState(0)
+
+  // Seed initial state from the REST API, re-running when refreshTick increments
+  // or when filters change (serialised to a stable key for the dependency array).
+  const filtersKey = JSON.stringify(filters)
+  useEffect(() => {
+    setIsLoading(true)
+    setError(null)
+    listTasksWithFilters(filters)
+      .then(setTasks)
+      .catch((err: unknown) => {
+        setError(err instanceof Error ? err.message : 'Failed to load tasks')
+        setTasks([])
+      })
+      .finally(() => setIsLoading(false))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filtersKey, refreshTick])
+
+  // Merge incoming SSE events into the task list.
+  const handleTaskEvent = useCallback((event: SSEEvent<Task>) => {
+    setTasks(current => mergeTaskEvent(current, event))
+  }, [])
+
+  const { status: sseStatus } = useSSE<Task>({
+    url: '/events/tasks',
+    onEvent: handleTaskEvent,
+  })
+
+  const refresh = useCallback(() => {
+    setRefreshTick(t => t + 1)
+  }, [])
+
+  return { tasks, isLoading, error, sseStatus, refresh }
 }
