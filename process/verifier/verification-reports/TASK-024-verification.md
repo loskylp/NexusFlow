@@ -1,5 +1,5 @@
 # Verification Report — TASK-024
-**Date:** 2026-04-07 | **Result:** PASS
+**Date:** 2026-04-07 | **Result:** PASS (acceptance criteria) — CI BLOCKED (Builder regression)
 **Task:** Pipeline Management GUI (list/edit/delete) | **Requirement(s):** REQ-023, REQ-015
 
 ## Acceptance Criteria Results
@@ -46,6 +46,30 @@ Negative cases are the primary protection against trivially permissive implement
 
 3. **Canvas load verification via name field only.** The Verifier acceptance tests observe canvas load completion via the pipeline name input field (which is updated atomically with the canvas state in the same setState call). This is a reliable acceptance-layer observable. The canvas stub attributes approach was considered but abandoned due to vi.mock factory constraints when test files live outside `web/src/`. This is an infrastructure-level constraint, not a gap in coverage — the same approach is used in TASK-023 acceptance tests.
 
+## CI Regression (blocking)
+
+**Run:** https://github.com/loskylp/NexusFlow/actions/runs/24098550841
+**Job failed:** Frontend Build and Typecheck
+**Step failed:** TypeScript typecheck
+
+**Errors (all in Builder's `web/src/pages/PipelineManagerPage.test.tsx`):**
+
+```
+src/pages/PipelineManagerPage.test.tsx(38,17): error TS2580: Cannot find name 'require'.
+src/pages/PipelineManagerPage.test.tsx(64,9): error TS6133: 'React' is declared but its value is never read.
+src/pages/PipelineManagerPage.test.tsx(64,17): error TS2580: Cannot find name 'require'.
+```
+
+**Root cause:** The Builder's vi.mock factories at lines 37-60 and 63-69 use `require('react')` inside the factory body. The TypeScript configuration for test files does not include `@types/node` type definitions, so `require` is not recognised. The unused `React` binding at line 64 also triggers a lint error.
+
+**Fix required from Builder:**
+- Lines 38, 43, 44, 47, 48: Replace `require('react')` with a factory that uses JSX directly (the project uses the automatic JSX transform — no explicit React import needed inside the factory), or return stub components as `() => null` / `() => React.createElement(...)` using the React that was already imported via ESM at the top of the file. However, that outer-scope React is not accessible inside the vi.mock factory (factories are hoisted). The cleanest fix is to use JSX syntax directly within the factory, which does not require an explicit React binding under `@vitejs/plugin-react` with the automatic runtime.
+- Line 64: Remove the `require('react')` entirely; `SubmitTaskModal` already returns `null` with no JSX.
+
+These errors are in `web/src/pages/PipelineManagerPage.test.tsx` only. The Verifier's acceptance test file (`tests/acceptance/TASK-024-acceptance.test.tsx`) has zero TypeScript errors.
+
+**CI was green on `main` before the Builder's commit** (`724fea2` — TASK-035). The regression was introduced by the Builder's `f332de8` commit which added `PipelineManagerPage.test.tsx`.
+
 ## Recommendation
 
-PASS TO NEXT STAGE
+RETURN TO BUILDER — CI regression fix required. Iteration 2.

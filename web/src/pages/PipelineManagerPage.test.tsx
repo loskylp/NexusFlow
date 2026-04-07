@@ -35,16 +35,14 @@ vi.mock('@/api/client', () => ({
 // PipelineCanvas is complex (dnd-kit, schema mapping). Replace with a minimal
 // stub so this test suite stays focused on management behaviour.
 vi.mock('@/components/PipelineCanvas', () => {
-  const React = require('react')
-
   const CANVAS_DROP_ID = 'pipeline-canvas-drop'
 
   function PipelineCanvas() {
-    return React.createElement('div', { 'data-testid': 'pipeline-canvas' })
+    return <div data-testid="pipeline-canvas" />
   }
 
   function DraggablePaletteCard({ phase }: { phase: string }) {
-    return React.createElement('div', { 'data-testid': `palette-card-${phase}` })
+    return <div data-testid={`palette-card-${phase}`} />
   }
 
   function applyPhaseDropToState() {
@@ -61,7 +59,6 @@ vi.mock('@/components/PipelineCanvas', () => {
 
 // SubmitTaskModal — not under test here.
 vi.mock('@/components/SubmitTaskModal', () => {
-  const React = require('react')
   function SubmitTaskModal() {
     return null
   }
