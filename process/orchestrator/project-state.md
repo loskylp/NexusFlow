@@ -1,34 +1,65 @@
 # Project State
 **Manifest version:** v1 | **Profile:** Critical
-**Current phase:** EXECUTION -- Cycle 2 COMPLETE
-**Current cycle:** 2
-**Last updated:** 2026-04-01
+**Current phase:** EXECUTION -- Cycle 3 PREPARING
+**Current cycle:** 3
+**Last updated:** 2026-04-07
 
 ---
 
 ## Where We Are
 
-Cycle 2 execution COMPLETE. All 9 of 9 tasks verified PASS. TASK-026 (Schema mapping validation at design time) was the final task -- verified PASS on 2026-04-01.
+Cycle 2 Demo Sign-off APPROVED (2026-04-07). Sentinel was skipped by explicit Nexus decision. All 24 tasks across Cycles 1 and 2 are complete and verified. Preparing for Cycle 3 execution.
+
+Cycle 3 is the final cycle of v1.0.0 (the MVP release). It contains 7 tasks: 5 GUI views (Task Feed, Log Streamer, Pipeline Builder, Task Submission flow, Pipeline Management) plus 2 infrastructure tasks (Log retention, Health endpoint/OpenAPI). Completion of Cycle 3 satisfies all v1.0.0 requirements.
 
 **Next steps (sequential):**
-1. Route to Sentinel for cycle-level security review (per Manifest: Critical profile requires Sentinel before Demo Sign-off)
-2. Collect Sentinel Security Report
-3. Prepare Demo Sign-off Briefing (Cycle 2)
-4. Present Demo Sign-off to Nexus
+1. Determine whether Scaffolder re-invocation is needed for Cycle 3
+2. Route first Builder task (TASK-023: Pipeline Builder -- highest priority, P1 HH)
+3. Execute remaining Cycle 3 tasks in dependency-aware order
+4. Sentinel cycle-level review after all tasks pass Verifier
+5. Demo Sign-off Briefing (Cycle 3)
+6. Go-Live gate for v1.0.0
 
-**Awaiting:** Nexus acknowledgement to proceed with Sentinel dispatch.
+**Awaiting:** Autonomous execution -- Plan Gate approval authorizes full execution sequence.
 
 ## Active Work
 
-**Agent in control:** Orchestrator (gate checkpoint)
-**Current task:** None -- all Cycle 2 tasks COMPLETE
-**Waiting for:** Nexus approval to route to Sentinel for cycle-level security review
+**Agent in control:** Orchestrator (cycle preparation)
+**Current task:** None -- preparing Cycle 3
+**Waiting for:** Nothing -- proceeding autonomously per Plan Gate approval
 **Blocker:** None
-**Total project progress:** 24 of 24 tasks complete across Cycles 1 and 2
+**Total project progress:** 24 of 31 v1.0.0 tasks complete (Cycles 1-2). 7 tasks remain (Cycle 3).
 
 ---
 
-## Cycle 2 -- Task Status
+## Cycle 3 -- Task Status
+
+| Task | Description | Dependencies (all Cycle 1/2 deps satisfied) | Priority | Status |
+|---|---|---|---|---|
+| TASK-023 | Pipeline Builder (GUI) | TASK-019, TASK-013, TASK-026 | P1 HH (do first) | Pending |
+| TASK-021 | Task Feed and Monitor (GUI) | TASK-019, TASK-005, TASK-008, TASK-012, TASK-013, TASK-015 | P1 MH | Pending |
+| TASK-022 | Log Streamer (GUI) | TASK-019, TASK-015, TASK-016 | P1 MM | Pending |
+| TASK-035 | Task submission via GUI (complete flow) | TASK-021, TASK-013 | P1 LH | Pending |
+| TASK-024 | Pipeline management GUI | TASK-023, TASK-013 | P1 LM | Pending |
+| TASK-028 | Log retention and partition pruning | TASK-002, TASK-016 | P2 LM | Pending |
+| TASK-027 | Health endpoint and OpenAPI specification | TASK-001, TASK-003 | P2 LM | Pending |
+
+**Cycle 3 dependency layers (sequential execution):**
+- Layer 0 (all Cycle 1/2 deps satisfied): TASK-023, TASK-021, TASK-022, TASK-028, TASK-027
+- Layer 1: TASK-035 (depends on TASK-021), TASK-024 (depends on TASK-023)
+
+**Planned execution order:**
+1. TASK-023 -- Pipeline Builder (P1 HH, highest risk/value, unblocks TASK-024)
+2. TASK-021 -- Task Feed and Monitor (P1 MH, unblocks TASK-035)
+3. TASK-022 -- Log Streamer (P1 MM, independent)
+4. TASK-035 -- Task submission via GUI (P1 LH, depends on TASK-021)
+5. TASK-024 -- Pipeline management GUI (P1 LM, depends on TASK-023)
+6. TASK-028 -- Log retention and partition pruning (P2, independent)
+7. TASK-027 -- Health endpoint and OpenAPI (P2, independent)
+
+---
+
+## Cycle 2 -- Task Status (Complete)
 
 | Task | Description | Dependencies (Cycle 2) | Status |
 |---|---|---|---|
@@ -42,21 +73,7 @@ Cycle 2 execution COMPLETE. All 9 of 9 tasks verified PASS. TASK-026 (Schema map
 | TASK-018 | Sink atomicity with idempotency | None (depends on Cycle 1: TASK-007) | COMPLETE (Verifier PASS, 2026-03-28) |
 | TASK-026 | Schema mapping validation at design time | None (depends on Cycle 1: TASK-013) | COMPLETE (Verifier PASS, 2026-04-01) |
 
-**Cycle 2 dependency layers (sequential execution):**
-- Layer 0 (independent -- depend only on Cycle 1): TASK-009, TASK-012, TASK-014, TASK-018, TASK-016, TASK-017, TASK-026
-- Layer 1: TASK-010 (depends on TASK-009)
-- Layer 2: TASK-011 (depends on TASK-009, TASK-010, TASK-014)
-
-**Execution order (actual):**
-1. TASK-009 -- Monitor service (PASS, iteration 1)
-2. TASK-018 -- Sink atomicity (PASS, iteration 1)
-3. TASK-012 -- Task cancellation (PASS, iteration 2 -- re-verification after Builder fix)
-4. TASK-014 -- Pipeline chain definition (PASS, iteration 1)
-5. TASK-010 -- Infrastructure retry (PASS, iteration 1)
-6. TASK-016 -- Log production (PASS, iteration 1)
-7. TASK-017 -- Admin user management (PASS, iteration 1)
-8. TASK-011 -- Dead letter queue (PASS, iteration 1)
-9. TASK-026 -- Schema validation (PASS, iteration 1)
+**Cycle 2 summary:** 9/9 tasks COMPLETE. Demo Sign-off APPROVED (2026-04-07). Sentinel skipped by Nexus decision.
 
 ---
 
@@ -92,33 +109,35 @@ Cycle 2 execution COMPLETE. All 9 of 9 tasks verified PASS. TASK-026 (Schema map
 | Architecture Gate | 2026-03-26 | APPROVED | Architecture v2 approved. AUDIT-006 closed as NOT APPLICABLE (no templates). All other architecture approved. |
 | Plan Gate | 2026-03-26 | APPROVED | Plan v2.1: 39 tasks across 5 cycles. v1.0.0 = Cycles 1-3 (31 tasks), v1.1.0 = Cycles 4-5 (8 tasks). Cycle 1 = 14 tasks. Approval authorizes full execution sequence. |
 | Demo Sign-off -- Cycle 1 | 2026-03-27 | APPROVED | 15 tasks verified PASS (14 original + TASK-008 planning correction). Sentinel PASS WITH CONDITIONS. Staging deployed. |
-| Demo Sign-off -- Cycle 2 | -- | PENDING | 9/9 tasks verified PASS. Awaiting Sentinel review, then Nexus sign-off. |
-| Go-Live -- v1.0.0 | -- | -- | |
+| Demo Sign-off -- Cycle 2 | 2026-04-07 | APPROVED | 9/9 tasks verified PASS. Sentinel skipped by explicit Nexus decision. |
+| Go-Live -- v1.0.0 | -- | -- | Cycle 3 completion required first |
 
 ---
 
 ## Pending Decisions
 
-Nexus approval to dispatch Sentinel for Cycle 2 security review, followed by Demo Sign-off.
+None. Proceeding autonomously per Plan Gate approval. Next human gate: Demo Sign-off -- Cycle 3.
 
 ---
 
-## Execution Sequence -- Cycle 2
+## Execution Sequence -- Cycle 3
 
 Per Plan Gate approval (authorizes full execution sequence), the execution sequence is:
 
-1. **Builder tasks** in dependency-aware order -- ALL COMPLETE
-2. **Verifier** after each Builder task (Full mode -- staging available from Cycle 1) -- ALL PASS
-3. **Sentinel** cycle-level security review after all tasks pass Verifier -- NEXT
-4. **Demo Sign-off** -- present to Nexus -- AFTER SENTINEL
+1. **Scaffolder check** -- Cycle 3 has 7 Builder tasks (>=3), so Scaffolder invocation required per Manifest
+2. **Builder tasks** in dependency-aware order (7 tasks)
+3. **Verifier** after each Builder task (Full mode -- staging available)
+4. **Sentinel** cycle-level security review after all tasks pass Verifier
+5. **Demo Sign-off** -- present to Nexus
+6. **Go-Live gate** -- Cycle 3 completes v1.0.0
 
-Note: Scaffolder not re-invoked -- Cycle 1 Scaffolder already scaffolded full project structure including Cycle 2 task stubs. Sequential execution model (one Builder task at a time).
+Note: Sequential execution model (one Builder task at a time). DevOps Phase 2 (TASK-029) already COMPLETE -- Verifier runs in Full mode.
 
 ---
 
 ## Iterate Loop State
 
-No active iterate loop. All 9 Cycle 2 tasks verified PASS. Iteration counts: TASK-009 (1), TASK-018 (1), TASK-012 (2), TASK-014 (1), TASK-010 (1), TASK-016 (1), TASK-017 (1), TASK-011 (1), TASK-026 (1).
+No active iterate loop. Cycle 3 has not started.
 
 ---
 
@@ -201,12 +220,14 @@ No active iterate loop. All 9 Cycle 2 tasks verified PASS. Iteration counts: TAS
 
 ---
 
-## Standing Routing Rules (Cycle 2)
+## Standing Routing Rules (Cycle 3)
 
-- Scaffolder NOT re-invoked -- full project scaffolded in Cycle 1 (57 files, including Cycle 2 stubs).
-- DevOps Phase 2 (TASK-029) already COMPLETE from Cycle 1 -- Verifier runs in Full mode from the start of Cycle 2.
-- TASK-011 cannot begin until TASK-009, TASK-010, and TASK-014 are all COMPLETE. -- SATISFIED
-- Sentinel cycle-level review runs after all 9 tasks pass Verifier. -- READY TO DISPATCH
+- Scaffolder invocation required -- Cycle 3 has 7 tasks (>=3 threshold per Manifest).
+- DevOps Phase 2 (TASK-029) already COMPLETE -- Verifier runs in Full mode from the start.
+- TASK-035 cannot begin until TASK-021 is COMPLETE.
+- TASK-024 cannot begin until TASK-023 is COMPLETE.
+- Sentinel cycle-level review runs after all 7 tasks pass Verifier.
+- OBS-016-A (duplicate rows on XDEL failure) is directly relevant to TASK-028 -- include in Builder routing context.
 
 ---
 
@@ -223,3 +244,4 @@ No active iterate loop. All 9 Cycle 2 tasks verified PASS. Iteration counts: TAS
 | Architecture Gate -- approved | 2026-03-26 | Architecture v2 APPROVED. AUDIT-006 closed NOT APPLICABLE (no templates). All other architecture approved. |
 | Plan Gate | 2026-03-26 | APPROVED -- Plan v2.1: 39 tasks, 5 cycles; v1.0.0 (Cycles 1-3, 31 tasks), v1.1.0 (Cycles 4-5, 8 tasks). Authorizes full Cycle 1 execution. |
 | Demo Sign-off -- Cycle 1 | 2026-03-27 | APPROVED. Nexus skipped Methodologist retrospective, directed immediate Cycle 2 start. |
+| Demo Sign-off -- Cycle 2 | 2026-04-07 | APPROVED. Sentinel skipped by explicit Nexus decision. Cleanup completed (GEMINI.md deleted). |
