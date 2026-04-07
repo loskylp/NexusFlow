@@ -17,18 +17,18 @@ Scaffolding complete (scaffold-manifest v2, 15 files). Cycle 3 execution has beg
 **Next steps (sequential):**
 1. ~~Determine whether Scaffolder re-invocation is needed for Cycle 3~~ DONE
 2. ~~Route first Builder task (TASK-023: Pipeline Builder -- highest priority, P1 HH)~~ COMPLETE (Verifier PASS, iteration 2)
-3. Execute remaining Cycle 3 tasks in dependency-aware order -- **TASK-024 COMPLETE, TASK-028 dispatched to Builder**
+3. Execute remaining Cycle 3 tasks in dependency-aware order -- **TASK-024 COMPLETE, TASK-028 Verifier dispatched**
 4. Sentinel cycle-level review after all tasks pass Verifier
 5. Demo Sign-off Briefing (Cycle 3)
 6. Go-Live gate for v1.0.0
 
-**Awaiting:** Builder output for TASK-028.
+**Awaiting:** Verifier report for TASK-028.
 
 ## Active Work
 
-**Agent in control:** Builder (TASK-028)
-**Current task:** TASK-028 -- Log retention and partition pruning
-**Waiting for:** Builder to implement TASK-028
+**Agent in control:** Verifier (TASK-028)
+**Current task:** TASK-028 -- Log retention and partition pruning (Verifier, iteration 1)
+**Waiting for:** Verifier to verify TASK-028
 **Blocker:** None
 **Total project progress:** 29 of 31 v1.0.0 tasks complete (Cycles 1-2 + TASK-023 + TASK-021 + TASK-022 + TASK-035 + TASK-024). 2 tasks remain (Cycle 3): TASK-028 (in progress), TASK-027.
 
@@ -43,7 +43,7 @@ Scaffolding complete (scaffold-manifest v2, 15 files). Cycle 3 execution has beg
 | TASK-022 | Log Streamer (GUI) | TASK-019, TASK-015, TASK-016 | P1 MM | COMPLETE (Verifier PASS, iteration 1, 2026-04-07) |
 | TASK-035 | Task submission via GUI (complete flow) | TASK-021, TASK-013 | P1 LH | COMPLETE (Verifier PASS, iteration 1, 2026-04-07) |
 | TASK-024 | Pipeline management GUI | TASK-023, TASK-013 | P1 LM | COMPLETE (Verifier PASS, iteration 2, 2026-04-07) |
-| TASK-028 | Log retention and partition pruning | TASK-002, TASK-016 | P2 LM | Builder dispatched |
+| TASK-028 | Log retention and partition pruning | TASK-002, TASK-016 | P2 LM | Verifier dispatched (iteration 1) |
 | TASK-027 | Health endpoint and OpenAPI specification | TASK-001, TASK-003 | P2 LM | Pending |
 
 **Cycle 3 dependency layers (sequential execution):**
