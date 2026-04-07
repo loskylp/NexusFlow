@@ -17,20 +17,20 @@ Scaffolding complete (scaffold-manifest v2, 15 files). Cycle 3 execution has beg
 **Next steps (sequential):**
 1. ~~Determine whether Scaffolder re-invocation is needed for Cycle 3~~ DONE
 2. ~~Route first Builder task (TASK-023: Pipeline Builder -- highest priority, P1 HH)~~ COMPLETE (Verifier PASS, iteration 2)
-3. Execute remaining Cycle 3 tasks in dependency-aware order -- **TASK-022 COMPLETE, TASK-035 dispatched to Builder**
+3. Execute remaining Cycle 3 tasks in dependency-aware order -- **TASK-035 COMPLETE, TASK-024 dispatched to Builder**
 4. Sentinel cycle-level review after all tasks pass Verifier
 5. Demo Sign-off Briefing (Cycle 3)
 6. Go-Live gate for v1.0.0
 
-**Awaiting:** Verifier verdict for TASK-035 (Task submission via GUI).
+**Awaiting:** Builder output for TASK-024 (Pipeline management GUI).
 
 ## Active Work
 
-**Agent in control:** Verifier (TASK-035)
-**Current task:** TASK-035 -- Task submission via GUI (complete flow)
-**Waiting for:** Verifier to run acceptance tests and verify TASK-035
+**Agent in control:** Builder (TASK-024)
+**Current task:** TASK-024 -- Pipeline management GUI (list/edit/delete)
+**Waiting for:** Builder to implement TASK-024
 **Blocker:** None
-**Total project progress:** 27 of 31 v1.0.0 tasks complete (Cycles 1-2 + TASK-023 + TASK-021 + TASK-022). 4 tasks remain (Cycle 3).
+**Total project progress:** 28 of 31 v1.0.0 tasks complete (Cycles 1-2 + TASK-023 + TASK-021 + TASK-022 + TASK-035). 3 tasks remain (Cycle 3).
 
 ---
 
@@ -41,8 +41,8 @@ Scaffolding complete (scaffold-manifest v2, 15 files). Cycle 3 execution has beg
 | TASK-023 | Pipeline Builder (GUI) | TASK-019, TASK-013, TASK-026 | P1 HH (do first) | COMPLETE (Verifier PASS, iteration 2, 2026-04-07) |
 | TASK-021 | Task Feed and Monitor (GUI) | TASK-019, TASK-005, TASK-008, TASK-012, TASK-013, TASK-015 | P1 MH | COMPLETE (Verifier PASS, iteration 1, 2026-04-07) |
 | TASK-022 | Log Streamer (GUI) | TASK-019, TASK-015, TASK-016 | P1 MM | COMPLETE (Verifier PASS, iteration 1, 2026-04-07) |
-| TASK-035 | Task submission via GUI (complete flow) | TASK-021, TASK-013 | P1 LH | Builder COMPLETE, Verifier dispatched |
-| TASK-024 | Pipeline management GUI | TASK-023, TASK-013 | P1 LM | Pending |
+| TASK-035 | Task submission via GUI (complete flow) | TASK-021, TASK-013 | P1 LH | COMPLETE (Verifier PASS, iteration 1, 2026-04-07) |
+| TASK-024 | Pipeline management GUI | TASK-023, TASK-013 | P1 LM | Builder dispatched |
 | TASK-028 | Log retention and partition pruning | TASK-002, TASK-016 | P2 LM | Pending |
 | TASK-027 | Health endpoint and OpenAPI specification | TASK-001, TASK-003 | P2 LM | Pending |
 
@@ -145,7 +145,9 @@ TASK-021 -- COMPLETE. Verifier PASS at iteration 1 (8/8 ACs, 351/351 tests green
 
 TASK-022 -- COMPLETE. Verifier PASS at iteration 1 (8/8 ACs, 473/473 tests green, CI green). 62 new tests. 3 non-blocking observations (SSE-only no REST seed, 403 via log:error event, download error swallowed silently).
 
-TASK-035 -- Builder COMPLETE (iteration 1). Verifier dispatched. 509/509 tests passing, TypeScript clean. 44 new tests (36 targeted + 8 existing retained). Deviation noted: free-form key-value params instead of schema-driven fields (Pipeline type lacks task-level input schema).
+TASK-035 -- COMPLETE. Verifier PASS at iteration 1 (5/5 ACs, 542/542 tests green, CI green). 33 new Verifier tests. 4 non-blocking observations (ESLint absent, pre-existing TASK-023 floating waitFor, onSuccess discards taskId, retryConfig omission consistent with TASK-023 contract).
+
+TASK-024 -- Builder dispatched (iteration 1). Dependencies satisfied: TASK-023 (PASS), TASK-013 (PASS).
 
 ---
 
@@ -237,6 +239,10 @@ TASK-035 -- Builder COMPLETE (iteration 1). Verifier dispatched. 509/509 tests p
 | OBS-022-1 | TASK-022 | SSE-only, no REST seed for initial log history; SSE replays via Last-Event-ID | Open -- awareness for offline/snapshot patterns |
 | OBS-022-2 | TASK-022 | 403 surfaced via log:error SSE event type, not HTTP 403 on SSE stream | Open -- awareness for backend contract |
 | OBS-022-3 | TASK-022 | Download button swallows errors silently (toast planned for future) | Open -- UX refinement |
+| OBS-035-1 | TASK-035 | ESLint configuration absent -- npm run lint fails (project-wide, pre-existing) | Open -- project-wide issue |
+| OBS-035-2 | TASK-035 | Pre-existing floating waitFor in TASK-023 acceptance test (unhandled promise rejection, no test failure) | Open -- test hygiene |
+| OBS-035-3 | TASK-035 | onSuccess callback in TaskFeedPage discards taskId (intentional for current refresh pattern) | Open -- awareness |
+| OBS-035-4 | TASK-035 | retryConfig omitted when maxRetries=0 -- consistent with TASK-023 contract | Open -- documented design choice |
 
 ---
 
