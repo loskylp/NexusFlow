@@ -22,15 +22,15 @@ Scaffolding complete (scaffold-manifest v2, 15 files). Cycle 3 execution has beg
 5. Demo Sign-off Briefing (Cycle 3)
 6. Go-Live gate for v1.0.0
 
-**Awaiting:** Builder completion of TASK-021 (Task Feed and Monitor GUI).
+**Awaiting:** Verifier completion of TASK-021 (Task Feed and Monitor GUI).
 
 ## Active Work
 
-**Agent in control:** Builder (TASK-021)
+**Agent in control:** Verifier (TASK-021)
 **Current task:** TASK-021 -- Task Feed and Monitor (GUI)
-**Waiting for:** Builder to complete TASK-021
+**Waiting for:** Verifier to verify TASK-021 (Full mode, iteration 1)
 **Blocker:** None
-**Total project progress:** 25 of 31 v1.0.0 tasks complete (Cycles 1-2 + TASK-023). 6 tasks remain (Cycle 3). TASK-021 dispatched to Builder.
+**Total project progress:** 25 of 31 v1.0.0 tasks complete (Cycles 1-2 + TASK-023). 6 tasks remain (Cycle 3). TASK-021 Builder complete, Verifier dispatched.
 
 ---
 
@@ -39,7 +39,7 @@ Scaffolding complete (scaffold-manifest v2, 15 files). Cycle 3 execution has beg
 | Task | Description | Dependencies (all Cycle 1/2 deps satisfied) | Priority | Status |
 |---|---|---|---|---|
 | TASK-023 | Pipeline Builder (GUI) | TASK-019, TASK-013, TASK-026 | P1 HH (do first) | COMPLETE (Verifier PASS, iteration 2, 2026-04-07) |
-| TASK-021 | Task Feed and Monitor (GUI) | TASK-019, TASK-005, TASK-008, TASK-012, TASK-013, TASK-015 | P1 MH | Builder dispatched |
+| TASK-021 | Task Feed and Monitor (GUI) | TASK-019, TASK-005, TASK-008, TASK-012, TASK-013, TASK-015 | P1 MH | Verifier dispatched (iteration 1) |
 | TASK-022 | Log Streamer (GUI) | TASK-019, TASK-015, TASK-016 | P1 MM | Pending |
 | TASK-035 | Task submission via GUI (complete flow) | TASK-021, TASK-013 | P1 LH | Pending |
 | TASK-024 | Pipeline management GUI | TASK-023, TASK-013 | P1 LM | Pending |
@@ -141,7 +141,7 @@ Note: Sequential execution model (one Builder task at a time). DevOps Phase 2 (T
 
 TASK-023 -- COMPLETE. Verifier PASS at iteration 2 (9/9 ACs, 180/180 tests green). Iteration 1: 1 AC failing. Iteration 2: 0 failing (Verifier confirmed).
 
-TASK-021 -- iteration 1 in progress. Builder dispatched.
+TASK-021 -- iteration 1. Builder complete. Verifier dispatched (Full mode).
 
 ---
 
