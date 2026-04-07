@@ -67,7 +67,7 @@ export interface TaskCardProps {
  * @param status - The task's current status.
  * @returns True if the task may be cancelled.
  */
-export function isCancellable(status: TaskStatus): boolean {
+export function isCancellable(_status: TaskStatus): boolean {
   // TODO: implement
   throw new Error('Not implemented')
 }
@@ -80,7 +80,7 @@ export function isCancellable(status: TaskStatus): boolean {
  * @param status - The task's current status.
  * @returns A React CSSProperties object for the badge element.
  */
-export function statusBadgeStyle(status: TaskStatus): React.CSSProperties {
+export function statusBadgeStyle(_status: TaskStatus): React.CSSProperties {
   // TODO: implement
   throw new Error('Not implemented')
 }
@@ -108,14 +108,14 @@ export function statusBadgeStyle(status: TaskStatus): React.CSSProperties {
  *   - View Logs button is always shown.
  */
 function TaskCard({
-  task,
-  pipelineName,
-  isAdmin,
-  isOwner,
-  onViewLogs,
-  onCancel,
-  onRetry,
-  isRecentlyUpdated = false,
+  task: _task,
+  pipelineName: _pipelineName,
+  isAdmin: _isAdmin,
+  isOwner: _isOwner,
+  onViewLogs: _onViewLogs,
+  onCancel: _onCancel,
+  onRetry: _onRetry,
+  isRecentlyUpdated: _isRecentlyUpdated = false,
 }: TaskCardProps): React.ReactElement {
   // TODO: implement
   throw new Error('Not implemented')

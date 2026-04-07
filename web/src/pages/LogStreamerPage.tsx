@@ -52,7 +52,7 @@ export type PhaseFilter = 'all' | 'datasource' | 'process' | 'sink'
  * @param phase  - Phase filter to apply.
  * @returns Filtered array (same references, new array when filtered).
  */
-export function filterLogLines(lines: TaskLog[], phase: PhaseFilter): TaskLog[] {
+export function filterLogLines(_lines: TaskLog[], _phase: PhaseFilter): TaskLog[] {
   // TODO: implement
   throw new Error('Not implemented')
 }
@@ -72,7 +72,7 @@ interface LogLineProps {
  * No animation — lines appear instantly (UX spec: "animation would be distracting
  * at high throughput").
  */
-function LogLine({ line }: LogLineProps): React.ReactElement {
+export function LogLine({ line: _line }: LogLineProps): React.ReactElement {
   // TODO: implement
   throw new Error('Not implemented')
 }
@@ -97,11 +97,11 @@ interface LogPanelProps {
  *   - When autoScroll is true and new lines arrive, the panel scrolls to the bottom.
  *   - When autoScroll is false, scroll position is preserved; user can scroll freely.
  */
-function LogPanel({
-  lines,
-  phaseFilter,
-  autoScroll,
-  panelRef,
+export function LogPanel({
+  lines: _lines,
+  phaseFilter: _phaseFilter,
+  autoScroll: _autoScroll,
+  panelRef: _panelRef,
 }: LogPanelProps): React.ReactElement {
   // TODO: implement
   throw new Error('Not implemented')
@@ -119,11 +119,11 @@ interface LogStatusBarProps {
  * LogStatusBar renders the bottom status bar with SSE info, line count,
  * and Last-Event-ID for debugging reconnection state.
  */
-function LogStatusBar({
-  sseStatus,
-  lineCount,
-  lastEventId,
-  isComplete,
+export function LogStatusBar({
+  sseStatus: _sseStatus,
+  lineCount: _lineCount,
+  lastEventId: _lastEventId,
+  isComplete: _isComplete,
 }: LogStatusBarProps): React.ReactElement {
   // TODO: implement
   throw new Error('Not implemented')

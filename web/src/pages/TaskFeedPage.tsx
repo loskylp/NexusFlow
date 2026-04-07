@@ -22,8 +22,7 @@
  */
 
 import React from 'react'
-import type { Task, TaskStatus, Pipeline } from '@/types/domain'
-import type { TaskFilters } from '@/hooks/useTasks'
+import type { TaskStatus, Pipeline } from '@/types/domain'
 import type { SSEConnectionStatus } from '@/hooks/useSSE'
 
 // ---------------------------------------------------------------------------
@@ -57,11 +56,11 @@ interface FilterBarProps {
  * @param onFiltersChange - Called when any filter value changes.
  * @param onSubmitTask    - Called when the "Submit Task" button is clicked.
  */
-function FilterBar({
-  filters,
-  pipelines,
-  onFiltersChange,
-  onSubmitTask,
+export function FilterBar({
+  filters: _filters,
+  pipelines: _pipelines,
+  onFiltersChange: _onFiltersChange,
+  onSubmitTask: _onSubmitTask,
 }: FilterBarProps): React.ReactElement {
   // TODO: implement
   throw new Error('Not implemented')
@@ -80,10 +79,10 @@ interface FeedStatusBarProps {
  * @param isAdmin    - True if the current user is Admin (shows "Viewing: All Tasks").
  * @param taskCount  - Number of tasks currently visible (for the count display).
  */
-function FeedStatusBar({
-  sseStatus,
-  isAdmin,
-  taskCount,
+export function FeedStatusBar({
+  sseStatus: _sseStatus,
+  isAdmin: _isAdmin,
+  taskCount: _taskCount,
 }: FeedStatusBarProps): React.ReactElement {
   // TODO: implement
   throw new Error('Not implemented')
@@ -97,7 +96,7 @@ interface SkeletonTaskCardProps {
 /**
  * SkeletonTaskCard renders a placeholder task card during initial loading.
  */
-function SkeletonTaskCard({ index }: SkeletonTaskCardProps): React.ReactElement {
+export function SkeletonTaskCard({ index: _index }: SkeletonTaskCardProps): React.ReactElement {
   // TODO: implement
   throw new Error('Not implemented')
 }

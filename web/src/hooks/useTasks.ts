@@ -19,11 +19,16 @@
  * See: TASK-021, ADR-007, REQ-017
  */
 
-import { useCallback, useEffect, useState } from 'react'
+// Stub: value imports are used by the implementation, not the stub.
+// The Builder will replace this entire file. Prefixed to satisfy noUnusedLocals.
+import { useCallback as _useCallback, useEffect as _useEffect, useState as _useState } from 'react'
 import type { Task, TaskStatus, SSEEvent } from '@/types/domain'
-import { listTasksWithFilters } from '@/api/client'
-import { useSSE } from './useSSE'
+import { listTasksWithFilters as _listTasksWithFilters } from '@/api/client'
+import { useSSE as _useSSE } from './useSSE'
 import type { SSEConnectionStatus } from './useSSE'
+
+void _useCallback; void _useEffect; void _useState;
+void _listTasksWithFilters; void _useSSE;
 
 // ---------------------------------------------------------------------------
 // Types
@@ -71,7 +76,7 @@ export interface UseTasksReturn {
  * @param event   - Incoming SSE event from /events/tasks.
  * @returns New task array with the event applied.
  */
-export function mergeTaskEvent(tasks: Task[], event: SSEEvent<Task>): Task[] {
+export function mergeTaskEvent(_tasks: Task[], _event: SSEEvent<Task>): Task[] {
   // TODO: implement
   throw new Error('Not implemented')
 }
@@ -94,7 +99,7 @@ export function mergeTaskEvent(tasks: Task[], event: SSEEvent<Task>): Task[] {
  *   - tasks is updated in place as SSE events arrive.
  *   - isLoading is true only during the initial fetch; SSE updates do not affect it.
  */
-export function useTasks(filters?: TaskFilters): UseTasksReturn {
+export function useTasks(_filters?: TaskFilters): UseTasksReturn {
   // TODO: implement
   throw new Error('Not implemented')
 }

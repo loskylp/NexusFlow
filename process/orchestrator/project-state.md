@@ -16,21 +16,21 @@ Scaffolding complete (scaffold-manifest v2, 15 files). Cycle 3 execution has beg
 
 **Next steps (sequential):**
 1. ~~Determine whether Scaffolder re-invocation is needed for Cycle 3~~ DONE
-2. ~~Route first Builder task (TASK-023: Pipeline Builder -- highest priority, P1 HH)~~ Builder COMPLETE, Verifier dispatched
-3. Execute remaining Cycle 3 tasks in dependency-aware order
+2. ~~Route first Builder task (TASK-023: Pipeline Builder -- highest priority, P1 HH)~~ COMPLETE (Verifier PASS, iteration 2)
+3. Execute remaining Cycle 3 tasks in dependency-aware order -- **TASK-021 dispatched**
 4. Sentinel cycle-level review after all tasks pass Verifier
 5. Demo Sign-off Briefing (Cycle 3)
 6. Go-Live gate for v1.0.0
 
-**Awaiting:** Verifier re-verification of TASK-023 (iteration 2 fix for AC-4).
+**Awaiting:** Builder completion of TASK-021 (Task Feed and Monitor GUI).
 
 ## Active Work
 
-**Agent in control:** Verifier (TASK-023, re-verification scoped to AC-4)
-**Current task:** TASK-023 -- Pipeline Builder (GUI) -- Verifier re-verification after Builder iter 2 fix
-**Waiting for:** Verifier to confirm AC-4 PASS (all 180 tests already green)
+**Agent in control:** Builder (TASK-021)
+**Current task:** TASK-021 -- Task Feed and Monitor (GUI)
+**Waiting for:** Builder to complete TASK-021
 **Blocker:** None
-**Total project progress:** 24 of 31 v1.0.0 tasks complete (Cycles 1-2). 7 tasks remain (Cycle 3). TASK-023 Builder iter 2 complete (boundaryLabel fix). Dispatching Verifier for re-verification.
+**Total project progress:** 25 of 31 v1.0.0 tasks complete (Cycles 1-2 + TASK-023). 6 tasks remain (Cycle 3). TASK-021 dispatched to Builder.
 
 ---
 
@@ -38,8 +38,8 @@ Scaffolding complete (scaffold-manifest v2, 15 files). Cycle 3 execution has beg
 
 | Task | Description | Dependencies (all Cycle 1/2 deps satisfied) | Priority | Status |
 |---|---|---|---|---|
-| TASK-023 | Pipeline Builder (GUI) | TASK-019, TASK-013, TASK-026 | P1 HH (do first) | Builder iter 2 complete, Verifier re-verification dispatched |
-| TASK-021 | Task Feed and Monitor (GUI) | TASK-019, TASK-005, TASK-008, TASK-012, TASK-013, TASK-015 | P1 MH | Pending |
+| TASK-023 | Pipeline Builder (GUI) | TASK-019, TASK-013, TASK-026 | P1 HH (do first) | COMPLETE (Verifier PASS, iteration 2, 2026-04-07) |
+| TASK-021 | Task Feed and Monitor (GUI) | TASK-019, TASK-005, TASK-008, TASK-012, TASK-013, TASK-015 | P1 MH | Builder dispatched |
 | TASK-022 | Log Streamer (GUI) | TASK-019, TASK-015, TASK-016 | P1 MM | Pending |
 | TASK-035 | Task submission via GUI (complete flow) | TASK-021, TASK-013 | P1 LH | Pending |
 | TASK-024 | Pipeline management GUI | TASK-023, TASK-013 | P1 LM | Pending |
@@ -139,7 +139,9 @@ Note: Sequential execution model (one Builder task at a time). DevOps Phase 2 (T
 
 ## Iterate Loop State
 
-TASK-023 -- iteration 2 complete. Builder applied boundaryLabel fix. All 180 tests green. Dispatching Verifier for re-verification scoped to AC-4. Iteration 1: 1 AC failing. Iteration 2: Builder reports 0 failing (pending Verifier confirmation).
+TASK-023 -- COMPLETE. Verifier PASS at iteration 2 (9/9 ACs, 180/180 tests green). Iteration 1: 1 AC failing. Iteration 2: 0 failing (Verifier confirmed).
+
+TASK-021 -- iteration 1 in progress. Builder dispatched.
 
 ---
 

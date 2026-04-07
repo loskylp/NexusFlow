@@ -37,6 +37,13 @@ const logTrimInterval = 1 * time.Hour
 // ADR-008: "72-hour hot retention window".
 const hotLogMaxAgeHours = 72
 
+// Stub: reference constants to satisfy staticcheck U1000 until implementation.
+var (
+	_ = partitionPruneInterval
+	_ = logTrimInterval
+	_ = hotLogMaxAgeHours
+)
+
 // StartRetentionJobs launches the partition pruner and Redis log trimmer
 // as background goroutines. Both run until ctx is cancelled.
 //

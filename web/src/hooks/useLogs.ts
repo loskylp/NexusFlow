@@ -68,7 +68,7 @@ export interface UseLogsReturn {
  *   - On clearLines: lines array is emptied; lastEventId is preserved so
  *     future reconnections still replay correctly.
  */
-export function useLogs(options: UseLogsOptions): UseLogsReturn {
+export function useLogs(_options: UseLogsOptions): UseLogsReturn {
   // TODO: implement
   throw new Error('Not implemented')
 }

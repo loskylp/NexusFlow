@@ -21,7 +21,7 @@ import (
 type OpenAPIHandler struct {
 	// specJSON holds the raw OpenAPI spec JSON, embedded at build time
 	// from api/openapi.yaml via go:embed.
-	specJSON []byte
+	SpecJSON []byte
 }
 
 // NewOpenAPIHandler constructs an OpenAPIHandler.
