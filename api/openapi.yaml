@@ -1,0 +1,45 @@
+# NexusFlow OpenAPI 3.0 Specification
+# Version: 1.0.0 | Generated for TASK-027
+#
+# This file is the source of truth for the NexusFlow REST API surface.
+# It is served at GET /api/openapi.json (converted to JSON at startup).
+# TypeScript types are generated from this spec via openapi-typescript.
+#
+# See: ADR-004, TASK-027, FF-011
+
+# TODO: implement — populate full OpenAPI spec for all endpoints:
+#   POST   /api/auth/login
+#   POST   /api/auth/logout
+#   GET    /api/health
+#   POST   /api/tasks
+#   GET    /api/tasks
+#   GET    /api/tasks/{id}
+#   POST   /api/tasks/{id}/cancel
+#   GET    /api/tasks/{id}/logs
+#   POST   /api/pipelines
+#   GET    /api/pipelines
+#   GET    /api/pipelines/{id}
+#   PUT    /api/pipelines/{id}
+#   DELETE /api/pipelines/{id}
+#   POST   /api/chains
+#   GET    /api/chains
+#   GET    /api/chains/{id}
+#   GET    /api/workers
+#   POST   /api/users
+#   GET    /api/users
+#   PUT    /api/users/{id}/deactivate
+#   GET    /events/tasks         (SSE — document as a note, not a standard operation)
+#   GET    /events/workers       (SSE — document as a note)
+#   GET    /events/tasks/{id}/logs (SSE — document as a note)
+#   GET    /events/sink/{taskId}  (SSE — document as a note)
+
+openapi: "3.0.3"
+info:
+  title: NexusFlow API
+  version: "1.0.0"
+  description: >
+    NexusFlow is a tag-based pipeline task orchestration system.
+    Workers self-register, pipelines define three-phase data transformations
+    (DataSource → Process → Sink), and tasks are dispatched via Redis Streams.
+paths: {}
+components: {}

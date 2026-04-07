@@ -134,9 +134,120 @@ export async function submitTask(payload: {
 }
 
 /**
- * List tasks visible to the current user.
- * See: REQ-009, TASK-008 (Cycle 2)
+ * List tasks visible to the current user with optional filters.
+ * User role: own tasks only. Admin: all tasks.
+ * See: REQ-009, TASK-008, TASK-021
+ *
+ * @param status     - Filter by task status. Omit for all statuses.
+ * @param pipelineId - Filter by pipeline ID. Omit for all pipelines.
+ * @param search     - Search by task ID (exact prefix) or pipeline name (substring).
  */
-export async function listTasks(): Promise<Task[]> {
-  return apiFetch<Task[]>('/api/tasks')
+export async function listTasksWithFilters(params?: {
+  status?: string
+  pipelineId?: string
+  search?: string
+}): Promise<Task[]> {
+  // TODO: implement — build query string from params and call apiFetch
+  throw new Error('Not implemented')
+}
+
+/**
+ * Get a single task by ID, including its state transition history.
+ * See: REQ-009, TASK-008
+ *
+ * @throws Error with '403' prefix if the caller does not own the task.
+ * @throws Error with '404' prefix if the task does not exist.
+ */
+export async function getTask(taskId: string): Promise<Task> {
+  // TODO: implement
+  throw new Error('Not implemented')
+}
+
+/**
+ * Cancel a task.
+ * Only the task owner or Admin may cancel.
+ * Returns void on success (server returns 204).
+ *
+ * @throws Error with '403' prefix if the caller is not the owner or Admin.
+ * @throws Error with '409' prefix if the task is in a terminal state.
+ * See: REQ-010, TASK-012
+ */
+export async function cancelTask(taskId: string): Promise<void> {
+  // TODO: implement
+  throw new Error('Not implemented')
+}
+
+/**
+ * Download the full log history for a task as a text blob.
+ * Fetches from GET /api/tasks/{id}/logs and returns the raw text content
+ * for the browser download trigger in the Log Streamer.
+ *
+ * @throws Error with '403' prefix if the caller does not own the task.
+ * @throws Error with '404' prefix if the task does not exist.
+ * See: REQ-018, TASK-022, TASK-016
+ */
+export async function downloadTaskLogs(taskId: string): Promise<string> {
+  // TODO: implement — apiFetch variant that returns raw text (not JSON)
+  throw new Error('Not implemented')
+}
+
+// --- Pipelines (extended) ---
+
+/**
+ * Get a single pipeline by ID.
+ * See: REQ-022, TASK-013
+ *
+ * @throws Error with '403' prefix if the caller does not own the pipeline.
+ * @throws Error with '404' prefix if the pipeline does not exist.
+ */
+export async function getPipeline(pipelineId: string): Promise<Pipeline> {
+  // TODO: implement
+  throw new Error('Not implemented')
+}
+
+/**
+ * Update an existing pipeline.
+ * Only the pipeline owner or Admin may update.
+ *
+ * @param pipelineId - ID of the pipeline to update.
+ * @param updates    - Fields to update. At minimum name, dataSourceConfig,
+ *                     processConfig, and sinkConfig must be provided.
+ * See: REQ-022, TASK-013
+ *
+ * @throws Error with '400' prefix if schema mapping validation fails.
+ * @throws Error with '403' prefix if the caller does not own the pipeline.
+ */
+export async function updatePipeline(
+  pipelineId: string,
+  updates: Omit<Pipeline, 'id' | 'userId' | 'createdAt' | 'updatedAt'>
+): Promise<Pipeline> {
+  // TODO: implement
+  throw new Error('Not implemented')
+}
+
+/**
+ * Delete a pipeline by ID.
+ * Returns void on success (server returns 204).
+ * Deletion is rejected if the pipeline has active (non-terminal) tasks.
+ *
+ * @throws Error with '403' prefix if the caller does not own the pipeline.
+ * @throws Error with '409' prefix if the pipeline has active tasks.
+ * See: REQ-022, TASK-013
+ */
+export async function deletePipeline(pipelineId: string): Promise<void> {
+  // TODO: implement
+  throw new Error('Not implemented')
+}
+
+// --- Users (admin) ---
+
+/**
+ * List all user accounts. Admin only.
+ * See: REQ-020, TASK-017
+ *
+ * @throws Error with '403' prefix if the caller is not Admin.
+ */
+export async function listUsers(): Promise<import('@/types/domain').User[]> {
+  // TODO: implement
+  throw new Error('Not implemented')
 }
