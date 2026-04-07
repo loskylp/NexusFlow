@@ -22,15 +22,15 @@ Scaffolding complete (scaffold-manifest v2, 15 files). Cycle 3 execution has beg
 5. Demo Sign-off Briefing (Cycle 3)
 6. Go-Live gate for v1.0.0
 
-**Awaiting:** Builder output for TASK-024 (Pipeline management GUI).
+**Awaiting:** Verifier report for TASK-024.
 
 ## Active Work
 
-**Agent in control:** Builder (TASK-024)
-**Current task:** TASK-024 -- Pipeline management GUI (list/edit/delete)
-**Waiting for:** Builder to implement TASK-024
+**Agent in control:** Verifier (TASK-024)
+**Current task:** TASK-024 -- Pipeline management GUI (list/edit/delete) -- Verifier initial verification
+**Waiting for:** Verifier to verify TASK-024
 **Blocker:** None
-**Total project progress:** 28 of 31 v1.0.0 tasks complete (Cycles 1-2 + TASK-023 + TASK-021 + TASK-022 + TASK-035). 3 tasks remain (Cycle 3).
+**Total project progress:** 28 of 31 v1.0.0 tasks complete (Cycles 1-2 + TASK-023 + TASK-021 + TASK-022 + TASK-035). 3 tasks remain (Cycle 3). TASK-024 in verification.
 
 ---
 
@@ -42,7 +42,7 @@ Scaffolding complete (scaffold-manifest v2, 15 files). Cycle 3 execution has beg
 | TASK-021 | Task Feed and Monitor (GUI) | TASK-019, TASK-005, TASK-008, TASK-012, TASK-013, TASK-015 | P1 MH | COMPLETE (Verifier PASS, iteration 1, 2026-04-07) |
 | TASK-022 | Log Streamer (GUI) | TASK-019, TASK-015, TASK-016 | P1 MM | COMPLETE (Verifier PASS, iteration 1, 2026-04-07) |
 | TASK-035 | Task submission via GUI (complete flow) | TASK-021, TASK-013 | P1 LH | COMPLETE (Verifier PASS, iteration 1, 2026-04-07) |
-| TASK-024 | Pipeline management GUI | TASK-023, TASK-013 | P1 LM | Builder dispatched |
+| TASK-024 | Pipeline management GUI | TASK-023, TASK-013 | P1 LM | Builder COMPLETE, Verifier dispatched |
 | TASK-028 | Log retention and partition pruning | TASK-002, TASK-016 | P2 LM | Pending |
 | TASK-027 | Health endpoint and OpenAPI specification | TASK-001, TASK-003 | P2 LM | Pending |
 
@@ -147,7 +147,7 @@ TASK-022 -- COMPLETE. Verifier PASS at iteration 1 (8/8 ACs, 473/473 tests green
 
 TASK-035 -- COMPLETE. Verifier PASS at iteration 1 (5/5 ACs, 542/542 tests green, CI green). 33 new Verifier tests. 4 non-blocking observations (ESLint absent, pre-existing TASK-023 floating waitFor, onSuccess discards taskId, retryConfig omission consistent with TASK-023 contract).
 
-TASK-024 -- Builder dispatched (iteration 1). Dependencies satisfied: TASK-023 (PASS), TASK-013 (PASS).
+TASK-024 -- Builder COMPLETE (iteration 1). Implementation already present from TASK-023; Builder wrote 15 unit tests covering all 4 ACs. Verifier dispatched for initial verification.
 
 ---
 
