@@ -22,13 +22,13 @@ Scaffolding complete (scaffold-manifest v2, 15 files). Cycle 3 execution has beg
 5. Demo Sign-off Briefing (Cycle 3)
 6. Go-Live gate for v1.0.0
 
-**Awaiting:** Builder completion of TASK-022 (Log Streamer GUI).
+**Awaiting:** Verifier result for TASK-022 (Log Streamer GUI).
 
 ## Active Work
 
-**Agent in control:** Builder (TASK-022)
-**Current task:** TASK-022 -- Log Streamer (GUI)
-**Waiting for:** Builder to implement TASK-022
+**Agent in control:** Verifier (TASK-022)
+**Current task:** TASK-022 -- Log Streamer (GUI), Verifier initial verification
+**Waiting for:** Verifier to verify TASK-022 against 8 acceptance criteria
 **Blocker:** None
 **Total project progress:** 26 of 31 v1.0.0 tasks complete (Cycles 1-2 + TASK-023 + TASK-021). 5 tasks remain (Cycle 3).
 
@@ -40,7 +40,7 @@ Scaffolding complete (scaffold-manifest v2, 15 files). Cycle 3 execution has beg
 |---|---|---|---|---|
 | TASK-023 | Pipeline Builder (GUI) | TASK-019, TASK-013, TASK-026 | P1 HH (do first) | COMPLETE (Verifier PASS, iteration 2, 2026-04-07) |
 | TASK-021 | Task Feed and Monitor (GUI) | TASK-019, TASK-005, TASK-008, TASK-012, TASK-013, TASK-015 | P1 MH | COMPLETE (Verifier PASS, iteration 1, 2026-04-07) |
-| TASK-022 | Log Streamer (GUI) | TASK-019, TASK-015, TASK-016 | P1 MM | Builder dispatched |
+| TASK-022 | Log Streamer (GUI) | TASK-019, TASK-015, TASK-016 | P1 MM | Builder complete, Verifier dispatched |
 | TASK-035 | Task submission via GUI (complete flow) | TASK-021, TASK-013 | P1 LH | Pending |
 | TASK-024 | Pipeline management GUI | TASK-023, TASK-013 | P1 LM | Pending |
 | TASK-028 | Log retention and partition pruning | TASK-002, TASK-016 | P2 LM | Pending |
@@ -143,7 +143,7 @@ TASK-023 -- COMPLETE. Verifier PASS at iteration 2 (9/9 ACs, 180/180 tests green
 
 TASK-021 -- COMPLETE. Verifier PASS at iteration 1 (8/8 ACs, 351/351 tests green, CI green).
 
-TASK-022 -- iteration 0. Builder dispatched.
+TASK-022 -- iteration 1. Builder complete, Verifier dispatched for initial verification.
 
 ---
 
