@@ -22,13 +22,13 @@ Scaffolding complete (scaffold-manifest v2, 15 files). Cycle 3 execution has beg
 5. Demo Sign-off Briefing (Cycle 3)
 6. Go-Live gate for v1.0.0
 
-**Awaiting:** Builder output for TASK-035 (Task submission via GUI).
+**Awaiting:** Verifier verdict for TASK-035 (Task submission via GUI).
 
 ## Active Work
 
-**Agent in control:** Builder (TASK-035)
+**Agent in control:** Verifier (TASK-035)
 **Current task:** TASK-035 -- Task submission via GUI (complete flow)
-**Waiting for:** Builder to implement TASK-035
+**Waiting for:** Verifier to run acceptance tests and verify TASK-035
 **Blocker:** None
 **Total project progress:** 27 of 31 v1.0.0 tasks complete (Cycles 1-2 + TASK-023 + TASK-021 + TASK-022). 4 tasks remain (Cycle 3).
 
@@ -41,7 +41,7 @@ Scaffolding complete (scaffold-manifest v2, 15 files). Cycle 3 execution has beg
 | TASK-023 | Pipeline Builder (GUI) | TASK-019, TASK-013, TASK-026 | P1 HH (do first) | COMPLETE (Verifier PASS, iteration 2, 2026-04-07) |
 | TASK-021 | Task Feed and Monitor (GUI) | TASK-019, TASK-005, TASK-008, TASK-012, TASK-013, TASK-015 | P1 MH | COMPLETE (Verifier PASS, iteration 1, 2026-04-07) |
 | TASK-022 | Log Streamer (GUI) | TASK-019, TASK-015, TASK-016 | P1 MM | COMPLETE (Verifier PASS, iteration 1, 2026-04-07) |
-| TASK-035 | Task submission via GUI (complete flow) | TASK-021, TASK-013 | P1 LH | Builder dispatched |
+| TASK-035 | Task submission via GUI (complete flow) | TASK-021, TASK-013 | P1 LH | Builder COMPLETE, Verifier dispatched |
 | TASK-024 | Pipeline management GUI | TASK-023, TASK-013 | P1 LM | Pending |
 | TASK-028 | Log retention and partition pruning | TASK-002, TASK-016 | P2 LM | Pending |
 | TASK-027 | Health endpoint and OpenAPI specification | TASK-001, TASK-003 | P2 LM | Pending |
@@ -145,7 +145,7 @@ TASK-021 -- COMPLETE. Verifier PASS at iteration 1 (8/8 ACs, 351/351 tests green
 
 TASK-022 -- COMPLETE. Verifier PASS at iteration 1 (8/8 ACs, 473/473 tests green, CI green). 62 new tests. 3 non-blocking observations (SSE-only no REST seed, 403 via log:error event, download error swallowed silently).
 
-TASK-035 -- not yet started. Builder dispatched.
+TASK-035 -- Builder COMPLETE (iteration 1). Verifier dispatched. 509/509 tests passing, TypeScript clean. 44 new tests (36 targeted + 8 existing retained). Deviation noted: free-form key-value params instead of schema-driven fields (Pipeline type lacks task-level input schema).
 
 ---
 
