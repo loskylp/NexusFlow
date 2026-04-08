@@ -1,38 +1,3 @@
-# NexusFlow OpenAPI 3.0 Specification
-# Version: 1.0.0 | Generated for TASK-027
-#
-# This file is the source of truth for the NexusFlow REST API surface.
-# It is served at GET /api/openapi.json (converted to JSON at startup).
-# TypeScript types are generated from this spec via openapi-typescript.
-#
-# See: ADR-004, TASK-027, FF-011
-
-# TODO: implement — populate full OpenAPI spec for all endpoints:
-#   POST   /api/auth/login
-#   POST   /api/auth/logout
-#   GET    /api/health
-#   POST   /api/tasks
-#   GET    /api/tasks
-#   GET    /api/tasks/{id}
-#   POST   /api/tasks/{id}/cancel
-#   GET    /api/tasks/{id}/logs
-#   POST   /api/pipelines
-#   GET    /api/pipelines
-#   GET    /api/pipelines/{id}
-#   PUT    /api/pipelines/{id}
-#   DELETE /api/pipelines/{id}
-#   POST   /api/chains
-#   GET    /api/chains
-#   GET    /api/chains/{id}
-#   GET    /api/workers
-#   POST   /api/users
-#   GET    /api/users
-#   PUT    /api/users/{id}/deactivate
-#   GET    /events/tasks         (SSE — document as a note, not a standard operation)
-#   GET    /events/workers       (SSE — document as a note)
-#   GET    /events/tasks/{id}/logs (SSE — document as a note)
-#   GET    /events/sink/{taskId}  (SSE — document as a note)
-
 openapi: "3.0.3"
 info:
   title: NexusFlow API
@@ -41,5 +6,1319 @@ info:
     NexusFlow is a tag-based pipeline task orchestration system.
     Workers self-register, pipelines define three-phase data transformations
     (DataSource → Process → Sink), and tasks are dispatched via Redis Streams.
-paths: {}
-components: {}
+    All authenticated endpoints require a Bearer token or session cookie obtained
+    from POST /api/auth/login.
+  contact:
+    name: NexusFlow
+  license:
+    name: Proprietary
+
+servers:
+  - url: /
+    description: NexusFlow API server
+
+tags:
+  - name: health
+    description: Service health check (unauthenticated)
+  - name: auth
+    description: Authentication — login and logout
+  - name: tasks
+    description: Task lifecycle — submission, query, and cancellation
+  - name: pipelines
+    description: Pipeline CRUD — define DataSource → Process → Sink transformations
+  - name: chains
+    description: Pipeline chains — linear sequences of pipelines
+  - name: workers
+    description: Worker registry — registered compute nodes and their status
+  - name: users
+    description: User management (admin only)
+  - name: openapi
+    description: OpenAPI specification endpoint (unauthenticated)
+
+# NOTE: SSE endpoints are not representable as standard OpenAPI operations.
+# They are documented below as informational x-sse-endpoints extensions.
+# GET /events/tasks          — live task state-change events (authenticated)
+# GET /events/workers        — live worker registration/heartbeat events (authenticated)
+# GET /events/tasks/{id}/logs — live log lines for a specific task (authenticated)
+# GET /events/sink/{taskId}  — before/after sink snapshot events (authenticated, demo)
+x-sse-endpoints:
+  - path: /events/tasks
+    description: >
+      Server-Sent Events stream for all task state-change events visible to the caller.
+      Emits events of type "task:state-changed" with a Task payload whenever a task
+      transitions to a new status. User role receives own tasks only; Admin receives all.
+      Reconnection uses the Last-Event-ID header (no replay on task events).
+    authentication: Bearer token or session cookie (same as REST endpoints)
+  - path: /events/workers
+    description: >
+      Server-Sent Events stream for worker registration and heartbeat events.
+      Emits events of type "worker:registered", "worker:heartbeat", "worker:down".
+    authentication: Bearer token or session cookie
+  - path: /events/tasks/{id}/logs
+    description: >
+      Server-Sent Events stream for real-time log lines of a specific task.
+      Emits events of type "log:line" with a TaskLog payload. Supports Last-Event-ID
+      replay: on reconnect the server resends all log lines with ID > Last-Event-ID.
+      Access control: task owner or Admin only (403 for unauthorised callers).
+    authentication: Bearer token or session cookie
+  - path: /events/sink/{taskId}
+    description: >
+      Server-Sent Events stream for Sink Inspector before/after snapshot events (demo).
+      Emits events of type "sink:before" and "sink:after" with SinkSnapshot payloads.
+    authentication: Bearer token or session cookie
+
+paths:
+  /api/health:
+    get:
+      tags: [health]
+      operationId: getHealth
+      summary: Service health check
+      description: >
+        Checks Redis and PostgreSQL connectivity. Returns 200 when both dependencies
+        are reachable, 503 when either is degraded. Unauthenticated; monitored by
+        Uptime Kuma (ADR-005).
+      responses:
+        "200":
+          description: All dependencies reachable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthResponse"
+              example:
+                status: ok
+                redis: ok
+                postgres: ok
+        "503":
+          description: One or more dependencies unreachable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthResponse"
+              example:
+                status: degraded
+                redis: error
+                postgres: ok
+
+  /api/openapi.json:
+    get:
+      tags: [openapi]
+      operationId: getOpenAPISpec
+      summary: OpenAPI 3.0 specification
+      description: >
+        Returns the full OpenAPI 3.0 specification for the NexusFlow REST API as JSON.
+        Unauthenticated. Used by swagger-ui and openapi-typescript code generation.
+        Cached by CDN for up to one hour (Cache-Control: public, max-age=3600).
+      responses:
+        "200":
+          description: OpenAPI 3.0 JSON specification
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                example: public, max-age=3600
+          content:
+            application/json:
+              schema:
+                type: object
+                description: OpenAPI 3.0 document
+
+  /api/auth/login:
+    post:
+      tags: [auth]
+      operationId: login
+      summary: Authenticate and obtain a session token
+      description: >
+        Validates username and password against the stored bcrypt hash.
+        On success returns a session token in both the response body and an
+        HTTP-only Secure cookie. Token TTL is 24 hours (ADR-006).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginRequest"
+      responses:
+        "200":
+          description: Login successful
+          headers:
+            Set-Cookie:
+              description: session=<token>; HttpOnly; Secure; SameSite=Strict; Max-Age=86400
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LoginResponse"
+        "400":
+          description: Malformed JSON body or empty username/password
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Invalid credentials or deactivated account
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /api/auth/logout:
+    post:
+      tags: [auth]
+      operationId: logout
+      summary: Invalidate the current session
+      description: >
+        Deletes the session token from Redis. Always returns 204 regardless of
+        whether the token was already expired or absent. Requires authentication.
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      responses:
+        "204":
+          description: Session invalidated (or was already absent)
+        "401":
+          description: No token present in the request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /api/tasks:
+    post:
+      tags: [tasks]
+      operationId: submitTask
+      summary: Submit a new task for execution
+      description: >
+        Creates a task referencing an existing pipeline and enqueues it to the Redis
+        Stream matching the supplied capability tags. The task transitions through
+        submitted → queued atomically before the response is returned. The submitting
+        user and Admin may cancel this task later.
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SubmitTaskRequest"
+      responses:
+        "201":
+          description: Task accepted and queued
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SubmitTaskResponse"
+        "400":
+          description: Malformed JSON, missing fields, invalid pipelineId, or pipeline not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+    get:
+      tags: [tasks]
+      operationId: listTasks
+      summary: List tasks visible to the caller
+      description: >
+        User role: returns only the caller's own tasks. Admin role: returns all tasks
+        across all users. Optional ?status= query parameter filters results to tasks
+        with that exact status value.
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      parameters:
+        - name: status
+          in: query
+          required: false
+          description: Filter by task status
+          schema:
+            $ref: "#/components/schemas/TaskStatus"
+        - name: pipelineId
+          in: query
+          required: false
+          description: Filter by pipeline UUID
+          schema:
+            type: string
+            format: uuid
+        - name: search
+          in: query
+          required: false
+          description: Free-text search against task metadata (client-side filter)
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Array of tasks (empty array when none match)
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Task"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /api/tasks/{id}:
+    get:
+      tags: [tasks]
+      operationId: getTask
+      summary: Get a task by ID with state history
+      description: >
+        Returns the task and its full state transition audit trail. Enforces ownership:
+        non-Admin callers may only read tasks they submitted.
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      parameters:
+        - $ref: "#/components/parameters/TaskId"
+      responses:
+        "200":
+          description: Task detail with state history
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TaskDetailResponse"
+        "400":
+          description: id is not a valid UUID
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /api/tasks/{id}/cancel:
+    post:
+      tags: [tasks]
+      operationId: cancelTask
+      summary: Cancel a non-terminal task
+      description: >
+        Cancels a task that has not yet reached a terminal state (completed, failed,
+        cancelled). Only the submitting user or an Admin may cancel. For tasks currently
+        running on a worker, a cancel flag is set in Redis with a 60-second TTL so the
+        worker can detect it mid-execution.
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      parameters:
+        - $ref: "#/components/parameters/TaskId"
+      responses:
+        "204":
+          description: Task cancelled
+        "400":
+          description: id is not a valid UUID
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          description: Task is already in a terminal state
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /api/tasks/{id}/logs:
+    get:
+      tags: [tasks]
+      operationId: getTaskLogs
+      summary: Retrieve historical log lines for a task
+      description: >
+        Returns all cold-stored log lines for the task ordered by timestamp.
+        Hot logs (0–72 h) are also available via the SSE stream GET /events/tasks/{id}/logs.
+        Only the task owner or an Admin may retrieve logs.
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      parameters:
+        - $ref: "#/components/parameters/TaskId"
+      responses:
+        "200":
+          description: Array of log lines (empty array when none exist)
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/TaskLog"
+        "400":
+          description: id is not a valid UUID
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /api/pipelines:
+    post:
+      tags: [pipelines]
+      operationId: createPipeline
+      summary: Create a new pipeline
+      description: >
+        Creates a pipeline with DataSource, Process, and Sink phase configurations.
+        Schema mappings are validated at design time (TASK-026, ADR-008): all
+        SourceFields in ProcessConfig.inputMappings must exist in
+        DataSourceConfig.outputSchema, and all SourceFields in SinkConfig.inputMappings
+        must exist in ProcessConfig.outputSchema.
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreatePipelineRequest"
+      responses:
+        "201":
+          description: Pipeline created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Pipeline"
+        "400":
+          description: Malformed JSON, missing name, or invalid schema mapping
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+    get:
+      tags: [pipelines]
+      operationId: listPipelines
+      summary: List pipelines visible to the caller
+      description: >
+        User role: returns only the caller's own pipelines. Admin role: returns all
+        pipelines across all users.
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      responses:
+        "200":
+          description: Array of pipelines (empty array when none exist)
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Pipeline"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /api/pipelines/{id}:
+    get:
+      tags: [pipelines]
+      operationId: getPipeline
+      summary: Get a pipeline by ID
+      description: >
+        Returns the full pipeline definition. Only the owner or an Admin may access it.
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      parameters:
+        - $ref: "#/components/parameters/PipelineId"
+      responses:
+        "200":
+          description: Pipeline detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Pipeline"
+        "400":
+          description: id is not a valid UUID
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+    put:
+      tags: [pipelines]
+      operationId: updatePipeline
+      summary: Replace a pipeline's mutable fields
+      description: >
+        Full replacement of name and phase configurations. Schema mappings are
+        re-validated on every update. Only the owner or an Admin may update.
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      parameters:
+        - $ref: "#/components/parameters/PipelineId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdatePipelineRequest"
+      responses:
+        "200":
+          description: Updated pipeline
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Pipeline"
+        "400":
+          description: Malformed JSON, invalid id, or invalid schema mapping
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+    delete:
+      tags: [pipelines]
+      operationId: deletePipeline
+      summary: Delete a pipeline
+      description: >
+        Deletes the pipeline. Rejected with 409 if any non-terminal task references
+        this pipeline. Only the owner or an Admin may delete.
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      parameters:
+        - $ref: "#/components/parameters/PipelineId"
+      responses:
+        "204":
+          description: Pipeline deleted
+        "400":
+          description: id is not a valid UUID
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          description: Pipeline has active (non-terminal) tasks
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /api/pipelines/{id}/validate:
+    post:
+      tags: [pipelines]
+      operationId: validatePipeline
+      summary: Validate pipeline schema mappings without persisting
+      description: >
+        Runs design-time schema mapping validation against the supplied pipeline
+        definition without creating or updating any record. Returns 200 on a valid
+        mapping, 400 with the first validation error on failure.
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      parameters:
+        - $ref: "#/components/parameters/PipelineId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreatePipelineRequest"
+      responses:
+        "200":
+          description: Schema mappings are valid
+        "400":
+          description: Schema mapping validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /api/workers:
+    get:
+      tags: [workers]
+      operationId: listWorkers
+      summary: List all registered workers
+      description: >
+        Returns all workers in the registry regardless of status (online or down).
+        Available to all authenticated users — both User and Admin role.
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      responses:
+        "200":
+          description: Array of workers (empty array when none are registered)
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Worker"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /api/chains:
+    post:
+      tags: [chains]
+      operationId: createChain
+      summary: Create a pipeline chain
+      description: >
+        Creates a strictly linear sequence of pipelines (A → B → C). Completion of
+        each pipeline triggers the next. Failure in any pipeline cascades cancellation
+        to all downstream pipelines. Branching structures (duplicate pipeline IDs) are
+        rejected. Requires at least two pipelines.
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateChainRequest"
+      responses:
+        "201":
+          description: Chain created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Chain"
+        "400":
+          description: >
+            Malformed JSON, missing name, fewer than 2 pipelines, duplicate pipeline
+            IDs, or any pipelineId is not a valid UUID
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /api/chains/{id}:
+    get:
+      tags: [chains]
+      operationId: getChain
+      summary: Get a chain by ID
+      description: Returns the chain definition with its ordered pipeline list.
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      parameters:
+        - $ref: "#/components/parameters/ChainId"
+      responses:
+        "200":
+          description: Chain detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Chain"
+        "400":
+          description: id is not a valid UUID
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /api/users:
+    post:
+      tags: [users]
+      operationId: createUser
+      summary: Create a user account (admin only)
+      description: >
+        Creates a new user account. The password is bcrypt-hashed at cost 12.
+        Admin role required — enforced by RequireRole middleware.
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateUserRequest"
+      responses:
+        "201":
+          description: User created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserResponse"
+        "400":
+          description: Malformed JSON, empty username/password, or invalid role
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          description: Username already taken
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+    get:
+      tags: [users]
+      operationId: listUsers
+      summary: List all user accounts (admin only)
+      description: Returns all user accounts ordered by creation time. Admin role required.
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      responses:
+        "200":
+          description: Array of user accounts (empty array when none exist)
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/UserResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /api/users/{id}/deactivate:
+    put:
+      tags: [users]
+      operationId: deactivateUser
+      summary: Deactivate a user account (admin only)
+      description: >
+        Sets the user's active flag to false and invalidates all of the user's active
+        Redis sessions. Does not cancel in-flight tasks. Admin role required.
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      parameters:
+        - $ref: "#/components/parameters/UserId"
+      responses:
+        "204":
+          description: User deactivated and sessions invalidated
+        "400":
+          description: id is not a valid UUID
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      description: >
+        Session token obtained from POST /api/auth/login. Pass as
+        Authorization: Bearer <token>.
+    cookieAuth:
+      type: apiKey
+      in: cookie
+      name: session
+      description: >
+        HTTP-only Secure session cookie set by POST /api/auth/login. Used
+        automatically by browser clients.
+
+  parameters:
+    TaskId:
+      name: id
+      in: path
+      required: true
+      description: Task UUID
+      schema:
+        type: string
+        format: uuid
+
+    PipelineId:
+      name: id
+      in: path
+      required: true
+      description: Pipeline UUID
+      schema:
+        type: string
+        format: uuid
+
+    ChainId:
+      name: id
+      in: path
+      required: true
+      description: Chain UUID
+      schema:
+        type: string
+        format: uuid
+
+    UserId:
+      name: id
+      in: path
+      required: true
+      description: User UUID
+      schema:
+        type: string
+        format: uuid
+
+  responses:
+    Unauthorized:
+      description: No valid session token present
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    Forbidden:
+      description: Caller does not own the resource and is not Admin
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    InternalError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+
+  schemas:
+    HealthResponse:
+      type: object
+      required: [status, redis, postgres]
+      properties:
+        status:
+          type: string
+          enum: [ok, degraded]
+          description: Overall service status
+        redis:
+          type: string
+          enum: [ok, error]
+          description: Redis connectivity result
+        postgres:
+          type: string
+          enum: [ok, error]
+          description: PostgreSQL connectivity result
+
+    ErrorResponse:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: string
+          description: Human-readable error message
+
+    TaskStatus:
+      type: string
+      enum:
+        - submitted
+        - queued
+        - assigned
+        - running
+        - completed
+        - failed
+        - cancelled
+      description: >
+        Task lifecycle state. Transitions are monotonically forward except for
+        assigned/running → queued on infrastructure failover.
+
+    BackoffStrategy:
+      type: string
+      enum: [exponential, linear, fixed]
+      description: Retry delay growth strategy between task execution attempts
+
+    RetryConfig:
+      type: object
+      required: [maxRetries, backoff]
+      properties:
+        maxRetries:
+          type: integer
+          minimum: 0
+          description: Maximum number of retry attempts. Default is 3.
+        backoff:
+          $ref: "#/components/schemas/BackoffStrategy"
+
+    SchemaMapping:
+      type: object
+      required: [sourceField, targetField]
+      properties:
+        sourceField:
+          type: string
+          description: Field name in the preceding phase's output schema
+        targetField:
+          type: string
+          description: Field name expected by the next phase's input schema
+
+    DataSourceConfig:
+      type: object
+      required: [connectorType, config, outputSchema]
+      properties:
+        connectorType:
+          type: string
+          description: DataSource connector identifier (e.g. "demo", "s3", "postgres")
+        config:
+          type: object
+          additionalProperties: true
+          description: Connector-specific configuration parameters
+        outputSchema:
+          type: array
+          items:
+            type: string
+          description: Field names this phase produces; used for schema mapping validation
+
+    ProcessConfig:
+      type: object
+      required: [connectorType, config, inputMappings, outputSchema]
+      properties:
+        connectorType:
+          type: string
+          description: Process connector identifier
+        config:
+          type: object
+          additionalProperties: true
+          description: Connector-specific configuration parameters
+        inputMappings:
+          type: array
+          items:
+            $ref: "#/components/schemas/SchemaMapping"
+          description: >
+            Maps DataSource output fields to Process input fields.
+            All sourceField values must exist in DataSourceConfig.outputSchema.
+        outputSchema:
+          type: array
+          items:
+            type: string
+          description: Field names this phase produces
+
+    SinkConfig:
+      type: object
+      required: [connectorType, config, inputMappings]
+      properties:
+        connectorType:
+          type: string
+          description: Sink connector identifier (e.g. "demo", "s3", "postgres")
+        config:
+          type: object
+          additionalProperties: true
+          description: Connector-specific configuration parameters
+        inputMappings:
+          type: array
+          items:
+            $ref: "#/components/schemas/SchemaMapping"
+          description: >
+            Maps Process output fields to Sink input fields.
+            All sourceField values must exist in ProcessConfig.outputSchema.
+
+    LoginRequest:
+      type: object
+      required: [username, password]
+      properties:
+        username:
+          type: string
+          description: Account username
+        password:
+          type: string
+          format: password
+          description: Account password (plaintext; transmitted over HTTPS only)
+
+    LoginResponse:
+      type: object
+      required: [token, user]
+      properties:
+        token:
+          type: string
+          description: Session token for use in Authorization: Bearer header
+        user:
+          $ref: "#/components/schemas/PublicUser"
+
+    PublicUser:
+      type: object
+      required: [id, username, role]
+      properties:
+        id:
+          type: string
+          format: uuid
+        username:
+          type: string
+        role:
+          $ref: "#/components/schemas/Role"
+
+    Role:
+      type: string
+      enum: [admin, user]
+      description: User access level. admin has full visibility; user sees own resources only.
+
+    SubmitTaskRequest:
+      type: object
+      required: [pipelineId, tags]
+      properties:
+        pipelineId:
+          type: string
+          format: uuid
+          description: UUID of the pipeline to execute. Must exist in the database.
+        input:
+          type: object
+          additionalProperties: true
+          description: Arbitrary key-value runtime parameters passed to the pipeline
+        tags:
+          type: array
+          items:
+            type: string
+          minItems: 1
+          description: Capability tags used to route the task to a matching worker
+        retryConfig:
+          $ref: "#/components/schemas/RetryConfig"
+
+    SubmitTaskResponse:
+      type: object
+      required: [taskId, status]
+      properties:
+        taskId:
+          type: string
+          format: uuid
+          description: UUID of the newly created task
+        status:
+          $ref: "#/components/schemas/TaskStatus"
+
+    Task:
+      type: object
+      required: [id, userId, status, retryConfig, retryCount, executionId, input, createdAt, updatedAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        pipelineId:
+          type: string
+          format: uuid
+          nullable: true
+          description: Pipeline UUID; null when the referenced pipeline has been deleted
+        chainId:
+          type: string
+          format: uuid
+          nullable: true
+          description: Chain UUID if this task is part of a pipeline chain
+        userId:
+          type: string
+          format: uuid
+          description: UUID of the user who submitted this task
+        status:
+          $ref: "#/components/schemas/TaskStatus"
+        retryConfig:
+          $ref: "#/components/schemas/RetryConfig"
+        retryCount:
+          type: integer
+          minimum: 0
+          description: Number of times this task has been retried
+        retryAfter:
+          type: string
+          format: date-time
+          nullable: true
+          description: >
+            When set, the task must not be re-enqueued until this timestamp elapses.
+            Null when the task has never been retried or is immediately ready.
+        retryTags:
+          type: array
+          items:
+            type: string
+          description: Capability tag streams to re-enqueue the task to on retry
+        executionId:
+          type: string
+          description: "task-id:attempt-number encoding for Sink idempotency (ADR-003)"
+        workerId:
+          type: string
+          nullable: true
+          description: ID of the worker currently executing this task; null when unassigned
+        input:
+          type: object
+          additionalProperties: true
+          description: Runtime parameters passed to the pipeline
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    TaskStateLog:
+      type: object
+      required: [id, taskId, fromState, toState, reason, timestamp]
+      properties:
+        id:
+          type: string
+          format: uuid
+        taskId:
+          type: string
+          format: uuid
+        fromState:
+          $ref: "#/components/schemas/TaskStatus"
+        toState:
+          $ref: "#/components/schemas/TaskStatus"
+        reason:
+          type: string
+          description: Human-readable reason for the state transition
+        timestamp:
+          type: string
+          format: date-time
+
+    TaskDetailResponse:
+      type: object
+      required: [task, stateHistory]
+      properties:
+        task:
+          $ref: "#/components/schemas/Task"
+        stateHistory:
+          type: array
+          items:
+            $ref: "#/components/schemas/TaskStateLog"
+          description: Chronological list of all state transitions for this task
+
+    TaskLog:
+      type: object
+      required: [id, taskId, line, level, timestamp]
+      properties:
+        id:
+          type: string
+          format: uuid
+        taskId:
+          type: string
+          format: uuid
+        line:
+          type: string
+          description: Log message text
+        level:
+          type: string
+          description: Log level (e.g. "info", "warn", "error")
+        timestamp:
+          type: string
+          format: date-time
+
+    Pipeline:
+      type: object
+      required: [id, name, userId, dataSourceConfig, processConfig, sinkConfig, createdAt, updatedAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+          description: Human-readable pipeline name
+        userId:
+          type: string
+          format: uuid
+          description: UUID of the user who created this pipeline
+        dataSourceConfig:
+          $ref: "#/components/schemas/DataSourceConfig"
+        processConfig:
+          $ref: "#/components/schemas/ProcessConfig"
+        sinkConfig:
+          $ref: "#/components/schemas/SinkConfig"
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    CreatePipelineRequest:
+      type: object
+      required: [name, dataSourceConfig, processConfig, sinkConfig]
+      properties:
+        name:
+          type: string
+          description: Human-readable pipeline name. Must be non-empty.
+        dataSourceConfig:
+          $ref: "#/components/schemas/DataSourceConfig"
+        processConfig:
+          $ref: "#/components/schemas/ProcessConfig"
+        sinkConfig:
+          $ref: "#/components/schemas/SinkConfig"
+
+    UpdatePipelineRequest:
+      type: object
+      required: [name, dataSourceConfig, processConfig, sinkConfig]
+      properties:
+        name:
+          type: string
+        dataSourceConfig:
+          $ref: "#/components/schemas/DataSourceConfig"
+        processConfig:
+          $ref: "#/components/schemas/ProcessConfig"
+        sinkConfig:
+          $ref: "#/components/schemas/SinkConfig"
+
+    Chain:
+      type: object
+      required: [id, name, userId, pipelineIds, createdAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+          description: Human-readable chain name
+        userId:
+          type: string
+          format: uuid
+          description: UUID of the user who created this chain
+        pipelineIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+          minItems: 2
+          description: Ordered list of pipeline UUIDs forming the chain (index 0 executes first)
+        createdAt:
+          type: string
+          format: date-time
+
+    CreateChainRequest:
+      type: object
+      required: [name, pipelineIds]
+      properties:
+        name:
+          type: string
+          description: Human-readable chain name. Must be non-empty.
+        pipelineIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+          minItems: 2
+          description: >
+            Ordered list of pipeline UUIDs forming the chain. Must have at least two
+            entries. Duplicate entries are rejected (would constitute branching).
+
+    Worker:
+      type: object
+      required: [id, tags, status, lastHeartbeat, registeredAt]
+      properties:
+        id:
+          type: string
+          description: Worker identifier (self-assigned on startup, e.g. hostname:pid)
+        tags:
+          type: array
+          items:
+            type: string
+          description: Capability tags that determine which task queues this worker consumes
+        status:
+          type: string
+          enum: [online, down]
+          description: online = recently heartbeated; down = heartbeat overdue
+        lastHeartbeat:
+          type: string
+          format: date-time
+          description: Timestamp of the most recent heartbeat received from this worker
+        registeredAt:
+          type: string
+          format: date-time
+          description: Timestamp when this worker first registered
+        currentTaskId:
+          type: string
+          format: uuid
+          nullable: true
+          description: UUID of the task currently being executed; null when idle
+
+    CreateUserRequest:
+      type: object
+      required: [username, password, role]
+      properties:
+        username:
+          type: string
+          description: Account username. Must be unique.
+        password:
+          type: string
+          format: password
+          description: Account password (plaintext; bcrypt-hashed at cost 12 before storage)
+        role:
+          $ref: "#/components/schemas/Role"
+
+    UserResponse:
+      type: object
+      required: [id, username, role, active, createdAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        username:
+          type: string
+        role:
+          $ref: "#/components/schemas/Role"
+        active:
+          type: boolean
+          description: false after deactivation
+        createdAt:
+          type: string
+          format: date-time

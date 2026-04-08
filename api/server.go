@@ -98,6 +98,7 @@ func NewServer(
 //	POST   /api/auth/login             — AuthHandler.Login       (TASK-003) — public
 //	POST   /api/auth/logout            — AuthHandler.Logout      (TASK-003) — authenticated
 //	GET    /api/health                 — HealthHandler.Health    (TASK-001) — public
+//	GET    /api/openapi.json           — OpenAPIHandler.ServeSpec (TASK-027) — public
 //	POST   /api/tasks                  — TaskHandler.Submit      (TASK-005) — authenticated
 //	GET    /api/tasks                  — TaskHandler.List        (TASK-008, Cycle 2) — authenticated
 //	GET    /api/tasks/{id}             — TaskHandler.Get         (TASK-008, Cycle 2) — authenticated
@@ -126,6 +127,10 @@ func (s *Server) Handler() http.Handler {
 	// Health check is unauthenticated (ADR-005 — monitored by Uptime Kuma).
 	health := &HealthHandler{server: s}
 	r.Get("/api/health", health.Health)
+
+	// OpenAPI spec is unauthenticated (TASK-027 — used by swagger-ui and openapi-typescript).
+	openAPIH := NewOpenAPIHandler(MustLoadOpenAPISpecJSON())
+	r.Get("/api/openapi.json", openAPIH.ServeSpec)
 
 	// Login is public — no auth middleware.
 	authH := &AuthHandler{server: s}
