@@ -17,20 +17,20 @@ Scaffolding complete (scaffold-manifest v2, 15 files). Cycle 3 execution has beg
 **Next steps (sequential):**
 1. ~~Determine whether Scaffolder re-invocation is needed for Cycle 3~~ DONE
 2. ~~Route first Builder task (TASK-023: Pipeline Builder -- highest priority, P1 HH)~~ COMPLETE (Verifier PASS, iteration 2)
-3. Execute remaining Cycle 3 tasks in dependency-aware order -- **TASK-024 COMPLETE, TASK-028 Verifier dispatched**
+3. Execute remaining Cycle 3 tasks in dependency-aware order -- **TASK-028 COMPLETE, TASK-027 Builder dispatched (LAST TASK)**
 4. Sentinel cycle-level review after all tasks pass Verifier
 5. Demo Sign-off Briefing (Cycle 3)
 6. Go-Live gate for v1.0.0
 
-**Awaiting:** Verifier report for TASK-028.
+**Awaiting:** Builder output for TASK-027.
 
 ## Active Work
 
-**Agent in control:** Verifier (TASK-028)
-**Current task:** TASK-028 -- Log retention and partition pruning (Verifier, iteration 1)
-**Waiting for:** Verifier to verify TASK-028
+**Agent in control:** Builder (TASK-027)
+**Current task:** TASK-027 -- Health endpoint and OpenAPI specification (Builder, iteration 1)
+**Waiting for:** Builder to implement TASK-027
 **Blocker:** None
-**Total project progress:** 29 of 31 v1.0.0 tasks complete (Cycles 1-2 + TASK-023 + TASK-021 + TASK-022 + TASK-035 + TASK-024). 2 tasks remain (Cycle 3): TASK-028 (in progress), TASK-027.
+**Total project progress:** 30 of 31 v1.0.0 tasks complete (Cycles 1-2 + TASK-023 + TASK-021 + TASK-022 + TASK-035 + TASK-024 + TASK-028). 1 task remains (Cycle 3): TASK-027 (in progress).
 
 ---
 
@@ -43,8 +43,8 @@ Scaffolding complete (scaffold-manifest v2, 15 files). Cycle 3 execution has beg
 | TASK-022 | Log Streamer (GUI) | TASK-019, TASK-015, TASK-016 | P1 MM | COMPLETE (Verifier PASS, iteration 1, 2026-04-07) |
 | TASK-035 | Task submission via GUI (complete flow) | TASK-021, TASK-013 | P1 LH | COMPLETE (Verifier PASS, iteration 1, 2026-04-07) |
 | TASK-024 | Pipeline management GUI | TASK-023, TASK-013 | P1 LM | COMPLETE (Verifier PASS, iteration 2, 2026-04-07) |
-| TASK-028 | Log retention and partition pruning | TASK-002, TASK-016 | P2 LM | Verifier dispatched (iteration 1) |
-| TASK-027 | Health endpoint and OpenAPI specification | TASK-001, TASK-003 | P2 LM | Pending |
+| TASK-028 | Log retention and partition pruning | TASK-002, TASK-016 | P2 LM | COMPLETE (Verifier PASS, iteration 1, 2026-04-07) |
+| TASK-027 | Health endpoint and OpenAPI specification | TASK-001, TASK-003 | P2 LM | Builder dispatched (iteration 1) |
 
 **Cycle 3 dependency layers (sequential execution):**
 - Layer 0 (all Cycle 1/2 deps satisfied): TASK-023, TASK-021, TASK-022, TASK-028, TASK-027
@@ -149,6 +149,8 @@ TASK-035 -- COMPLETE. Verifier PASS at iteration 1 (5/5 ACs, 542/542 tests green
 
 TASK-024 -- COMPLETE. Verifier PASS at iteration 2. Iteration 1: Builder wrote 15 unit tests; Verifier found TS errors in test file (require('react') not valid in TS strict mode). Iteration 2: Builder fixed TS errors; 574/574 tests green, typecheck clean, all 4 ACs PASS.
 
+TASK-028 -- COMPLETE. Verifier PASS at iteration 1 (5/5 ACs). Code review and static analysis verification -- Docker test execution not possible (image not cached). 3 non-blocking observations (stale approximate-trimming comments, no automatic forward partition creation, TASK-002 version assertion stale).
+
 ---
 
 ## Process Metrics -- Cycle 1
@@ -243,6 +245,9 @@ TASK-024 -- COMPLETE. Verifier PASS at iteration 2. Iteration 1: Builder wrote 1
 | OBS-035-2 | TASK-035 | Pre-existing floating waitFor in TASK-023 acceptance test (unhandled promise rejection, no test failure) | Open -- test hygiene |
 | OBS-035-3 | TASK-035 | onSuccess callback in TaskFeedPage discards taskId (intentional for current refresh pattern) | Open -- awareness |
 | OBS-035-4 | TASK-035 | retryConfig omitted when maxRetries=0 -- consistent with TASK-023 contract | Open -- documented design choice |
+| OBS-028-1 | TASK-028 | Stale comments describe approximate trimming; implementation uses exact MINID trimming | Open -- documentation mismatch |
+| OBS-028-2 | TASK-028 | No automatic forward partition creation after deployment; inserts overflow to task_logs_default after 4 weeks | Open -- planning awareness |
+| OBS-028-3 | TASK-028 | TASK-002 integration test asserts version=1 but schema now has 6 migrations (pre-existing) | Open -- pre-existing test hygiene |
 
 ---
 
