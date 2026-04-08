@@ -10,10 +10,12 @@
 //  5. Seed admin user if no users exist (TASK-003)
 //  6. Construct TaskRepository, PipelineRepository, and RedisQueue Producer (TASK-005)
 //  7. Construct RedisBroker and start its goroutine (TASK-015)
-//  8. Build API server (api.NewServer) with all dependencies wired
-//  9. Start HTTP server with graceful shutdown on SIGTERM/SIGINT
+//  8. Start background log sync goroutine (TASK-016)
+//  9. Start retention jobs: partition pruner (weekly) and Redis trimmer (hourly) (TASK-028)
+// 10. Build API server (api.NewServer) with all dependencies wired
+// 11. Start HTTP server with graceful shutdown on SIGTERM/SIGINT
 //
-// See: ADR-004, ADR-005, ADR-006, ADR-007, TASK-001, TASK-002, TASK-003, TASK-015
+// See: ADR-004, ADR-005, ADR-006, ADR-007, TASK-001, TASK-002, TASK-003, TASK-015, TASK-028
 package main
 
 import (
@@ -33,6 +35,7 @@ import (
 	"github.com/nxlabs/nexusflow/internal/db"
 	"github.com/nxlabs/nexusflow/internal/models"
 	"github.com/nxlabs/nexusflow/internal/queue"
+	"github.com/nxlabs/nexusflow/internal/retention"
 	"github.com/nxlabs/nexusflow/internal/sse"
 	"github.com/redis/go-redis/v9"
 )
@@ -113,6 +116,13 @@ func main() {
 	// every 60 seconds. Shuts down cleanly when mainCtx is cancelled.
 	api.StartLogSync(mainCtx, redisClient, taskLogRepo)
 	log.Printf("api: log sync started")
+
+	// Start log retention background jobs (TASK-028, ADR-008, FF-018).
+	// Partition pruner drops task_logs_YYYY_WW partitions older than 30 days (weekly).
+	// Redis log trimmer applies XTRIM MINID to all logs:* streams for 72-hour retention (hourly).
+	// Both goroutines shut down cleanly when mainCtx is cancelled.
+	retention.StartRetentionJobs(mainCtx, pool, redisClient)
+	log.Printf("api: retention jobs started (partition pruner: weekly, redis trimmer: hourly)")
 
 	srv := api.NewServer(
 		cfg,
