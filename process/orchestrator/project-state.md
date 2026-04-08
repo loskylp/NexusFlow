@@ -8,32 +8,34 @@
 
 ## Where We Are
 
-Cycle 2 Demo Sign-off APPROVED (2026-04-07). Sentinel was skipped by explicit Nexus decision. All 24 tasks across Cycles 1 and 2 are complete and verified. Preparing for Cycle 3 execution.
+Cycle 3 COMPLETE -- all 31 v1.0.0 tasks verified PASS. Sentinel returned PASS WITH CONDITIONS (3 HIGH findings: SEC-001, SEC-002, SEC-003). Nexus reviewed findings and decided:
 
-Cycle 3 is the final cycle of v1.0.0 (the MVP release). It contains 7 tasks: 5 GUI views (Task Feed, Log Streamer, Pipeline Builder, Task Submission flow, Pipeline Management) plus 2 infrastructure tasks (Log retention, Health endpoint/OpenAPI). Completion of Cycle 3 satisfies all v1.0.0 requirements.
+- **SEC-001 (default admin credentials):** DEFERRED to Cycle 4. Add password change endpoint + UI + mandatory first-login change. Not a Cycle 3 blocker.
+- **SEC-002 (Redis no auth):** ACCEPTED RISK. Redis is in a private cluster, test environment only. No action needed.
+- **SEC-003 (no rate limiting on login):** FIX NOW. After 3 failed login attempts, disable login for 1 minute. Must be fixed before Demo Sign-off.
 
-Scaffolding complete (scaffold-manifest v2, 15 files). Cycle 3 execution has begun.
+SEC-003 fix is being implemented as an inline security fix (not a new task -- it is a Sentinel-mandated remediation within the current cycle). Builder is being dispatched.
 
 **Next steps (sequential):**
 1. ~~Determine whether Scaffolder re-invocation is needed for Cycle 3~~ DONE
-2. ~~Route first Builder task (TASK-023: Pipeline Builder -- highest priority, P1 HH)~~ COMPLETE (Verifier PASS, iteration 2)
-3. ~~Execute remaining Cycle 3 tasks in dependency-aware order~~ ALL 7 TASKS Builder COMPLETE
-4. ~~Verifier dispatch for TASK-027 iteration 1~~ PARTIAL (AC-4 FAIL -- TypeScript types not generated)
-5. ~~Builder iteration 2 for TASK-027~~ COMPLETE (AC-4 fix applied)
-6. ~~Verifier re-verification for TASK-027 (iteration 2)~~ PASS (4/4 ACs, 2026-04-08)
-7. **Sentinel cycle-level security review** -- DISPATCHING NOW
+2. ~~Route first Builder task (TASK-023: Pipeline Builder)~~ COMPLETE
+3. ~~Execute remaining Cycle 3 tasks in dependency-aware order~~ ALL 7 TASKS COMPLETE
+4. ~~Sentinel cycle-level security review~~ PASS WITH CONDITIONS (2026-04-08)
+5. ~~Nexus decision on SEC-001, SEC-002, SEC-003~~ DECIDED (2026-04-08)
+6. **Builder: SEC-003 rate limiting fix** -- DISPATCHING NOW
+7. Verifier: SEC-003 verification
 8. Demo Sign-off Briefing (Cycle 3)
 9. Go-Live gate for v1.0.0
 
-**Awaiting:** Sentinel cycle-level security review for Cycle 3.
+**Awaiting:** Builder completion of SEC-003 rate limiting fix.
 
 ## Active Work
 
-**Agent in control:** Sentinel (Cycle 3 security review)
-**Current task:** Sentinel cycle-level security review for Cycle 3 (all 7 tasks verified PASS)
-**Waiting for:** Sentinel security report
-**Blocker:** None
-**Total project progress:** 31 of 31 v1.0.0 tasks complete. All Cycle 3 tasks verified PASS. Sentinel review is the final step before Demo Sign-off.
+**Agent in control:** Builder (SEC-003 rate limiting fix)
+**Current task:** Implement login rate limiting -- after 3 failed attempts from the same IP, disable login for 1 minute
+**Waiting for:** Builder handoff
+**Blocker:** None -- SEC-003 is the only remaining item before Demo Sign-off
+**Total project progress:** 31 of 31 v1.0.0 tasks complete. SEC-003 fix in progress. SEC-001 deferred to Cycle 4. SEC-002 accepted risk.
 
 ---
 
@@ -115,13 +117,26 @@ Scaffolding complete (scaffold-manifest v2, 15 files). Cycle 3 execution has beg
 | Plan Gate | 2026-03-26 | APPROVED | Plan v2.1: 39 tasks across 5 cycles. v1.0.0 = Cycles 1-3 (31 tasks), v1.1.0 = Cycles 4-5 (8 tasks). Cycle 1 = 14 tasks. Approval authorizes full execution sequence. |
 | Demo Sign-off -- Cycle 1 | 2026-03-27 | APPROVED | 15 tasks verified PASS (14 original + TASK-008 planning correction). Sentinel PASS WITH CONDITIONS. Staging deployed. |
 | Demo Sign-off -- Cycle 2 | 2026-04-07 | APPROVED | 9/9 tasks verified PASS. Sentinel skipped by explicit Nexus decision. |
-| Go-Live -- v1.0.0 | -- | -- | Cycle 3 completion required first |
+| Sentinel -- Cycle 3 | 2026-04-08 | PASS WITH CONDITIONS | 3 HIGH findings. Nexus: SEC-001 deferred C4, SEC-002 accepted risk, SEC-003 fix now. |
+| Go-Live -- v1.0.0 | -- | -- | SEC-003 fix + Demo Sign-off required first |
 
 ---
 
 ## Pending Decisions
 
-None. Proceeding autonomously per Plan Gate approval. Next human gate: Demo Sign-off -- Cycle 3.
+None. SEC-003 fix authorized by Nexus. Proceeding autonomously through Builder -> Verifier -> Demo Sign-off. Next human gate: Demo Sign-off -- Cycle 3.
+
+---
+
+## Sentinel Findings -- Nexus Decisions (Cycle 3)
+
+| Finding | Severity | Nexus Decision | Action |
+|---|---|---|---|
+| SEC-001: Default admin credentials (admin/admin) | HIGH | DEFERRED to Cycle 4 | Add password change endpoint + UI + mandatory first-login change in Cycle 4 |
+| SEC-002: Redis no authentication | HIGH | ACCEPTED RISK | Redis is in private cluster, test environment only. No action. |
+| SEC-003: No rate limiting on login | HIGH | FIX NOW | After 3 failed attempts, disable login for 1 minute. Builder dispatched. |
+| SEC-004 through SEC-007 | MEDIUM | Not yet decided | Deferred to Demo Sign-off conversation |
+| SEC-014: npm audit vite/esbuild | MEDIUM | Not yet decided | Dev-only; deferred to Demo Sign-off conversation |
 
 ---
 
@@ -284,3 +299,4 @@ TASK-027 -- COMPLETE. Verifier PASS at iteration 2 (4/4 ACs). Iteration 1: 1 AC 
 | Plan Gate | 2026-03-26 | APPROVED -- Plan v2.1: 39 tasks, 5 cycles; v1.0.0 (Cycles 1-3, 31 tasks), v1.1.0 (Cycles 4-5, 8 tasks). Authorizes full Cycle 1 execution. |
 | Demo Sign-off -- Cycle 1 | 2026-03-27 | APPROVED. Nexus skipped Methodologist retrospective, directed immediate Cycle 2 start. |
 | Demo Sign-off -- Cycle 2 | 2026-04-07 | APPROVED. Sentinel skipped by explicit Nexus decision. Cleanup completed (GEMINI.md deleted). |
+| Sentinel Cycle 3 findings | 2026-04-08 | SEC-001 DEFERRED C4, SEC-002 ACCEPTED RISK, SEC-003 FIX NOW. Builder dispatched for rate limiting. |
