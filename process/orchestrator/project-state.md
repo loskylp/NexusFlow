@@ -2,7 +2,7 @@
 **Manifest version:** v1 | **Profile:** Critical
 **Current phase:** EXECUTION -- Cycle 3 IN PROGRESS
 **Current cycle:** 3
-**Last updated:** 2026-04-07
+**Last updated:** 2026-04-08
 
 ---
 
@@ -17,20 +17,21 @@ Scaffolding complete (scaffold-manifest v2, 15 files). Cycle 3 execution has beg
 **Next steps (sequential):**
 1. ~~Determine whether Scaffolder re-invocation is needed for Cycle 3~~ DONE
 2. ~~Route first Builder task (TASK-023: Pipeline Builder -- highest priority, P1 HH)~~ COMPLETE (Verifier PASS, iteration 2)
-3. Execute remaining Cycle 3 tasks in dependency-aware order -- **TASK-028 COMPLETE, TASK-027 Builder dispatched (LAST TASK)**
-4. Sentinel cycle-level review after all tasks pass Verifier
-5. Demo Sign-off Briefing (Cycle 3)
-6. Go-Live gate for v1.0.0
+3. ~~Execute remaining Cycle 3 tasks in dependency-aware order~~ ALL 7 TASKS Builder COMPLETE
+4. **Verifier dispatch for TASK-027 (FINAL task)** -- IN PROGRESS
+5. Sentinel cycle-level review after all tasks pass Verifier
+6. Demo Sign-off Briefing (Cycle 3)
+7. Go-Live gate for v1.0.0
 
-**Awaiting:** Builder output for TASK-027.
+**Awaiting:** Verifier result for TASK-027.
 
 ## Active Work
 
-**Agent in control:** Builder (TASK-027)
-**Current task:** TASK-027 -- Health endpoint and OpenAPI specification (Builder, iteration 1)
-**Waiting for:** Builder to implement TASK-027
+**Agent in control:** Verifier (TASK-027)
+**Current task:** TASK-027 -- Health endpoint and OpenAPI specification (Verifier, initial verification)
+**Waiting for:** Verifier to verify TASK-027
 **Blocker:** None
-**Total project progress:** 30 of 31 v1.0.0 tasks complete (Cycles 1-2 + TASK-023 + TASK-021 + TASK-022 + TASK-035 + TASK-024 + TASK-028). 1 task remains (Cycle 3): TASK-027 (in progress).
+**Total project progress:** 30 of 31 v1.0.0 tasks complete (Cycles 1-2 + TASK-023 + TASK-021 + TASK-022 + TASK-035 + TASK-024 + TASK-028). 1 task remains (Cycle 3): TASK-027 (Verifier dispatched).
 
 ---
 
@@ -44,7 +45,7 @@ Scaffolding complete (scaffold-manifest v2, 15 files). Cycle 3 execution has beg
 | TASK-035 | Task submission via GUI (complete flow) | TASK-021, TASK-013 | P1 LH | COMPLETE (Verifier PASS, iteration 1, 2026-04-07) |
 | TASK-024 | Pipeline management GUI | TASK-023, TASK-013 | P1 LM | COMPLETE (Verifier PASS, iteration 2, 2026-04-07) |
 | TASK-028 | Log retention and partition pruning | TASK-002, TASK-016 | P2 LM | COMPLETE (Verifier PASS, iteration 1, 2026-04-07) |
-| TASK-027 | Health endpoint and OpenAPI specification | TASK-001, TASK-003 | P2 LM | Builder dispatched (iteration 1) |
+| TASK-027 | Health endpoint and OpenAPI specification | TASK-001, TASK-003 | P2 LM | Verifier dispatched (initial verification) |
 
 **Cycle 3 dependency layers (sequential execution):**
 - Layer 0 (all Cycle 1/2 deps satisfied): TASK-023, TASK-021, TASK-022, TASK-028, TASK-027
