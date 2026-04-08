@@ -1,7 +1,31 @@
 # Builder Handoff — TASK-027
 **Date:** 2026-04-08
-**Task:** Health Endpoint and OpenAPI Specification
+**Task:** Health Endpoint and OpenAPI Specification (Iteration 2 — FAIL-001 fix)
 **Requirement(s):** ADR-005, ADR-004, FF-011, FF-020
+
+## Iteration 2 — FAIL-001 Fix (AC-4: TypeScript types from OpenAPI spec)
+
+### What Was Done
+
+1. **Fixed YAML syntax error in `api/openapi.yaml` line 1003** — The `description` field value `Session token for use in Authorization: Bearer header` contained a bare colon-space sequence which js-yaml parsed as a nested mapping entry rather than a scalar string. Fixed by quoting the value: `"Session token for use in Authorization: Bearer header"`.
+
+2. **Installed `openapi-typescript@^7.13.0`** as a dev dependency in `web/package.json` (`npm install --save-dev openapi-typescript`).
+
+3. **Generated `web/src/types/openapi.ts`** from the fixed `api/openapi.yaml` using `openapi-typescript`. The file exports `paths`, `components`, `operations`, and related TypeScript interfaces covering all documented endpoints and schemas.
+
+4. **Added `generate:types` script** to `web/package.json`:
+   ```json
+   "generate:types": "openapi-typescript ../api/openapi.yaml -o src/types/openapi.ts"
+   ```
+
+### Verification
+
+- `npm run typecheck` — passes with zero errors
+- `npm test -- --run` — all 574 tests pass (28 test files)
+
+### Deviation
+
+The YAML fix touches `api/openapi.yaml` which is outside the strict `web/` scope boundary stated in the task. However the YAML error made type generation impossible, so fixing it was a prerequisite. The change is minimal and non-behavioural (quoting a description string does not alter the spec semantics).
 
 ## What Was Implemented
 

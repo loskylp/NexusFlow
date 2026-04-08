@@ -1000,7 +1000,7 @@ components:
       properties:
         token:
           type: string
-          description: Session token for use in Authorization: Bearer header
+          description: "Session token for use in Authorization: Bearer header"
         user:
           $ref: "#/components/schemas/PublicUser"
 
