@@ -20,20 +20,20 @@ Scaffolding complete (scaffold-manifest v2, 15 files). Cycle 3 execution has beg
 3. ~~Execute remaining Cycle 3 tasks in dependency-aware order~~ ALL 7 TASKS Builder COMPLETE
 4. ~~Verifier dispatch for TASK-027 iteration 1~~ PARTIAL (AC-4 FAIL -- TypeScript types not generated)
 5. ~~Builder iteration 2 for TASK-027~~ COMPLETE (AC-4 fix applied)
-6. **Verifier re-verification for TASK-027 (iteration 2)** -- DISPATCHING NOW
-7. Sentinel cycle-level review after all tasks pass Verifier
+6. ~~Verifier re-verification for TASK-027 (iteration 2)~~ PASS (4/4 ACs, 2026-04-08)
+7. **Sentinel cycle-level security review** -- DISPATCHING NOW
 8. Demo Sign-off Briefing (Cycle 3)
 9. Go-Live gate for v1.0.0
 
-**Awaiting:** Verifier re-verification of TASK-027 (iteration 2).
+**Awaiting:** Sentinel cycle-level security review for Cycle 3.
 
 ## Active Work
 
-**Agent in control:** Verifier (TASK-027, re-verification iteration 2)
-**Current task:** TASK-027 -- Health endpoint and OpenAPI specification (Verifier, re-verification after Builder iteration 2 fix)
-**Waiting for:** Verifier to confirm AC-4 fix (TypeScript types now generated)
+**Agent in control:** Sentinel (Cycle 3 security review)
+**Current task:** Sentinel cycle-level security review for Cycle 3 (all 7 tasks verified PASS)
+**Waiting for:** Sentinel security report
 **Blocker:** None
-**Total project progress:** 30 of 31 v1.0.0 tasks complete (Cycles 1-2 + TASK-023 + TASK-021 + TASK-022 + TASK-035 + TASK-024 + TASK-028). 1 task remains (Cycle 3): TASK-027 (Verifier re-verification dispatched).
+**Total project progress:** 31 of 31 v1.0.0 tasks complete. All Cycle 3 tasks verified PASS. Sentinel review is the final step before Demo Sign-off.
 
 ---
 
@@ -47,7 +47,7 @@ Scaffolding complete (scaffold-manifest v2, 15 files). Cycle 3 execution has beg
 | TASK-035 | Task submission via GUI (complete flow) | TASK-021, TASK-013 | P1 LH | COMPLETE (Verifier PASS, iteration 1, 2026-04-07) |
 | TASK-024 | Pipeline management GUI | TASK-023, TASK-013 | P1 LM | COMPLETE (Verifier PASS, iteration 2, 2026-04-07) |
 | TASK-028 | Log retention and partition pruning | TASK-002, TASK-016 | P2 LM | COMPLETE (Verifier PASS, iteration 1, 2026-04-07) |
-| TASK-027 | Health endpoint and OpenAPI specification | TASK-001, TASK-003 | P2 LM | Verifier re-verification dispatched (iteration 2, Builder fixed AC-4) |
+| TASK-027 | Health endpoint and OpenAPI specification | TASK-001, TASK-003 | P2 LM | COMPLETE (Verifier PASS, iteration 2, 2026-04-08) |
 
 **Cycle 3 dependency layers (sequential execution):**
 - Layer 0 (all Cycle 1/2 deps satisfied): TASK-023, TASK-021, TASK-022, TASK-028, TASK-027
@@ -154,7 +154,7 @@ TASK-024 -- COMPLETE. Verifier PASS at iteration 2. Iteration 1: Builder wrote 1
 
 TASK-028 -- COMPLETE. Verifier PASS at iteration 1 (5/5 ACs). Code review and static analysis verification -- Docker test execution not possible (image not cached). 3 non-blocking observations (stale approximate-trimming comments, no automatic forward partition creation, TASK-002 version assertion stale).
 
-TASK-027 -- Iteration 1: 1 AC failing (AC-4: TypeScript types not generated). Iteration 2: Builder fixed AC-4 (installed openapi-typescript, generated types, fixed YAML syntax). Verifier re-verification dispatched.
+TASK-027 -- COMPLETE. Verifier PASS at iteration 2 (4/4 ACs). Iteration 1: 1 AC failing (AC-4: TypeScript types not generated). Iteration 2: Builder fixed AC-4 (installed openapi-typescript, generated types, fixed YAML syntax). 574/574 frontend tests green, typecheck clean. 3 non-blocking observations (validate endpoint in spec only, pre-existing TASK-023 test error, Go unit tests not executed due to Docker).
 
 ---
 
@@ -253,6 +253,9 @@ TASK-027 -- Iteration 1: 1 AC failing (AC-4: TypeScript types not generated). It
 | OBS-028-1 | TASK-028 | Stale comments describe approximate trimming; implementation uses exact MINID trimming | Open -- documentation mismatch |
 | OBS-028-2 | TASK-028 | No automatic forward partition creation after deployment; inserts overflow to task_logs_default after 4 weeks | Open -- planning awareness |
 | OBS-028-3 | TASK-028 | TASK-002 integration test asserts version=1 but schema now has 6 migrations (pre-existing) | Open -- pre-existing test hygiene |
+| OBS-027-1 | TASK-027 | `/api/pipelines/{id}/validate` in spec but not in server.go (forward-looking documentation) | Open -- harmless, no action needed |
+| OBS-027-2 | TASK-027 | Pre-existing TASK-023 unhandled error in vitest (already tracked as OBS-035-2) | Open -- duplicate of OBS-035-2 |
+| OBS-027-3 | TASK-027 | 11 Go unit tests in handlers_openapi_test.go not executed due to Docker infrastructure failure | Open -- verify via CI pipeline |
 
 ---
 
