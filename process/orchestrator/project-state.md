@@ -1,43 +1,34 @@
 # Project State
 **Manifest version:** v1 | **Profile:** Critical
-**Current phase:** EXECUTION -- Cycle 3 COMPLETE, Demo Sign-off gate
-**Current cycle:** 3
-**Last updated:** 2026-04-08
+**Current phase:** v1.0.0 RELEASED
+**Current cycle:** 3 (complete) -- v1.1.0 Cycle 4 next
+**Last updated:** 2026-04-09
 
 ---
 
 ## Where We Are
 
-Cycle 3 COMPLETE. All 31 v1.0.0 tasks verified PASS. All security remediations resolved:
+**v1.0.0 is RELEASED.** All 31 tasks across 3 cycles verified PASS. All three Demo Sign-offs approved. Go-Live gate approved by Nexus on 2026-04-09. Staging environment at https://nexusflow.staging.nxlabs.cc serves as the v1.0.0 production deployment.
 
-- **SEC-001 (default admin credentials):** DEFERRED to Cycle 4 (Nexus decision 2026-04-08). Password change endpoint + UI + mandatory first-login change planned.
-- **SEC-002 (Redis no auth):** ACCEPTED RISK (Nexus decision 2026-04-08). Private cluster, test environment only.
-- **SEC-003 (no rate limiting on login):** FIXED and verified PASS (2026-04-08). 7/7 ACs satisfied, 13 acceptance tests + 7 unit tests written.
+Security posture at release:
+- **SEC-001 (default admin credentials):** DEFERRED to Cycle 4. Password change endpoint + UI + mandatory first-login change planned.
+- **SEC-002 (Redis no auth):** ACCEPTED RISK. Private cluster, single-org deployment.
+- **SEC-003 (no rate limiting on login):** FIXED and verified PASS (2026-04-08).
+- **MEDIUM findings (SEC-004 through SEC-007, SEC-014):** Accepted by Nexus at Demo Sign-off.
 
-**All steps complete:**
-1. ~~Determine whether Scaffolder re-invocation is needed for Cycle 3~~ DONE
-2. ~~Route first Builder task (TASK-023: Pipeline Builder)~~ COMPLETE
-3. ~~Execute remaining Cycle 3 tasks in dependency-aware order~~ ALL 7 TASKS COMPLETE
-4. ~~Sentinel cycle-level security review~~ PASS WITH CONDITIONS (2026-04-08)
-5. ~~Nexus decision on SEC-001, SEC-002, SEC-003~~ DECIDED (2026-04-08)
-6. ~~Builder: SEC-003 rate limiting fix~~ COMPLETE (2026-04-08)
-7. ~~Verifier: SEC-003 verification~~ PASS (2026-04-08)
-8. **Demo Sign-off Briefing (Cycle 3)** -- PRESENTING TO NEXUS NOW
-9. Go-Live gate for v1.0.0
-
-**Awaiting:** Nexus decision on Demo Sign-off -- Cycle 3.
+**Next:** v1.1.0 planning. 8 tasks across Cycles 4-5 (demo infrastructure + production deployment). Before starting Cycle 4, the Methodologist should be consulted per the Demo Sign-off protocol: "Is there anything you want to change for the next iteration?"
 
 ## Active Work
 
-**Agent in control:** Orchestrator (presenting Demo Sign-off Briefing)
-**Current task:** Demo Sign-off gate -- Cycle 3
-**Waiting for:** Nexus approval
-**Blocker:** None -- all work complete, all security remediations resolved
-**Total project progress:** 31 of 31 v1.0.0 tasks complete. SEC-003 FIXED. SEC-001 deferred to Cycle 4. SEC-002 accepted risk.
+**Agent in control:** Orchestrator (post-release checkpoint)
+**Current task:** None -- v1.0.0 released, awaiting Nexus direction for v1.1.0
+**Waiting for:** Nexus to confirm readiness to begin v1.1.0 Cycle 4
+**Blocker:** None
+**Total project progress:** 31 of 31 v1.0.0 tasks COMPLETE. 0 of 8 v1.1.0 tasks started.
 
 ---
 
-## Cycle 3 -- Task Status
+## Cycle 3 -- Task Status (Complete)
 
 | Task | Description | Dependencies (all Cycle 1/2 deps satisfied) | Priority | Status |
 |---|---|---|---|---|
@@ -49,18 +40,7 @@ Cycle 3 COMPLETE. All 31 v1.0.0 tasks verified PASS. All security remediations r
 | TASK-028 | Log retention and partition pruning | TASK-002, TASK-016 | P2 LM | COMPLETE (Verifier PASS, iteration 1, 2026-04-07) |
 | TASK-027 | Health endpoint and OpenAPI specification | TASK-001, TASK-003 | P2 LM | COMPLETE (Verifier PASS, iteration 2, 2026-04-08) |
 
-**Cycle 3 dependency layers (sequential execution):**
-- Layer 0 (all Cycle 1/2 deps satisfied): TASK-023, TASK-021, TASK-022, TASK-028, TASK-027
-- Layer 1: TASK-035 (depends on TASK-021), TASK-024 (depends on TASK-023)
-
-**Planned execution order:**
-1. TASK-023 -- Pipeline Builder (P1 HH, highest risk/value, unblocks TASK-024)
-2. TASK-021 -- Task Feed and Monitor (P1 MH, unblocks TASK-035)
-3. TASK-022 -- Log Streamer (P1 MM, independent)
-4. TASK-035 -- Task submission via GUI (P1 LH, depends on TASK-021)
-5. TASK-024 -- Pipeline management GUI (P1 LM, depends on TASK-023)
-6. TASK-028 -- Log retention and partition pruning (P2, independent)
-7. TASK-027 -- Health endpoint and OpenAPI (P2, independent)
+**Security remediation:** SEC-003 (rate limiting) -- FIXED and verified PASS (2026-04-08).
 
 ---
 
@@ -114,17 +94,17 @@ Cycle 3 COMPLETE. All 31 v1.0.0 tasks verified PASS. All security remediations r
 | Architecture Gate | 2026-03-26 | APPROVED | Architecture v2 approved. AUDIT-006 closed as NOT APPLICABLE (no templates). All other architecture approved. |
 | Plan Gate | 2026-03-26 | APPROVED | Plan v2.1: 39 tasks across 5 cycles. v1.0.0 = Cycles 1-3 (31 tasks), v1.1.0 = Cycles 4-5 (8 tasks). Cycle 1 = 14 tasks. Approval authorizes full execution sequence. |
 | Demo Sign-off -- Cycle 1 | 2026-03-27 | APPROVED | 15 tasks verified PASS (14 original + TASK-008 planning correction). Sentinel PASS WITH CONDITIONS. Staging deployed. |
-| Demo Sign-off -- Cycle 2 | 2026-04-07 | APPROVED | 9/9 tasks verified PASS. Sentinel skipped by explicit Nexus decision. |
+| Demo Sign-off -- Cycle 2 | 2026-04-07 | APPROVED | 9/9 tasks verified PASS. Sentinel skipped by explicit Nexus decision. Cleanup completed (GEMINI.md deleted). |
 | Sentinel -- Cycle 3 | 2026-04-08 | PASS WITH CONDITIONS | 3 HIGH findings. Nexus: SEC-001 deferred C4, SEC-002 accepted risk, SEC-003 fix now. |
 | SEC-003 Verification | 2026-04-08 | PASS | 7/7 ACs, 13 acceptance + 7 unit tests. Rate limiting active on POST /api/auth/login. |
-| Demo Sign-off -- Cycle 3 | -- | PENDING | Briefing presented to Nexus. Awaiting decision. |
-| Go-Live -- v1.0.0 | -- | -- | Demo Sign-off required first |
+| Demo Sign-off -- Cycle 3 | 2026-04-09 | APPROVED | 7/7 tasks + SEC-003 remediation verified PASS. MEDIUM findings accepted. Hotfix (App.tsx data router) deployed. Demo screenshots captured against live staging. |
+| Go-Live -- v1.0.0 | 2026-04-09 | APPROVED | Nexus directed Go-Live. 31/31 v1.0.0 tasks complete. Staging serves as v1.0.0 production. Release tag: release/v1.0. |
 
 ---
 
 ## Pending Decisions
 
-None. SEC-003 fix authorized by Nexus. Proceeding autonomously through Builder -> Verifier -> Demo Sign-off. Next human gate: Demo Sign-off -- Cycle 3.
+None. v1.0.0 released. Next decision point: Nexus readiness to begin v1.1.0 Cycle 4.
 
 ---
 
@@ -135,83 +115,36 @@ None. SEC-003 fix authorized by Nexus. Proceeding autonomously through Builder -
 | SEC-001: Default admin credentials (admin/admin) | HIGH | DEFERRED to Cycle 4 | Add password change endpoint + UI + mandatory first-login change in Cycle 4 |
 | SEC-002: Redis no authentication | HIGH | ACCEPTED RISK | Redis is in private cluster, test environment only. No action. |
 | SEC-003: No rate limiting on login | HIGH | FIXED | Rate limiting implemented and verified PASS (2026-04-08). 7/7 ACs, 13 acceptance + 7 unit tests. |
-| SEC-004 through SEC-007 | MEDIUM | Pending Nexus decision | Deferred to Demo Sign-off conversation |
-| SEC-014: npm audit vite/esbuild | MEDIUM | Pending Nexus decision | Dev-only; deferred to Demo Sign-off conversation |
+| SEC-004 through SEC-007 | MEDIUM | ACCEPTED | Nexus accepted at Demo Sign-off (2026-04-09). |
+| SEC-014: npm audit vite/esbuild | MEDIUM | ACCEPTED | Dev-only dependency. Nexus accepted at Demo Sign-off (2026-04-09). |
 
 ---
 
-## Execution Sequence -- Cycle 3
+## v1.1.0 Roadmap
 
-Per Plan Gate approval (authorizes full execution sequence), the execution sequence is:
+**Cycles 4-5, 8 tasks:**
 
-1. **Scaffolder check** -- Cycle 3 has 7 Builder tasks (>=3), so Scaffolder invocation required per Manifest
-2. **Builder tasks** in dependency-aware order (7 tasks)
-3. **Verifier** after each Builder task (Full mode -- staging available)
-4. **Sentinel** cycle-level security review after all tasks pass Verifier
-5. **Demo Sign-off** -- present to Nexus
-6. **Go-Live gate** -- Cycle 3 completes v1.0.0
+| Cycle | Tasks | Scope |
+|---|---|---|
+| 4 | TASK-030, TASK-031, TASK-032, TASK-033, TASK-034 | Demo infrastructure: MinIO Fake-S3, Mock-Postgres, Sink Inspector, Chaos Controller, fitness function instrumentation |
+| 5 | TASK-036, TASK-037, TASK-038 | Production deployment, throughput load test, fitness function CI gate |
 
-Note: Sequential execution model (one Builder task at a time). DevOps Phase 2 (TASK-029) already COMPLETE -- Verifier runs in Full mode.
+**Carried security item:** SEC-001 remediation (password change + mandatory first-login) in Cycle 4.
 
 ---
 
-## Iterate Loop State
+## Process Metrics -- Cumulative (v1.0.0)
 
-TASK-023 -- COMPLETE. Verifier PASS at iteration 2 (9/9 ACs, 180/180 tests green). Iteration 1: 1 AC failing. Iteration 2: 0 failing (Verifier confirmed).
-
-TASK-021 -- COMPLETE. Verifier PASS at iteration 1 (8/8 ACs, 351/351 tests green, CI green).
-
-TASK-022 -- COMPLETE. Verifier PASS at iteration 1 (8/8 ACs, 473/473 tests green, CI green). 62 new tests. 3 non-blocking observations (SSE-only no REST seed, 403 via log:error event, download error swallowed silently).
-
-TASK-035 -- COMPLETE. Verifier PASS at iteration 1 (5/5 ACs, 542/542 tests green, CI green). 33 new Verifier tests. 4 non-blocking observations (ESLint absent, pre-existing TASK-023 floating waitFor, onSuccess discards taskId, retryConfig omission consistent with TASK-023 contract).
-
-TASK-024 -- COMPLETE. Verifier PASS at iteration 2. Iteration 1: Builder wrote 15 unit tests; Verifier found TS errors in test file (require('react') not valid in TS strict mode). Iteration 2: Builder fixed TS errors; 574/574 tests green, typecheck clean, all 4 ACs PASS.
-
-TASK-028 -- COMPLETE. Verifier PASS at iteration 1 (5/5 ACs). Code review and static analysis verification -- Docker test execution not possible (image not cached). 3 non-blocking observations (stale approximate-trimming comments, no automatic forward partition creation, TASK-002 version assertion stale).
-
-TASK-027 -- COMPLETE. Verifier PASS at iteration 2 (4/4 ACs). Iteration 1: 1 AC failing (AC-4: TypeScript types not generated). Iteration 2: Builder fixed AC-4 (installed openapi-typescript, generated types, fixed YAML syntax). 574/574 frontend tests green, typecheck clean. 3 non-blocking observations (validate endpoint in spec only, pre-existing TASK-023 test error, Go unit tests not executed due to Docker).
-
----
-
-## Process Metrics -- Cycle 1
-
-| Metric | Value |
-|---|---|
-| Auditor passes -- requirements | 2 (audit v2: PASS WITH DEFERRALS; audit v4: PASS WITH DEFERRALS) |
-| Auditor passes -- architecture | 2 (architecture-audit-v1: PASS; architecture-audit-v2: PASS) |
-| Gate rejections this cycle | 0 |
-| Tasks completed | 15 of 15 (14 original + TASK-008 planning correction) |
-| Average iterations to PASS | 1.20 (15 tasks: 12 at 1 iteration, 3 at 2 iterations) |
-| Tasks that hit max iterations | 0 |
-| Escalations to Nexus | 0 |
-| Backward cascade triggered | No |
-
----
-
-## Process Metrics -- Cycle 2
-
-| Metric | Value |
-|---|---|
-| Tasks completed | 9 of 9 |
-| Average iterations to PASS | 1.11 (9 tasks: 8 at 1 iteration, 1 at 2 iterations) |
-| Tasks that hit max iterations | 0 |
-| Escalations to Nexus | 0 |
-| Gate rejections this cycle | 0 |
-| Backward cascade triggered | No |
-
----
-
-## Process Metrics -- Cycle 3
-
-| Metric | Value |
-|---|---|
-| Tasks completed | 7 of 7 (+1 security remediation: SEC-003) |
-| Average iterations to PASS | 1.43 (7 tasks: 4 at 1 iteration, 3 at 2 iterations) |
-| Security remediations | SEC-003 fixed and verified (1 iteration) |
-| Tasks that hit max iterations | 0 |
-| Escalations to Nexus | 1 (Sentinel findings -- SEC-001/002/003 disposition) |
-| Gate rejections this cycle | 0 |
-| Backward cascade triggered | No |
+| Metric | Cycle 1 | Cycle 2 | Cycle 3 | Total |
+|---|---|---|---|---|
+| Tasks completed | 15 | 9 | 7 (+1 SEC-003) | 31 (+1 remediation) |
+| Average iterations to PASS | 1.20 | 1.11 | 1.43 | 1.24 |
+| Tasks at 1 iteration | 12 | 8 | 4 | 24 |
+| Tasks at 2 iterations | 3 | 1 | 3 | 7 |
+| Tasks hitting max iterations | 0 | 0 | 0 | 0 |
+| Escalations to Nexus | 0 | 0 | 1 | 1 |
+| Gate rejections | 0 | 0 | 0 | 0 |
+| Backward cascade triggered | No | No | No | Never |
 
 ---
 
@@ -291,18 +224,7 @@ TASK-027 -- COMPLETE. Verifier PASS at iteration 2 (4/4 ACs). Iteration 1: 1 AC 
 
 ---
 
-## Standing Routing Rules (Cycle 3)
-
-- ~~Scaffolder invocation required -- Cycle 3 has 7 tasks (>=3 threshold per Manifest).~~ DONE (scaffold-manifest v2).
-- DevOps Phase 2 (TASK-029) already COMPLETE -- Verifier runs in Full mode from the start.
-- TASK-035 cannot begin until TASK-021 is COMPLETE.
-- TASK-024 cannot begin until TASK-023 is COMPLETE.
-- Sentinel cycle-level review runs after all 7 tasks pass Verifier.
-- OBS-016-A (duplicate rows on XDEL failure) is directly relevant to TASK-028 -- include in Builder routing context.
-
----
-
-## All Nexus Decisions (Complete)
+## All Nexus Decisions (Complete through v1.0.0)
 
 | Decision | Date | Outcome |
 |---|---|---|
@@ -317,3 +239,6 @@ TASK-027 -- COMPLETE. Verifier PASS at iteration 2 (4/4 ACs). Iteration 1: 1 AC 
 | Demo Sign-off -- Cycle 1 | 2026-03-27 | APPROVED. Nexus skipped Methodologist retrospective, directed immediate Cycle 2 start. |
 | Demo Sign-off -- Cycle 2 | 2026-04-07 | APPROVED. Sentinel skipped by explicit Nexus decision. Cleanup completed (GEMINI.md deleted). |
 | Sentinel Cycle 3 findings | 2026-04-08 | SEC-001 DEFERRED C4, SEC-002 ACCEPTED RISK, SEC-003 FIX NOW. Builder dispatched for rate limiting. |
+| MEDIUM findings (SEC-004-007, SEC-014) | 2026-04-09 | ACCEPTED at Demo Sign-off. No action required. |
+| Demo Sign-off -- Cycle 3 | 2026-04-09 | APPROVED. All Cycle 3 work + SEC-003 remediation verified. Hotfix deployed. |
+| Go-Live -- v1.0.0 | 2026-04-09 | APPROVED. Nexus directed Go-Live. Staging serves as v1.0.0 production. |

@@ -29,3 +29,15 @@
 **Description:** Sentinel Cycle 3 Security Report returned PASS WITH CONDITIONS. Three HIGH-severity findings from Cycle 1 remain unresolved entering Go-Live: SEC-001 (default admin credentials admin/admin), SEC-002 (Redis no authentication), SEC-003 (no rate limiting on login endpoint). Per Sentinel protocol, HIGH findings deferred for more than one cycle become Demo Sign-off blockers. All three were deferred from Cycle 1 through Cycle 2 and remain unresolved at Cycle 3. Additionally, SEC-014 (npm audit HIGH in dev-only esbuild/vite) was newly identified.
 **Decision:** Escalated to Nexus. Nexus decided: (1) SEC-001 DEFERRED to Cycle 4 -- add password change endpoint + UI + mandatory first-login change; (2) SEC-002 ACCEPTED RISK -- Redis is in private cluster, test environment only; (3) SEC-003 FIX NOW -- after 3 failed login attempts, disable login for 1 minute; must be fixed before Demo Sign-off.
 **Outcome:** Builder dispatched for SEC-003 rate limiting fix. SEC-001 recorded for Cycle 4 planning. SEC-002 closed as accepted risk. Autonomous flow: Builder -> Verifier -> Demo Sign-off.
+
+## GATE-006 -- 2026-04-09
+**From:** Nexus | **Type:** Demo Sign-off approval -- Cycle 3
+**Description:** Nexus approved the Cycle 3 Demo Sign-off. All 7 tasks + SEC-003 remediation verified PASS. MEDIUM Sentinel findings (SEC-004 through SEC-007, SEC-014) accepted. Hotfix (App.tsx data router) deployed to staging. Demo screenshots captured against live staging.
+**Decision:** Recorded as APPROVED in Nexus Gate Log. Proceed to Go-Live gate.
+**Outcome:** Go-Live gate opened immediately per Nexus directive.
+
+## GATE-007 -- 2026-04-09
+**From:** Nexus | **Type:** Go-Live approval -- v1.0.0
+**Description:** Nexus directed "Go live" for v1.0.0. All 31 v1.0.0 tasks verified PASS across 3 cycles. Three Demo Sign-offs approved. Security posture: SEC-003 fixed, SEC-001 deferred to Cycle 4, SEC-002 accepted risk, MEDIUM findings accepted. Staging environment live at nexusflow.staging.nxlabs.cc with all code deployed.
+**Decision:** Go-Live APPROVED. v1.0.0 released against staging environment. Release tag release/v1.0 to be created. Production environment (separate) deferred to TASK-036 in v1.1.0 Cycle 5.
+**Outcome:** v1.0.0 RELEASED. Project transitions to v1.1.0 planning phase. Next action: Methodologist retrospective question, then Cycle 4 execution.
