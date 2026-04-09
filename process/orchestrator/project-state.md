@@ -27,9 +27,9 @@ Security posture:
 
 ## Active Work
 
-**Agent in control:** Scaffolder (dispatched 2026-04-09)
-**Current task:** Scaffold Cycle 4 -- generate stubs and wiring for 7 tasks
-**Waiting for:** Scaffolder completion signal
+**Agent in control:** Builder (dispatched 2026-04-09)
+**Current task:** TASK-030 -- MinIO Fake-S3 connector (DataSource + Sink)
+**Waiting for:** Builder completion signal
 **Blocker:** None
 **Total project progress:** 31 of 31 v1.0.0 feature tasks COMPLETE. 0 of 7 Cycle 4 tasks started. Go-Live PENDING (requires Cycle 5 TASK-036).
 
@@ -114,7 +114,7 @@ Security posture:
 
 | Task | Description | Dependencies (all satisfied) | Priority | Status |
 |---|---|---|---|---|
-| TASK-030 | MinIO Fake-S3 | TASK-007, TASK-018 | P1 MM | PENDING |
+| TASK-030 | MinIO Fake-S3 | TASK-007, TASK-018 | P1 MM | BUILDING (dispatched 2026-04-09) |
 | TASK-033 | Sink Before/After snapshot capture | TASK-018, TASK-015 | P1 MM | PENDING |
 | TASK-031 | Mock-Postgres with seed data | TASK-007, TASK-018 | P1 MM | PENDING |
 | TASK-032 | Sink Inspector GUI | TASK-019, TASK-015, TASK-033, TASK-030 | P1 MM | PENDING |
@@ -122,7 +122,8 @@ Security posture:
 | SEC-001 | Password change + mandatory first-login | TASK-003, TASK-017 | SECURITY | PENDING |
 | TASK-038 | Fitness function instrumentation | TASK-001, TASK-004, TASK-007, TASK-009, TASK-018 | P2 LM | PENDING |
 
-**Scaffolder:** DISPATCHED (2026-04-09) -- generating stubs for all 7 tasks before Builder execution begins.
+**Scaffolder:** COMPLETE (2026-04-09) -- committed as 66c4bf0. All 7 tasks scaffolded.
+**Builder:** TASK-030 dispatched (2026-04-09) -- first task in execution order.
 
 ---
 
