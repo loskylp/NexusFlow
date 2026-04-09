@@ -3,6 +3,7 @@
  *
  * Route structure:
  *   /login                  — Login page (public)
+ *   /change-password        — Forced password change (SEC-001; accessible even with mustChangePassword=true)
  *   /                       — Protected: redirect to /workers (Admin) or /tasks (User)
  *   /workers                — Worker Fleet Dashboard (protected, all roles)
  *   /tasks                  — Task Feed (protected, all roles; placeholder for Cycle 2)
@@ -35,6 +36,7 @@ import PipelineManagerPage from '@/pages/PipelineManagerPage'
 import LogStreamerPage from '@/pages/LogStreamerPage'
 import SinkInspectorPage from '@/pages/SinkInspectorPage'
 import ChaosControllerPage from '@/pages/ChaosControllerPage'
+import ChangePasswordPage from '@/pages/ChangePasswordPage'
 import NotFoundPage from '@/pages/NotFoundPage'
 
 /**
@@ -55,6 +57,18 @@ function RootRedirect(): React.ReactElement {
 const router = createBrowserRouter([
   // Public route
   { path: '/login', element: <LoginPage /> },
+
+  // Password change route — accessible while authenticated even when mustChangePassword=true.
+  // ProtectedRoute must allow this route through without the MustChangePassword redirect,
+  // otherwise the user cannot reach the page to clear the flag (SEC-001).
+  {
+    path: '/change-password',
+    element: (
+      <ProtectedRoute allowMustChangePassword>
+        <ChangePasswordPage />
+      </ProtectedRoute>
+    ),
+  },
 
   // Protected routes — all wrapped with auth guard and sidebar layout
   {

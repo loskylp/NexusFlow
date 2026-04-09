@@ -120,6 +120,10 @@ func NewServer(
 //	GET    /events/workers             — SSEHandler.Workers      (TASK-015) — authenticated
 //	GET    /events/tasks/{id}/logs     — SSEHandler.Logs         (TASK-015) — authenticated
 //	GET    /events/sink/{taskId}       — SSEHandler.Sink         (TASK-015) — authenticated
+//	POST   /api/auth/change-password   — PasswordChangeHandler.ChangePassword (SEC-001) — authenticated (password_change_required bypass)
+//	POST   /api/chaos/kill-worker      — ChaosHandler.KillWorker    (TASK-034) — admin
+//	POST   /api/chaos/disconnect-db    — ChaosHandler.DisconnectDatabase (TASK-034) — admin
+//	POST   /api/chaos/flood-queue      — ChaosHandler.FloodQueue    (TASK-034) — admin
 func (s *Server) Handler() http.Handler {
 	r := chi.NewRouter()
 	r.Use(middleware.Recoverer)
@@ -188,6 +192,21 @@ func (s *Server) Handler() http.Handler {
 		protected.Get("/events/workers", sseH.Workers)
 		protected.Get("/events/tasks/{id}/logs", sseH.Logs)
 		protected.Get("/events/sink/{taskId}", sseH.Sink)
+
+		// Password change endpoint (SEC-001).
+		// Accessible to all authenticated users, including those with MustChangePassword = true.
+		// The auth middleware must allow this endpoint through even when MustChangePassword is set.
+		pwChangeH := &PasswordChangeHandler{server: s}
+		protected.Post("/api/auth/change-password", pwChangeH.ChangePassword)
+
+		// Chaos Controller endpoints (TASK-034): admin-only sub-group.
+		chaosH := &ChaosHandler{server: s}
+		protected.Group(func(admin chi.Router) {
+			admin.Use(auth.RequireRole(models.RoleAdmin))
+			admin.Post("/api/chaos/kill-worker", chaosH.KillWorker)
+			admin.Post("/api/chaos/disconnect-db", chaosH.DisconnectDatabase)
+			admin.Post("/api/chaos/flood-queue", chaosH.FloodQueue)
+		})
 	})
 
 	return r

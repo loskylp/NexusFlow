@@ -110,20 +110,41 @@ func (r *PgUserRepository) Deactivate(ctx context.Context, id uuid.UUID) error {
 	return r.queries.DeactivateUser(ctx, id)
 }
 
+// ChangePassword implements UserRepository.ChangePassword.
+// Updates the user's password_hash to passwordHash and sets must_change_password = false.
+// The caller must verify the current password and hash the new one before calling.
+//
+// Preconditions:
+//   - id references an existing active user.
+//   - passwordHash is a valid bcrypt hash.
+//
+// Postconditions:
+//   - On success: user.PasswordHash and must_change_password are updated atomically.
+//   - On error: no change to the user record.
+func (r *PgUserRepository) ChangePassword(ctx context.Context, id uuid.UUID, passwordHash string) error {
+	return r.queries.UpdateUserPassword(ctx, sqlcdb.UpdateUserPasswordParams{
+		ID:           id,
+		PasswordHash: passwordHash,
+	})
+}
+
 // toModelUser converts a sqlcdb.User (generated) to a models.User (domain).
 // The pgtype.Timestamptz is converted to time.Time with UTC location.
+// MustChangePassword is included so the auth middleware can enforce the
+// mandatory first-login password change (SEC-001).
 func toModelUser(row sqlcdb.User) *models.User {
 	createdAt := time.Time{}
 	if row.CreatedAt.Valid {
 		createdAt = row.CreatedAt.Time.UTC()
 	}
 	return &models.User{
-		ID:           row.ID,
-		Username:     row.Username,
-		PasswordHash: row.PasswordHash,
-		Role:         models.Role(row.Role),
-		Active:       row.Active,
-		CreatedAt:    createdAt,
+		ID:                 row.ID,
+		Username:           row.Username,
+		PasswordHash:       row.PasswordHash,
+		Role:               models.Role(row.Role),
+		Active:             row.Active,
+		MustChangePassword: row.MustChangePassword,
+		CreatedAt:          createdAt,
 	}
 }
 

@@ -1,16 +1,131 @@
 # Scaffold Manifest — NexusFlow
-**Version:** 2 | **Date:** 2026-04-07
+**Version:** 3 | **Date:** 2026-04-09
 **Artifact Weight:** Blueprint
 **Profile:** Critical
-**Cycle:** 3 (additions — appended to Cycle 1 manifest)
+**Cycle:** 4 (additions — appended to Cycle 3 manifest)
 
 ---
 
 ## Revision Summary
 
-Version 2 adds Cycle 3 scaffolding on top of the Cycle 1 scaffold (Version 1).
-All Cycle 1 entries remain valid and are not repeated here. This document covers
-only the new structure added for Cycle 3.
+Version 3 adds Cycle 4 scaffolding on top of the Cycle 3 scaffold (Version 2).
+All prior cycle entries remain valid and are not repeated here. This document covers
+only the new structure added for Cycle 4.
+
+Cycle 4 tasks: TASK-030 (MinIO connector), TASK-031 (Mock-Postgres connector),
+TASK-032 (Sink Inspector GUI), TASK-033 (Snapshot Capturer), TASK-034 (Chaos
+Controller GUI), SEC-001 (Password change), TASK-038 (Fitness function CI gate).
+
+Most Cycle 4 backend scaffolding was created during Cycle 3 (connector stubs,
+snapshot.go, handlers_chaos.go, SinkInspectorPage, ChaosControllerPage,
+useSinkInspector hook). Cycle 4 scaffolding adds: SEC-001 password change
+infrastructure (handler, page, middleware changes, DB layer changes), the
+useChaosController hook, the TASK-038 fitness function test file, CI workflow
+changes, and all acceptance test stubs.
+
+---
+
+## Cycle 4 Scaffolding Status — What Was Already Done vs What Was Added Now
+
+### Already scaffolded before Cycle 4 (created in prior cycles):
+
+| File | Task | Status |
+|---|---|---|
+| `worker/connector_minio.go` | TASK-030 | Stub with TODO bodies |
+| `worker/connector_postgres.go` | TASK-031 | Stub with TODO bodies |
+| `worker/snapshot.go` | TASK-033 | Stub with TODO bodies |
+| `api/handlers_chaos.go` | TASK-034 | Stub with TODO bodies |
+| `web/src/pages/SinkInspectorPage.tsx` | TASK-032 | Stub with TODO bodies |
+| `web/src/pages/ChaosControllerPage.tsx` | TASK-034 | Stub with TODO bodies |
+| `web/src/hooks/useSinkInspector.ts` | TASK-032 | Stub with TODO bodies |
+| `internal/models/models.go` (MustChangePassword) | SEC-001 | Field added |
+| `internal/db/000007_must_change_password.up.sql` | SEC-001 | Migration written |
+| `internal/db/000007_must_change_password.down.sql` | SEC-001 | Migration written |
+
+### Added in Cycle 4 scaffolding pass:
+
+| File | Task | What Was Done |
+|---|---|---|
+| `api/handlers_password_change.go` | SEC-001 | NEW — PasswordChangeHandler stub |
+| `web/src/pages/ChangePasswordPage.tsx` | SEC-001 | NEW — ChangePasswordPage stub |
+| `web/src/hooks/useChaosController.ts` | TASK-034 | NEW — useChaosController hook stub |
+| `tests/system/TASK-038-fitness-functions_test.go` | TASK-038 | NEW — fitness function test stubs |
+| `tests/acceptance/SEC-001-acceptance.sh` | SEC-001 | NEW — acceptance test stub |
+| `tests/acceptance/SEC-001-change-password-page.test.tsx` | SEC-001 | NEW — frontend acceptance test |
+| `tests/acceptance/TASK-030-acceptance.sh` | TASK-030 | NEW — acceptance test stub |
+| `tests/acceptance/TASK-031-acceptance.sh` | TASK-031 | NEW — acceptance test stub |
+| `tests/acceptance/TASK-032-acceptance.test.tsx` | TASK-032 | NEW — acceptance test stub |
+| `tests/acceptance/TASK-033-acceptance.sh` | TASK-033 | NEW — acceptance test stub |
+| `tests/acceptance/TASK-034-acceptance.test.tsx` | TASK-034 | NEW — acceptance test stub |
+| `tests/acceptance/TASK-038-acceptance.sh` | TASK-038 | NEW — acceptance test script |
+| `web/src/api/client.ts` | SEC-001, TASK-034 | EXTENDED — changePassword, killWorker, disconnectDatabase, floodQueue |
+| `web/src/types/domain.ts` | SEC-001 | EXTENDED — mustChangePassword field on User |
+| `web/src/components/ProtectedRoute.tsx` | SEC-001 | EXTENDED — allowMustChangePassword prop; MustChangePassword redirect |
+| `web/src/App.tsx` | SEC-001 | EXTENDED — /change-password route added |
+| `api/server.go` | SEC-001, TASK-034 | EXTENDED — routes for change-password and chaos endpoints |
+| `internal/auth/auth.go` | SEC-001 | EXTENDED — MustChangePassword enforcement in Middleware |
+| `internal/models/models.go` | SEC-001 | EXTENDED — MustChangePassword field on Session |
+| `internal/db/repository.go` | SEC-001 | EXTENDED — ChangePassword method on UserRepository interface |
+| `internal/db/user_repository.go` | SEC-001 | EXTENDED — ChangePassword impl + MustChangePassword in toModelUser |
+| `internal/db/queries/users.sql` | SEC-001 | EXTENDED — UpdateUserPassword query |
+| `internal/db/sqlc/models.go` | SEC-001 | EXTENDED — MustChangePassword on sqlcdb.User |
+| `internal/db/sqlc/users.sql.go` | SEC-001 | EXTENDED — UpdateUserPassword function stub; SELECT column lists updated |
+| `.github/workflows/ci.yml` | TASK-038 | EXTENDED — fitness-functions job added |
+
+---
+
+## Cycle 4 Structure Overview
+
+```
+api/
+├── handlers_password_change.go   — POST /api/auth/change-password (SEC-001)   [NEW]
+web/src/
+├── pages/
+│   └── ChangePasswordPage.tsx    — forced first-login password change (SEC-001) [NEW]
+├── hooks/
+│   └── useChaosController.ts     — chaos controller state + API calls (TASK-034) [NEW]
+├── components/
+│   └── ProtectedRoute.tsx        — extended: allowMustChangePassword (SEC-001)  [EXTENDED]
+├── App.tsx                       — /change-password route (SEC-001)             [EXTENDED]
+├── api/client.ts                 — changePassword, chaos API calls              [EXTENDED]
+└── types/domain.ts               — mustChangePassword on User                   [EXTENDED]
+internal/
+├── auth/auth.go                  — MustChangePassword enforcement (SEC-001)     [EXTENDED]
+├── models/models.go              — MustChangePassword on Session (SEC-001)      [EXTENDED]
+├── db/
+│   ├── repository.go             — ChangePassword on UserRepository             [EXTENDED]
+│   ├── user_repository.go        — ChangePassword impl                          [EXTENDED]
+│   ├── queries/users.sql         — UpdateUserPassword query                     [EXTENDED]
+│   └── sqlc/
+│       ├── models.go             — MustChangePassword on User                   [EXTENDED]
+│       └── users.sql.go          — UpdateUserPassword stub + column lists       [EXTENDED]
+tests/
+├── system/
+│   └── TASK-038-fitness-functions_test.go  — FF test stubs (TASK-038)          [NEW]
+└── acceptance/
+    ├── SEC-001-acceptance.sh               — password change acceptance         [NEW]
+    ├── SEC-001-change-password-page.test.tsx — frontend acceptance              [NEW]
+    ├── TASK-030-acceptance.sh              — MinIO connector acceptance         [NEW]
+    ├── TASK-031-acceptance.sh              — Postgres connector acceptance      [NEW]
+    ├── TASK-032-acceptance.test.tsx        — Sink Inspector GUI acceptance      [NEW]
+    ├── TASK-033-acceptance.sh              — snapshot capture acceptance        [NEW]
+    ├── TASK-034-acceptance.test.tsx        — Chaos Controller GUI acceptance    [NEW]
+    └── TASK-038-acceptance.sh             — fitness function CI acceptance      [NEW]
+.github/workflows/
+└── ci.yml                        — fitness-functions job added (TASK-038)       [EXTENDED]
+```
+
+---
+
+## Cycle 4 Components
+
+---
+
+### Cycle 3 (previously scaffolded, now being built)
+
+The following components were scaffolded in a prior pass and have TODO bodies awaiting Builder implementation:
+
+---
 
 ---
 
@@ -357,3 +472,180 @@ One boundary ambiguity was discovered during Cycle 3 scaffolding:
 
 **Log Streamer route (`/tasks/logs` vs `/tasks/:id/logs`):**
 The UX spec lists the Log Streamer at `/tasks/{id}/logs`, but the App.tsx route (scaffolded in Cycle 1) uses `/tasks/logs` with a query param approach. The Scaffold aligns with the existing App.tsx route (`/tasks/logs?taskId=<uuid>`) to avoid modifying the working route table. The Builder for TASK-022 should confirm with the Architect whether the URL structure matters for deep-linking (e.g., bookmarkability of specific task logs). If the UX spec route `/tasks/:id/logs` is preferred, App.tsx must be updated to add a new route parameter.
+
+---
+
+---
+
+## Cycle 4 Components
+
+---
+
+### PasswordChangeHandler — `api/handlers_password_change.go`
+**Responsibility:** POST /api/auth/change-password — verifies current password, hashes new password, updates user record, clears MustChangePassword, invalidates all sessions.
+**Architectural source:** SEC-001, SEC-007, ADR-006
+
+#### Exported interfaces
+
+| Element | Kind | Signature summary | Contract |
+|---|---|---|---|
+| `PasswordChangeHandler` | struct | `{ server *Server }` | Admin and user accessible; requires active session |
+| `PasswordChangeHandler.ChangePassword` | method | `http.HandlerFunc` | POST /api/auth/change-password; 204 on success; 400/401/403 on error |
+
+---
+
+### ChangePasswordPage — `web/src/pages/ChangePasswordPage.tsx`
+**Responsibility:** Forced first-login password change gate. Blocks all navigation until password is changed. No sidebar.
+**Architectural source:** SEC-001, SEC-007, UX Spec (Login)
+
+#### Exported interfaces
+
+| Element | Kind | Signature summary | Contract |
+|---|---|---|---|
+| `ChangePasswordForm` | React component (internal) | `(ChangePasswordFormProps) -> ReactElement` | Three-field form with client-side validation; spinner on submit |
+| `ChangePasswordPage` | React component (default export) | `() -> ReactElement` | Redirects to /login on success; redirects away if mustChangePassword=false |
+
+---
+
+### useChaosController — `web/src/hooks/useChaosController.ts`
+**Responsibility:** Manages all state and API calls for the Chaos Controller demo view: worker/pipeline lists, system health, kill/disconnect/flood actions, countdown timer, per-card activity logs.
+**Architectural source:** DEMO-004, TASK-034
+
+#### Exported interfaces
+
+| Element | Kind | Signature summary | Contract |
+|---|---|---|---|
+| `UseChaosControllerReturn` | interface | Full state surface (see file) | Workers, pipelines, systemStatus, per-action state + callbacks, per-card logs |
+| `useChaosController()` | hook | `() -> UseChaosControllerReturn` | Fetches workers+pipelines on mount; refreshes health after chaos actions; all errors surfaced via logs |
+
+---
+
+### Fitness Function Tests — `tests/system/TASK-038-fitness-functions_test.go`
+**Responsibility:** Named Go test functions for each fitness function in the fitness function index. Non-Docker tests run in CI; Docker-dependent tests skip with `t.Skip`.
+**Architectural source:** TASK-038, process/architect/fitness-functions.md
+
+#### Test functions
+
+| Function | FF ID | Status |
+|---|---|---|
+| `TestFF001_QueuePersistence` | FF-001 | Skip (Docker) |
+| `TestFF002_QueuingLatency` | FF-002 | TODO |
+| `TestFF004_DeliveryGuarantee` | FF-004 | Skip (Docker) |
+| `TestFF005_ChainTriggerDedup` | FF-005 | TODO |
+| `TestFF006_SinkAtomicity` | FF-006 | TODO |
+| `TestFF007_FailoverDetection` | FF-007 | Skip (Docker) |
+| `TestFF008_TaskRecovery` | FF-008 | Skip (Docker) |
+| `TestFF013_AuthEnforcement` | FF-013 | TODO |
+| `TestFF015_CompileTimeSafety` | FF-015 | Passes immediately |
+| `TestFF017_SchemaMigration` | FF-017 | TODO |
+| `TestFF019_SchemaValidation` | FF-019 | TODO |
+| `TestFF020_ServiceStartup` | FF-020 | Skip (requires compose) |
+| `TestFF024_RedisPersistence` | FF-024 | Skip (Docker) |
+| `TestFF022_SinkInspector` | FF-022 | TODO |
+
+---
+
+### ProtectedRoute (extended) — `web/src/components/ProtectedRoute.tsx`
+**Responsibility:** Extended with `allowMustChangePassword` prop (SEC-001). When the user's `mustChangePassword` flag is true, all routes redirect to /change-password unless the route opts out with `allowMustChangePassword={true}`.
+**Architectural source:** SEC-001, TASK-019
+
+---
+
+### SEC-001 DB Layer
+
+| File | Change | Contract |
+|---|---|---|
+| `internal/models/models.go` | `MustChangePassword bool` added to `Session` | Session carries the flag to avoid per-request DB lookup |
+| `internal/auth/auth.go` | Middleware enforces 403 for MustChangePassword sessions | Only POST /api/auth/change-password is exempt |
+| `internal/db/repository.go` | `ChangePassword(ctx, id, passwordHash)` added to `UserRepository` | Updates hash + clears flag atomically |
+| `internal/db/user_repository.go` | `ChangePassword` implemented; `toModelUser` includes `MustChangePassword` | Delegates to `UpdateUserPassword` sqlc query |
+| `internal/db/queries/users.sql` | `UpdateUserPassword :exec` query added | `UPDATE users SET password_hash = $2, must_change_password = FALSE WHERE id = $1` |
+| `internal/db/sqlc/models.go` | `MustChangePassword bool` added to `User` | Hand-edited; Builder must run `sqlc generate` to regenerate |
+| `internal/db/sqlc/users.sql.go` | `UpdateUserPassword` stub + all SELECT column lists updated | Hand-edited; Builder must run `sqlc generate` |
+
+---
+
+## Cycle 4 Builder task surface — unimplemented elements
+
+| Element | Location | Complexity signal |
+|---|---|---|
+| `NewMinIODataSourceConnector` | `worker/connector_minio.go` | Low — assign struct field; no logic |
+| `MinIODataSourceConnector.Fetch` | `worker/connector_minio.go` | Medium — ListKeys loop, GetObject, JSON decode per object |
+| `NewMinIOSinkConnector` | `worker/connector_minio.go` | Low — assign struct fields |
+| `MinIOSinkConnector.Snapshot` | `worker/connector_minio.go` | Low — ListObjectCount call, return map |
+| `MinIOSinkConnector.Write` | `worker/connector_minio.go` | **High** — multipart upload flow: CreateMultipartUpload, UploadPart, abort on error, CompleteMultipartUpload, DedupStore.Record; ErrAlreadyApplied guard |
+| `RegisterMinIOConnectors` | `worker/connector_minio.go` | Low — two reg.Register calls |
+| `NewPostgreSQLDataSourceConnector` | `worker/connector_postgres.go` | Low — assign struct field |
+| `PostgreSQLDataSourceConnector.Fetch` | `worker/connector_postgres.go` | Medium — build SELECT from config["table"] or config["query"] + limit; call QueryRows |
+| `NewPostgreSQLSinkConnector` | `worker/connector_postgres.go` | Low — assign struct fields |
+| `PostgreSQLSinkConnector.Snapshot` | `worker/connector_postgres.go` | Low — RowCount call, return map |
+| `PostgreSQLSinkConnector.Write` | `worker/connector_postgres.go` | **High** — BeginTx, InsertRow loop, Rollback on first error, Commit on success, DedupStore.Record; ErrAlreadyApplied guard |
+| `RegisterPostgreSQLConnectors` | `worker/connector_postgres.go` | Low — two reg.Register calls |
+| `NewSnapshotCapturer` | `worker/snapshot.go` | Low — assign struct fields |
+| `SnapshotCapturer.CaptureAndWrite` | `worker/snapshot.go` | **High** — before snapshot, publish, write, after snapshot, publish; write error propagation; snapshot failures logged not propagated |
+| `ChaosHandler.KillWorker` | `api/handlers_chaos.go` | **High** — Docker daemon socket access; SIGKILL container; activity log generation |
+| `ChaosHandler.DisconnectDatabase` | `api/handlers_chaos.go` | **High** — iptables/network manipulation; background goroutine for restore; 409 guard for concurrent disconnect |
+| `ChaosHandler.FloodQueue` | `api/handlers_chaos.go` | Medium — loop N task submissions; sequential; partial success tracking |
+| `SinkInspectorPage` sub-components | `web/src/pages/SinkInspectorPage.tsx` | Medium/High — see file for per-component complexity |
+| `ChaosControllerPage` sub-components | `web/src/pages/ChaosControllerPage.tsx` | Medium — delegating to useChaosController |
+| `useSinkInspector` | `web/src/hooks/useSinkInspector.ts` | Medium — SSE event routing, state reset on task change, accessError surfacing |
+| `useChaosController` | `web/src/hooks/useChaosController.ts` | **High** — multiple API calls, countdown timer, activity log accumulation, health refresh |
+| `ChangePasswordPage` | `web/src/pages/ChangePasswordPage.tsx` | Medium — form state, 401/400 error mapping, redirect on success |
+| `PasswordChangeHandler.ChangePassword` | `api/handlers_password_change.go` | Medium — verify current password, hash new, DB update, session invalidation |
+| Fitness function test bodies | `tests/system/TASK-038-fitness-functions_test.go` | Low-Medium per test — HTTP client calls + threshold assertions |
+| `sqlc generate` (regeneration) | `internal/db/sqlc/` | Low — run command; verify output matches scaffolded intent |
+| `UpdateUserPassword` (after sqlc gen) | `internal/db/sqlc/users.sql.go` | Low — remove panic; generated implementation |
+
+---
+
+## Cycle 4 dependency order for Builder sequencing
+
+1. **DB layer (SEC-001)** — Run `sqlc generate` first to produce the real `UpdateUserPassword` function and regenerate `must_change_password` column support. This unblocks all SEC-001 work.
+
+2. **`PasswordChangeHandler.ChangePassword`** — Medium; depends on `UserRepository.ChangePassword`, session store `DeleteAllForUser`. Must be complete before the frontend can be tested end-to-end.
+
+3. **SEC-001 connector implementations (TASK-030, TASK-031)** — Independent of SEC-001. MinIO and Postgres connector bodies can be implemented in parallel.
+   - MinIOSinkConnector.Write is the highest-risk item (multipart upload abort pattern).
+   - PostgreSQLSinkConnector.Write follows the established DatabaseSinkConnector pattern in sink_connectors.go.
+
+4. **SnapshotCapturer.CaptureAndWrite (TASK-033)** — Depends on MinIO or Postgres connector being testable. Must be complete before Sink Inspector GUI can receive real events.
+
+5. **ChaosHandler (TASK-034)** — Independent of connectors. Highest risk: Docker daemon access. Builder should spike Docker socket access first (verify the API container has /var/run/docker.sock mounted in demo compose profile).
+
+6. **useSinkInspector** — Depends on SSE infrastructure (already implemented). Low external dependencies.
+
+7. **SinkInspectorPage** — Depends on useSinkInspector. Complete after hook.
+
+8. **useChaosController** — Depends on chaos API functions in client.ts (already scaffolded). Complete before ChaosControllerPage.
+
+9. **ChaosControllerPage** — Depends on useChaosController. Complete after hook.
+
+10. **ChangePasswordPage** — Depends on changePassword client.ts call (already scaffolded). Can run in parallel with ChaosControllerPage.
+
+11. **Fitness function test bodies (TASK-038)** — Depends on SEC-001 and connector implementations being testable. Most are straightforward HTTP client assertions against the running API.
+
+---
+
+## Cycle 4 new dependency wiring required in existing files
+
+| File | Required wiring | Task |
+|---|---|---|
+| `cmd/worker/main.go` | Register MinIO connectors: `worker.RegisterMinIOConnectors(reg, minioBackend)` when MINIO_ENDPOINT env var is set | TASK-030 |
+| `cmd/worker/main.go` | Register Postgres connectors: `worker.RegisterPostgreSQLConnectors(reg, pgBackend)` when DEMO_POSTGRES_DSN env var is set | TASK-031 |
+| `cmd/worker/main.go` | Wrap the SinkConnector in SnapshotCapturer: `worker.NewSnapshotCapturer(sink, redisClient)` for demo connectors | TASK-033 |
+| `api/handlers_auth.go` (`Login` handler) | Set `MustChangePassword: user.MustChangePassword` when creating the Session | SEC-001 |
+| `api/handlers_users.go` (`CreateUser` handler) | Set `MustChangePassword: true` on newly created users so they must change on first login | SEC-001 |
+| `docker-compose.yml` | Mount `/var/run/docker.sock` into the `api` service under `demo` profile | TASK-034 |
+
+---
+
+## Cycle 4 boundary ambiguities discovered during scaffolding
+
+**1. sqlc regeneration required before SEC-001 can compile cleanly.**
+The scaffolded `internal/db/sqlc/models.go` and `users.sql.go` are hand-edited to add `must_change_password` support. These files carry a prominent note that they will be overwritten by `sqlc generate`. The Builder must run `sqlc generate` against a database with migration 000007 applied before any SEC-001 Go code is compiled in CI. The hand-edits exist only to make the package compile before the sqlc tool is run. The CI `go-build-and-test` job will fail on the `UpdateUserPassword` panic if the sqlc regeneration has not been run — this is intentional (fail-fast).
+
+**2. Chaos Controller DB disconnect implementation approach.**
+The ChaosHandler.DisconnectDatabase implementation approach (iptables) requires the API container to run with NET_ADMIN capability in the demo Docker Compose profile. This is an Architect-level decision not yet made explicit in the ADRs. The Scaffolder has documented the iptables approach in the handler docstring (matching the task plan description), but the Builder should confirm this approach is viable in the deployment environment before implementing. If iptables is not available, an alternative (e.g., stopping the PostgreSQL container) may be needed.
+
+**3. Session invalidation pattern for password change.**
+The `PasswordChangeHandler.ChangePassword` postcondition specifies that all sessions for the user are invalidated after a successful change. The existing `SessionStore` interface (in `internal/queue/`) may or may not have a `DeleteAllForUser(ctx, userID)` method. The Builder must check and, if needed, add this method to the `SessionStore` interface before implementing `ChangePassword`. If `DeleteAllForUser` does not exist, the simplest approach is to delete all session:{token} keys for the user by scanning Redis (consistent with how `DeactivateUser` works in `handlers_users.go`).

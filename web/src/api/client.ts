@@ -259,3 +259,101 @@ export async function deletePipeline(pipelineId: string): Promise<void> {
 export async function listUsers(): Promise<import('@/types/domain').User[]> {
   return apiFetch<import('@/types/domain').User[]>('/api/users')
 }
+
+// --- Auth: password change (SEC-001) ---
+
+/**
+ * Change the authenticated user's password.
+ * The server clears the MustChangePassword flag on success and invalidates all
+ * existing sessions. The client must re-authenticate after calling this.
+ *
+ * Request shape:  { currentPassword, newPassword }
+ * Response:       204 No Content on success.
+ *
+ * @throws Error with '401' prefix if currentPassword is incorrect.
+ * @throws Error with '400' prefix if newPassword is shorter than 8 characters
+ *         or equals currentPassword.
+ * @throws Error with '403' prefix if not authenticated.
+ *
+ * See: SEC-001, SEC-007, ADR-006
+ */
+export async function changePassword(
+  currentPassword: string,
+  newPassword: string
+): Promise<void> {
+  return apiFetch<void>('/api/auth/change-password', {
+    method: 'POST',
+    body: JSON.stringify({ currentPassword, newPassword }),
+  })
+}
+
+// --- Chaos Controller (TASK-034) ---
+
+/**
+ * Kill a worker container by worker ID.
+ * Admin only. Stops the worker's Docker container. The Monitor will detect the
+ * heartbeat absence and reclaim in-flight tasks (ADR-002).
+ *
+ * Response shape: { log: ChaosActivityEntry[] }
+ *
+ * @throws Error with '400' prefix if workerId is missing.
+ * @throws Error with '403' prefix if caller is not Admin.
+ * @throws Error with '404' prefix if workerId does not match a registered worker.
+ * @throws Error with '500' prefix on Docker daemon error.
+ *
+ * See: DEMO-004, TASK-034
+ */
+export async function killWorker(workerId: string): Promise<{ log: import('@/types/domain').ChaosActivityEntry[] }> {
+  return apiFetch('/api/chaos/kill-worker', {
+    method: 'POST',
+    body: JSON.stringify({ workerId }),
+  })
+}
+
+/**
+ * Simulate database unavailability for a fixed duration.
+ * Admin only. Blocks PostgreSQL connections from NexusFlow services for
+ * durationSeconds (15, 30, or 60). Connectivity restores automatically.
+ *
+ * Response shape: { log: ChaosActivityEntry[], durationSeconds: number }
+ *
+ * @throws Error with '400' prefix if durationSeconds is not 15, 30, or 60.
+ * @throws Error with '403' prefix if caller is not Admin.
+ * @throws Error with '409' prefix if a disconnect is already active.
+ * @throws Error with '500' prefix on network manipulation error.
+ *
+ * See: DEMO-004, TASK-034
+ */
+export async function disconnectDatabase(durationSeconds: 15 | 30 | 60): Promise<{
+  log: import('@/types/domain').ChaosActivityEntry[]
+  durationSeconds: number
+}> {
+  return apiFetch('/api/chaos/disconnect-db', {
+    method: 'POST',
+    body: JSON.stringify({ durationSeconds }),
+  })
+}
+
+/**
+ * Submit a burst of tasks to a pipeline to flood the queue.
+ * Admin only. Non-destructive: creates taskCount tasks for the given pipeline.
+ * No confirmation required (UX spec: flood is non-destructive).
+ *
+ * Response shape: { submittedCount: number, log: ChaosActivityEntry[] }
+ *
+ * @throws Error with '400' prefix if pipelineId is missing or taskCount is out of [1, 1000].
+ * @throws Error with '403' prefix if caller is not Admin.
+ * @throws Error with '404' prefix if pipelineId does not match an existing pipeline.
+ * @throws Error with '500' prefix on queue enqueue error.
+ *
+ * See: DEMO-004, TASK-034
+ */
+export async function floodQueue(
+  pipelineId: string,
+  taskCount: number
+): Promise<{ submittedCount: number; log: import('@/types/domain').ChaosActivityEntry[] }> {
+  return apiFetch('/api/chaos/flood-queue', {
+    method: 'POST',
+    body: JSON.stringify({ pipelineId, taskCount }),
+  })
+}

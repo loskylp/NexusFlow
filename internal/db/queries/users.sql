@@ -18,3 +18,10 @@ SELECT * FROM users ORDER BY created_at ASC;
 
 -- name: DeactivateUser :exec
 UPDATE users SET active = FALSE WHERE id = $1;
+
+-- name: UpdateUserPassword :exec
+-- SEC-001: update password_hash and clear must_change_password in one atomic statement.
+-- Called by PasswordChangeHandler after verifying the current password.
+UPDATE users
+SET password_hash = $2, must_change_password = FALSE
+WHERE id = $1;

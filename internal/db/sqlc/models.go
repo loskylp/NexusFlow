@@ -93,12 +93,18 @@ type TaskStateLog struct {
 }
 
 type User struct {
-	ID           uuid.UUID          `db:"id" json:"id"`
-	Username     string             `db:"username" json:"username"`
-	PasswordHash string             `db:"password_hash" json:"password_hash"`
-	Role         string             `db:"role" json:"role"`
-	Active       bool               `db:"active" json:"active"`
-	CreatedAt    pgtype.Timestamptz `db:"created_at" json:"created_at"`
+	ID                 uuid.UUID          `db:"id" json:"id"`
+	Username           string             `db:"username" json:"username"`
+	PasswordHash       string             `db:"password_hash" json:"password_hash"`
+	Role               string             `db:"role" json:"role"`
+	Active             bool               `db:"active" json:"active"`
+	// MustChangePassword mirrors the must_change_password column added in migration 000007 (SEC-001).
+	// NOTE: This field was added manually to match migration 000007. The Builder must run
+	// `sqlc generate` to regenerate this file from the query definitions; this hand-edit
+	// will be overwritten. The hand-edit exists only to allow the Go package to compile
+	// before sqlc regeneration is run.
+	MustChangePassword bool               `db:"must_change_password" json:"must_change_password"`
+	CreatedAt          pgtype.Timestamptz `db:"created_at" json:"created_at"`
 }
 
 type Worker struct {

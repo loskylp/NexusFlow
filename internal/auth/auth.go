@@ -94,7 +94,12 @@ func GenerateToken() (string, error) {
 // On validation success, the *models.Session is stored in the request context
 // under sessionContextKey. On failure, it writes 401 Unauthorized and stops the chain.
 //
-// See: ADR-006, TASK-003
+// SEC-001: When the session has MustChangePassword = true, all requests except
+// POST /api/auth/change-password are rejected with 403 {"error":"password_change_required"}.
+// This enforces the mandatory first-login password rotation before the user can access
+// any other endpoint.
+//
+// See: ADR-006, TASK-003, SEC-001
 //
 // Args:
 //
@@ -108,7 +113,9 @@ func GenerateToken() (string, error) {
 //   - sessions must be non-nil and connected.
 //
 // Postconditions:
-//   - On valid token: next handler is called with Session in context.
+//   - On valid token and MustChangePassword=false: next handler is called with Session in context.
+//   - On valid token and MustChangePassword=true: next handler called only for POST /api/auth/change-password;
+//     all other paths receive 403 {"error":"password_change_required"}.
 //   - On missing, invalid, or expired token: 401 JSON {"error":"unauthorized"} is written; next handler is not called.
 func Middleware(sessions queue.SessionStore) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
@@ -122,6 +129,16 @@ func Middleware(sessions queue.SessionStore) func(http.Handler) http.Handler {
 			sess, err := sessions.Get(r.Context(), token)
 			if err != nil || sess == nil {
 				writeJSONUnauthorized(w)
+				return
+			}
+
+			// SEC-001: enforce mandatory password change before any other endpoint.
+			// The change-password endpoint itself is exempt so the user can reach it.
+			if sess.MustChangePassword &&
+				!(r.Method == http.MethodPost && r.URL.Path == "/api/auth/change-password") {
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusForbidden)
+				_, _ = w.Write([]byte(`{"error":"password_change_required"}`))
 				return
 			}
 

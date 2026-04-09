@@ -116,14 +116,21 @@ type SinkConfig struct {
 
 // User is a person who interacts with NexusFlow. Either an Admin or a regular User.
 // Admins have full visibility; Users see only their own Tasks.
-// See: process/analyst/brief.md (User), ADR-006, REQ-019, REQ-020
+//
+// MustChangePassword is true for newly created or admin-seeded users whose password
+// must be rotated before they can access the application. The auth middleware returns
+// 403 with reason "password_change_required" for any request (except the change-password
+// endpoint itself) when this flag is true on the session's user.
+//
+// See: process/analyst/brief.md (User), ADR-006, REQ-019, REQ-020, SEC-001
 type User struct {
-	ID           uuid.UUID `json:"id"           db:"id"`
-	Username     string    `json:"username"     db:"username"`
-	PasswordHash string    `json:"-"            db:"password_hash"`
-	Role         Role      `json:"role"         db:"role"`
-	Active       bool      `json:"active"       db:"active"`
-	CreatedAt    time.Time `json:"createdAt"    db:"created_at"`
+	ID                 uuid.UUID `json:"id"                 db:"id"`
+	Username           string    `json:"username"           db:"username"`
+	PasswordHash       string    `json:"-"                  db:"password_hash"`
+	Role               Role      `json:"role"               db:"role"`
+	Active             bool      `json:"active"             db:"active"`
+	MustChangePassword bool      `json:"mustChangePassword" db:"must_change_password"`
+	CreatedAt          time.Time `json:"createdAt"          db:"created_at"`
 }
 
 // Pipeline is a linear sequence of three phases — DataSource, Process, Sink —
@@ -238,11 +245,19 @@ type TaskLog struct {
 }
 
 // Session holds the server-side session data stored in Redis at key session:{token}.
-// See: ADR-006, TASK-003
+//
+// MustChangePassword mirrors the users.must_change_password column and is set at
+// login time. When true, the auth middleware rejects all requests (with 403 and
+// reason "password_change_required") except POST /api/auth/change-password.
+// After a successful password change the session is invalidated; the user must
+// re-login, and the new session will have MustChangePassword = false.
+//
+// See: ADR-006, TASK-003, SEC-001
 type Session struct {
-	UserID    uuid.UUID `json:"userId"`
-	Role      Role      `json:"role"`
-	CreatedAt time.Time `json:"createdAt"`
+	UserID             uuid.UUID `json:"userId"`
+	Role               Role      `json:"role"`
+	CreatedAt          time.Time `json:"createdAt"`
+	MustChangePassword bool      `json:"mustChangePassword"`
 }
 
 // SSEEvent is the envelope for events published to SSE channels via Redis Pub/Sub.

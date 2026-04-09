@@ -2,6 +2,12 @@
 // versions:
 //   sqlc v1.30.0
 // source: users.sql
+//
+// NOTE (SEC-001 scaffold): This file was manually updated to add must_change_password
+// to all SELECT column lists and Scan calls, and to add UpdateUserPassword, to match
+// migration 000007. The Builder must run `sqlc generate` after applying migration 000007
+// to regenerate this file from the canonical query definitions. The manual edits here
+// will be overwritten by sqlc generate.
 
 package sqlcdb
 
@@ -16,7 +22,7 @@ const createUser = `-- name: CreateUser :one
 
 INSERT INTO users (id, username, password_hash, role, active, created_at)
 VALUES ($1, $2, $3, $4, $5, $6)
-RETURNING id, username, password_hash, role, active, created_at
+RETURNING id, username, password_hash, role, active, must_change_password, created_at
 `
 
 type CreateUserParams struct {
@@ -30,7 +36,7 @@ type CreateUserParams struct {
 
 // sqlc query file: users table
 // Generates Go code in internal/db/sqlc/ via `sqlc generate`
-// See: ADR-008, TASK-002, TASK-017
+// See: ADR-008, TASK-002, TASK-017, SEC-001
 func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, error) {
 	row := q.db.QueryRow(ctx, createUser,
 		arg.ID,
@@ -47,6 +53,7 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, e
 		&i.PasswordHash,
 		&i.Role,
 		&i.Active,
+		&i.MustChangePassword,
 		&i.CreatedAt,
 	)
 	return i, err
@@ -62,7 +69,7 @@ func (q *Queries) DeactivateUser(ctx context.Context, id uuid.UUID) error {
 }
 
 const getUserByID = `-- name: GetUserByID :one
-SELECT id, username, password_hash, role, active, created_at FROM users WHERE id = $1 LIMIT 1
+SELECT id, username, password_hash, role, active, must_change_password, created_at FROM users WHERE id = $1 LIMIT 1
 `
 
 func (q *Queries) GetUserByID(ctx context.Context, id uuid.UUID) (User, error) {
@@ -74,13 +81,14 @@ func (q *Queries) GetUserByID(ctx context.Context, id uuid.UUID) (User, error) {
 		&i.PasswordHash,
 		&i.Role,
 		&i.Active,
+		&i.MustChangePassword,
 		&i.CreatedAt,
 	)
 	return i, err
 }
 
 const getUserByUsername = `-- name: GetUserByUsername :one
-SELECT id, username, password_hash, role, active, created_at FROM users WHERE username = $1 LIMIT 1
+SELECT id, username, password_hash, role, active, must_change_password, created_at FROM users WHERE username = $1 LIMIT 1
 `
 
 func (q *Queries) GetUserByUsername(ctx context.Context, username string) (User, error) {
@@ -92,13 +100,14 @@ func (q *Queries) GetUserByUsername(ctx context.Context, username string) (User,
 		&i.PasswordHash,
 		&i.Role,
 		&i.Active,
+		&i.MustChangePassword,
 		&i.CreatedAt,
 	)
 	return i, err
 }
 
 const listUsers = `-- name: ListUsers :many
-SELECT id, username, password_hash, role, active, created_at FROM users ORDER BY created_at ASC
+SELECT id, username, password_hash, role, active, must_change_password, created_at FROM users ORDER BY created_at ASC
 `
 
 func (q *Queries) ListUsers(ctx context.Context) ([]User, error) {
@@ -116,6 +125,7 @@ func (q *Queries) ListUsers(ctx context.Context) ([]User, error) {
 			&i.PasswordHash,
 			&i.Role,
 			&i.Active,
+			&i.MustChangePassword,
 			&i.CreatedAt,
 		); err != nil {
 			return nil, err
@@ -126,4 +136,24 @@ func (q *Queries) ListUsers(ctx context.Context) ([]User, error) {
 		return nil, err
 	}
 	return items, nil
+}
+
+const updateUserPassword = `-- name: UpdateUserPassword :exec
+-- SEC-001: update password_hash and clear must_change_password in one atomic statement.
+UPDATE users
+SET password_hash = $2, must_change_password = FALSE
+WHERE id = $1
+`
+
+type UpdateUserPasswordParams struct {
+	ID           uuid.UUID `db:"id" json:"id"`
+	PasswordHash string    `db:"password_hash" json:"password_hash"`
+}
+
+// UpdateUserPassword updates the user's password hash and clears the must_change_password flag.
+// Called by PasswordChangeHandler after verifying the current password (SEC-001).
+func (q *Queries) UpdateUserPassword(ctx context.Context, arg UpdateUserPasswordParams) error {
+	// TODO: implement — will be generated correctly after `sqlc generate` is run
+	// against migration 000007. This stub exists so the package compiles.
+	panic("not implemented — run sqlc generate after applying migration 000007")
 }

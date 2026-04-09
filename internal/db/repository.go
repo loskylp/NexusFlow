@@ -52,6 +52,27 @@ type UserRepository interface {
 	// Postconditions:
 	//   - On success: user.Active = false in the database.
 	Deactivate(ctx context.Context, id uuid.UUID) error
+
+	// ChangePassword updates the password_hash for the user and clears the
+	// must_change_password flag. Called by PasswordChangeHandler after verifying
+	// the current password and hashing the new one.
+	//
+	// Args:
+	//   ctx:          Request context.
+	//   id:           The user whose password is being changed.
+	//   passwordHash: The bcrypt hash of the new password (cost 12).
+	//
+	// Preconditions:
+	//   - id references an existing active user.
+	//   - passwordHash is a valid bcrypt hash (caller is responsible for hashing).
+	//
+	// Postconditions:
+	//   - On success: user.PasswordHash = passwordHash in the database;
+	//                 user.MustChangePassword = false in the database.
+	//   - On error: no change to the user record.
+	//
+	// See: SEC-001, ADR-006
+	ChangePassword(ctx context.Context, id uuid.UUID, passwordHash string) error
 }
 
 // PipelineRepository provides CRUD access to the pipelines table.

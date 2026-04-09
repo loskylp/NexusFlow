@@ -58,6 +58,13 @@ export interface User {
   username: string
   role: Role
   active: boolean
+  /**
+   * True when the user must change their password before accessing any other
+   * endpoint. Set to true for admin-seeded users and users created via
+   * POST /api/users. Cleared to false after a successful POST /api/auth/change-password.
+   * See: SEC-001, ADR-006
+   */
+  mustChangePassword: boolean
   createdAt: string
 }
 
@@ -131,3 +138,55 @@ export interface AuthResponse {
   token: string
   user: User
 }
+
+/**
+ * SinkSnapshot holds the captured state of a Sink destination before or after
+ * a Sink phase execution. Mirrors models.SinkSnapshot in the Go backend.
+ * Used by the Sink Inspector demo view (DEMO-003, TASK-032).
+ * See: ADR-009, TASK-033
+ */
+export interface SinkSnapshot {
+  taskId: string
+  /** "before" or "after" */
+  phase: 'before' | 'after'
+  /** Key-value pairs representing the destination state at capture time. */
+  data: Record<string, unknown>
+  capturedAt: string
+}
+
+/**
+ * SinkInspectorState is the full SSE payload received on the
+ * GET /events/sink/{taskId} channel.
+ * See: DEMO-003, ADR-007, TASK-032, TASK-033
+ */
+export interface SinkInspectorState {
+  eventType: 'sink:before-snapshot' | 'sink:after-result'
+  taskId: string
+  before: SinkSnapshot | null
+  after: SinkSnapshot | null
+  rolledBack: boolean
+  writeError: string
+}
+
+/**
+ * ChaosAction enumerates the three disturbance types the Chaos Controller can inject.
+ * See: DEMO-004, TASK-034
+ */
+export type ChaosAction = 'kill-worker' | 'disconnect-db' | 'flood-queue'
+
+/**
+ * ChaosActivityEntry is a single timestamped entry in a Chaos Controller activity log.
+ * See: DEMO-004, TASK-034
+ */
+export interface ChaosActivityEntry {
+  timestamp: string
+  message: string
+  level: 'info' | 'warn' | 'error'
+}
+
+/**
+ * SystemHealthStatus reflects the current health of the NexusFlow system
+ * as reported by the Chaos Controller status indicator.
+ * See: DEMO-004, TASK-034
+ */
+export type SystemHealthStatus = 'nominal' | 'degraded' | 'critical'
