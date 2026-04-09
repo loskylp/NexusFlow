@@ -1,6 +1,6 @@
 # Project State
 **Manifest version:** v1 | **Profile:** Critical
-**Current phase:** EXECUTION -- Cycle 3 IN PROGRESS
+**Current phase:** EXECUTION -- Cycle 3 COMPLETE, Demo Sign-off gate
 **Current cycle:** 3
 **Last updated:** 2026-04-08
 
@@ -8,34 +8,32 @@
 
 ## Where We Are
 
-Cycle 3 COMPLETE -- all 31 v1.0.0 tasks verified PASS. Sentinel returned PASS WITH CONDITIONS (3 HIGH findings: SEC-001, SEC-002, SEC-003). Nexus reviewed findings and decided:
+Cycle 3 COMPLETE. All 31 v1.0.0 tasks verified PASS. All security remediations resolved:
 
-- **SEC-001 (default admin credentials):** DEFERRED to Cycle 4. Add password change endpoint + UI + mandatory first-login change. Not a Cycle 3 blocker.
-- **SEC-002 (Redis no auth):** ACCEPTED RISK. Redis is in a private cluster, test environment only. No action needed.
-- **SEC-003 (no rate limiting on login):** FIX NOW. After 3 failed login attempts, disable login for 1 minute. Must be fixed before Demo Sign-off.
+- **SEC-001 (default admin credentials):** DEFERRED to Cycle 4 (Nexus decision 2026-04-08). Password change endpoint + UI + mandatory first-login change planned.
+- **SEC-002 (Redis no auth):** ACCEPTED RISK (Nexus decision 2026-04-08). Private cluster, test environment only.
+- **SEC-003 (no rate limiting on login):** FIXED and verified PASS (2026-04-08). 7/7 ACs satisfied, 13 acceptance tests + 7 unit tests written.
 
-SEC-003 fix is being implemented as an inline security fix (not a new task -- it is a Sentinel-mandated remediation within the current cycle). Builder is being dispatched.
-
-**Next steps (sequential):**
+**All steps complete:**
 1. ~~Determine whether Scaffolder re-invocation is needed for Cycle 3~~ DONE
 2. ~~Route first Builder task (TASK-023: Pipeline Builder)~~ COMPLETE
 3. ~~Execute remaining Cycle 3 tasks in dependency-aware order~~ ALL 7 TASKS COMPLETE
 4. ~~Sentinel cycle-level security review~~ PASS WITH CONDITIONS (2026-04-08)
 5. ~~Nexus decision on SEC-001, SEC-002, SEC-003~~ DECIDED (2026-04-08)
 6. ~~Builder: SEC-003 rate limiting fix~~ COMPLETE (2026-04-08)
-7. **Verifier: SEC-003 verification** -- DISPATCHING NOW
-8. Demo Sign-off Briefing (Cycle 3)
+7. ~~Verifier: SEC-003 verification~~ PASS (2026-04-08)
+8. **Demo Sign-off Briefing (Cycle 3)** -- PRESENTING TO NEXUS NOW
 9. Go-Live gate for v1.0.0
 
-**Awaiting:** Verifier completion of SEC-003 verification.
+**Awaiting:** Nexus decision on Demo Sign-off -- Cycle 3.
 
 ## Active Work
 
-**Agent in control:** Verifier (SEC-003 rate limiting verification)
-**Current task:** Verify SEC-003 login rate limiting -- run go build, go vet, go test ./api/ -race, confirm 7/7 ACs PASS
-**Waiting for:** Verifier report
-**Blocker:** None -- SEC-003 verification is the only remaining item before Demo Sign-off
-**Total project progress:** 31 of 31 v1.0.0 tasks complete. SEC-003 fix in progress. SEC-001 deferred to Cycle 4. SEC-002 accepted risk.
+**Agent in control:** Orchestrator (presenting Demo Sign-off Briefing)
+**Current task:** Demo Sign-off gate -- Cycle 3
+**Waiting for:** Nexus approval
+**Blocker:** None -- all work complete, all security remediations resolved
+**Total project progress:** 31 of 31 v1.0.0 tasks complete. SEC-003 FIXED. SEC-001 deferred to Cycle 4. SEC-002 accepted risk.
 
 ---
 
@@ -118,7 +116,9 @@ SEC-003 fix is being implemented as an inline security fix (not a new task -- it
 | Demo Sign-off -- Cycle 1 | 2026-03-27 | APPROVED | 15 tasks verified PASS (14 original + TASK-008 planning correction). Sentinel PASS WITH CONDITIONS. Staging deployed. |
 | Demo Sign-off -- Cycle 2 | 2026-04-07 | APPROVED | 9/9 tasks verified PASS. Sentinel skipped by explicit Nexus decision. |
 | Sentinel -- Cycle 3 | 2026-04-08 | PASS WITH CONDITIONS | 3 HIGH findings. Nexus: SEC-001 deferred C4, SEC-002 accepted risk, SEC-003 fix now. |
-| Go-Live -- v1.0.0 | -- | -- | SEC-003 fix + Demo Sign-off required first |
+| SEC-003 Verification | 2026-04-08 | PASS | 7/7 ACs, 13 acceptance + 7 unit tests. Rate limiting active on POST /api/auth/login. |
+| Demo Sign-off -- Cycle 3 | -- | PENDING | Briefing presented to Nexus. Awaiting decision. |
+| Go-Live -- v1.0.0 | -- | -- | Demo Sign-off required first |
 
 ---
 
@@ -134,9 +134,9 @@ None. SEC-003 fix authorized by Nexus. Proceeding autonomously through Builder -
 |---|---|---|---|
 | SEC-001: Default admin credentials (admin/admin) | HIGH | DEFERRED to Cycle 4 | Add password change endpoint + UI + mandatory first-login change in Cycle 4 |
 | SEC-002: Redis no authentication | HIGH | ACCEPTED RISK | Redis is in private cluster, test environment only. No action. |
-| SEC-003: No rate limiting on login | HIGH | FIX NOW | After 3 failed attempts, disable login for 1 minute. Builder dispatched. |
-| SEC-004 through SEC-007 | MEDIUM | Not yet decided | Deferred to Demo Sign-off conversation |
-| SEC-014: npm audit vite/esbuild | MEDIUM | Not yet decided | Dev-only; deferred to Demo Sign-off conversation |
+| SEC-003: No rate limiting on login | HIGH | FIXED | Rate limiting implemented and verified PASS (2026-04-08). 7/7 ACs, 13 acceptance + 7 unit tests. |
+| SEC-004 through SEC-007 | MEDIUM | Pending Nexus decision | Deferred to Demo Sign-off conversation |
+| SEC-014: npm audit vite/esbuild | MEDIUM | Pending Nexus decision | Dev-only; deferred to Demo Sign-off conversation |
 
 ---
 
@@ -196,6 +196,20 @@ TASK-027 -- COMPLETE. Verifier PASS at iteration 2 (4/4 ACs). Iteration 1: 1 AC 
 | Average iterations to PASS | 1.11 (9 tasks: 8 at 1 iteration, 1 at 2 iterations) |
 | Tasks that hit max iterations | 0 |
 | Escalations to Nexus | 0 |
+| Gate rejections this cycle | 0 |
+| Backward cascade triggered | No |
+
+---
+
+## Process Metrics -- Cycle 3
+
+| Metric | Value |
+|---|---|
+| Tasks completed | 7 of 7 (+1 security remediation: SEC-003) |
+| Average iterations to PASS | 1.43 (7 tasks: 4 at 1 iteration, 3 at 2 iterations) |
+| Security remediations | SEC-003 fixed and verified (1 iteration) |
+| Tasks that hit max iterations | 0 |
+| Escalations to Nexus | 1 (Sentinel findings -- SEC-001/002/003 disposition) |
 | Gate rejections this cycle | 0 |
 | Backward cascade triggered | No |
 
@@ -271,6 +285,9 @@ TASK-027 -- COMPLETE. Verifier PASS at iteration 2 (4/4 ACs). Iteration 1: 1 AC 
 | OBS-027-1 | TASK-027 | `/api/pipelines/{id}/validate` in spec but not in server.go (forward-looking documentation) | Open -- harmless, no action needed |
 | OBS-027-2 | TASK-027 | Pre-existing TASK-023 unhandled error in vitest (already tracked as OBS-035-2) | Open -- duplicate of OBS-035-2 |
 | OBS-027-3 | TASK-027 | 11 Go unit tests in handlers_openapi_test.go not executed due to Docker infrastructure failure | Open -- verify via CI pipeline |
+| OBS-SEC003-1 | SEC-003 | No background sweep for stale rate limiter records; lazy eviction only | Open -- acceptable at single-instance scale |
+| OBS-SEC003-2 | SEC-003 | X-Forwarded-For not trusted; rate limiting uses r.RemoteAddr only | Open -- correct without reverse proxy middleware |
+| OBS-SEC003-3 | SEC-003 | checkLocked docstring says "without modifying state" but isLocked resets expired entries | Open -- minor docstring inaccuracy |
 
 ---
 
