@@ -15,11 +15,15 @@
  * All protected routes are wrapped in ProtectedRoute (redirects to /login when unauthenticated)
  * and Layout (sidebar + main content area).
  *
+ * Uses createBrowserRouter / RouterProvider (data router) to support hooks such as
+ * useBlocker that require a data router context. BrowserRouter + Routes does not
+ * provide this context and causes a runtime crash on pages that call useBlocker.
+ *
  * See: TASK-019
  */
 
 import React from 'react'
-import { BrowserRouter, Route, Routes, Navigate } from 'react-router-dom'
+import { createBrowserRouter, RouterProvider, Navigate } from 'react-router-dom'
 import { AuthProvider } from '@/context/AuthContext'
 import { useAuth } from '@/context/AuthContext'
 import ProtectedRoute from '@/components/ProtectedRoute'
@@ -43,90 +47,95 @@ function RootRedirect(): React.ReactElement {
   return <Navigate to={destination} replace />
 }
 
+/**
+ * router is the data router instance for the application. Defined at module scope
+ * so it is created once and stable across re-renders. createBrowserRouter provides
+ * the data router context required by hooks such as useBlocker.
+ */
+const router = createBrowserRouter([
+  // Public route
+  { path: '/login', element: <LoginPage /> },
+
+  // Protected routes — all wrapped with auth guard and sidebar layout
+  {
+    path: '/',
+    element: (
+      <ProtectedRoute>
+        <Layout>
+          <RootRedirect />
+        </Layout>
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: '/workers',
+    element: (
+      <ProtectedRoute>
+        <Layout>
+          <WorkerFleetDashboard />
+        </Layout>
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: '/tasks',
+    element: (
+      <ProtectedRoute>
+        <Layout>
+          <TaskFeedPage />
+        </Layout>
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: '/tasks/logs',
+    element: (
+      <ProtectedRoute>
+        <Layout>
+          <LogStreamerPage />
+        </Layout>
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: '/pipelines',
+    element: (
+      <ProtectedRoute>
+        <Layout>
+          <PipelineManagerPage />
+        </Layout>
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: '/demo/sink-inspector',
+    element: (
+      <ProtectedRoute>
+        <Layout>
+          <SinkInspectorPage />
+        </Layout>
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: '/demo/chaos',
+    element: (
+      <ProtectedRoute>
+        <Layout>
+          <ChaosControllerPage />
+        </Layout>
+      </ProtectedRoute>
+    ),
+  },
+
+  // 404
+  { path: '*', element: <NotFoundPage /> },
+])
+
 function App(): React.ReactElement {
   return (
     <AuthProvider>
-      <BrowserRouter>
-        <Routes>
-          {/* Public route */}
-          <Route path="/login" element={<LoginPage />} />
-
-          {/* Protected routes — all wrapped with auth guard and sidebar layout */}
-          <Route
-            path="/"
-            element={
-              <ProtectedRoute>
-                <Layout>
-                  <RootRedirect />
-                </Layout>
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/workers"
-            element={
-              <ProtectedRoute>
-                <Layout>
-                  <WorkerFleetDashboard />
-                </Layout>
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/tasks"
-            element={
-              <ProtectedRoute>
-                <Layout>
-                  <TaskFeedPage />
-                </Layout>
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/tasks/logs"
-            element={
-              <ProtectedRoute>
-                <Layout>
-                  <LogStreamerPage />
-                </Layout>
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/pipelines"
-            element={
-              <ProtectedRoute>
-                <Layout>
-                  <PipelineManagerPage />
-                </Layout>
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/demo/sink-inspector"
-            element={
-              <ProtectedRoute>
-                <Layout>
-                  <SinkInspectorPage />
-                </Layout>
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/demo/chaos"
-            element={
-              <ProtectedRoute>
-                <Layout>
-                  <ChaosControllerPage />
-                </Layout>
-              </ProtectedRoute>
-            }
-          />
-
-          {/* 404 */}
-          <Route path="*" element={<NotFoundPage />} />
-        </Routes>
-      </BrowserRouter>
+      <RouterProvider router={router} />
     </AuthProvider>
   )
 }
