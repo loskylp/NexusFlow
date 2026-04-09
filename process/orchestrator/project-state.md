@@ -1,30 +1,37 @@
 # Project State
 **Manifest version:** v1 | **Profile:** Critical
-**Current phase:** EXECUTION -- Cycles 4-5 remaining before Go-Live
-**Current cycle:** 3 (complete) -- Cycle 4 next
+**Current phase:** EXECUTION -- Cycle 4 in progress
+**Current cycle:** 4
 **Last updated:** 2026-04-09
 
 ---
 
 ## Where We Are
 
-**v1.0.0 is staging-complete, NOT released.** All 31 feature tasks across 3 cycles verified PASS. All three Demo Sign-offs approved. Staging environment is live at https://nexusflow.staging.nxlabs.cc. However, Go-Live requires a running production environment, and TASK-036 (production environment) is scheduled for Cycle 5. The Go-Live gate is PENDING -- it cannot be approved until production is provisioned and operational.
+**Cycle 4 execution starting.** Nexus chose Option A (original plan): Cycle 4 = demo infrastructure + SEC-001 remediation, Cycle 5 = production + load test. Methodologist retrospective skipped by Nexus (not requested). Scaffolder dispatched first (7 Builder tasks in cycle, threshold is 3).
+
+**Cycle 4 execution order (sequential, dependency-respecting):**
+1. TASK-030 -- MinIO Fake-S3 (unblocks TASK-032)
+2. TASK-033 -- Sink Before/After snapshot capture (unblocks TASK-032)
+3. TASK-031 -- Mock-Postgres with seed data
+4. TASK-032 -- Sink Inspector GUI (needs TASK-033 + TASK-030)
+5. TASK-034 -- Chaos Controller GUI
+6. SEC-001 -- Password change endpoint + UI + mandatory first-login change
+7. TASK-038 -- Fitness function instrumentation (best last, tests everything)
 
 Security posture:
-- **SEC-001 (default admin credentials):** DEFERRED to Cycle 4. Password change endpoint + UI + mandatory first-login change planned.
+- **SEC-001 (default admin credentials):** Scheduled for this cycle. Password change endpoint + UI + mandatory first-login change.
 - **SEC-002 (Redis no auth):** ACCEPTED RISK. Private cluster, single-org deployment.
 - **SEC-003 (no rate limiting on login):** FIXED and verified PASS (2026-04-08).
 - **MEDIUM findings (SEC-004 through SEC-007, SEC-014):** Accepted by Nexus at Demo Sign-off.
 
-**Next:** Determine cycle planning priority. Before starting Cycle 4, the Methodologist should be consulted per the Demo Sign-off protocol: "Is there anything you want to change for the next iteration?" Then the Nexus must decide whether to proceed with the original cycle plan or reprioritize.
-
 ## Active Work
 
-**Agent in control:** Orchestrator (awaiting Nexus direction)
-**Current task:** None -- awaiting Nexus decision on cycle priority
-**Waiting for:** Nexus decision on Cycle 4-5 sequencing
-**Blocker:** Go-Live blocked on TASK-036 (production environment, currently Cycle 5)
-**Total project progress:** 31 of 31 v1.0.0 feature tasks COMPLETE. 0 of 8 remaining tasks started. Go-Live PENDING.
+**Agent in control:** Scaffolder (dispatched 2026-04-09)
+**Current task:** Scaffold Cycle 4 -- generate stubs and wiring for 7 tasks
+**Waiting for:** Scaffolder completion signal
+**Blocker:** None
+**Total project progress:** 31 of 31 v1.0.0 feature tasks COMPLETE. 0 of 7 Cycle 4 tasks started. Go-Live PENDING (requires Cycle 5 TASK-036).
 
 ---
 
@@ -99,13 +106,29 @@ Security posture:
 | SEC-003 Verification | 2026-04-08 | PASS | 7/7 ACs, 13 acceptance + 7 unit tests. Rate limiting active on POST /api/auth/login. |
 | Demo Sign-off -- Cycle 3 | 2026-04-09 | APPROVED | 7/7 tasks + SEC-003 remediation verified PASS. MEDIUM findings accepted. Hotfix (App.tsx data router) deployed. Demo screenshots captured against live staging. |
 | Go-Live -- v1.0.0 | PENDING | BLOCKED | Requires TASK-036 (production environment). Production must be running before Go-Live can be approved. Premature approval on 2026-04-09 retracted by Nexus correction. |
+| Cycle 4-5 Sequencing | 2026-04-09 | Option A (original plan) | Cycle 4 = demo infrastructure + SEC-001; Cycle 5 = production + load test. Methodologist retrospective skipped. |
+
+---
+
+## Cycle 4 -- Task Status
+
+| Task | Description | Dependencies (all satisfied) | Priority | Status |
+|---|---|---|---|---|
+| TASK-030 | MinIO Fake-S3 | TASK-007, TASK-018 | P1 MM | PENDING |
+| TASK-033 | Sink Before/After snapshot capture | TASK-018, TASK-015 | P1 MM | PENDING |
+| TASK-031 | Mock-Postgres with seed data | TASK-007, TASK-018 | P1 MM | PENDING |
+| TASK-032 | Sink Inspector GUI | TASK-019, TASK-015, TASK-033, TASK-030 | P1 MM | PENDING |
+| TASK-034 | Chaos Controller GUI | TASK-019, TASK-020, TASK-021, TASK-009 | P1 HM | PENDING |
+| SEC-001 | Password change + mandatory first-login | TASK-003, TASK-017 | SECURITY | PENDING |
+| TASK-038 | Fitness function instrumentation | TASK-001, TASK-004, TASK-007, TASK-009, TASK-018 | P2 LM | PENDING |
+
+**Scaffolder:** DISPATCHED (2026-04-09) -- generating stubs for all 7 tasks before Builder execution begins.
 
 ---
 
 ## Pending Decisions
 
-1. **Cycle 4-5 sequencing:** Should the project proceed with the original plan (Cycle 4 = demo infrastructure, Cycle 5 = production + load test + fitness gate), or should TASK-036 (production environment) be pulled forward to unblock Go-Live sooner?
-2. **Methodologist retrospective:** Per Demo Sign-off protocol, the Methodologist should be asked: "Is there anything you want to change for the next iteration?"
+NONE -- Nexus approved Option A (original plan) for Cycle 4-5 sequencing. Methodologist retrospective not requested.
 
 ---
 
@@ -245,3 +268,4 @@ Security posture:
 | MEDIUM findings (SEC-004-007, SEC-014) | 2026-04-09 | ACCEPTED at Demo Sign-off. No action required. |
 | Demo Sign-off -- Cycle 3 | 2026-04-09 | APPROVED. All Cycle 3 work + SEC-003 remediation verified. Hotfix deployed. |
 | Go-Live -- v1.0.0 | 2026-04-09 | RETRACTED. Premature -- production environment (TASK-036) not yet delivered. Go-Live reverted to PENDING. |
+| Cycle 4-5 sequencing | 2026-04-09 | Option A (original plan). Cycle 4 = demo infrastructure + SEC-001. Cycle 5 = production + load test. Methodologist retrospective not requested. |
