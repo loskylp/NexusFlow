@@ -2,11 +2,12 @@
 // HTTP router: chi (lightweight, idiomatic Go routing).
 // All routes are mounted under /api. The web frontend is served separately by nginx.
 // Auth middleware (ADR-006) is applied to all routes except POST /api/auth/login and GET /api/health.
-// See: ADR-004, ADR-006, ADR-007, TASK-003, TASK-005, TASK-013, TASK-015, TASK-025
+// See: ADR-004, ADR-006, ADR-007, TASK-003, TASK-005, TASK-013, TASK-015, TASK-025, SEC-003
 package api
 
 import (
 	"net/http"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
@@ -95,7 +96,7 @@ func NewServer(
 //
 // Route map:
 //
-//	POST   /api/auth/login             — AuthHandler.Login       (TASK-003) — public
+//	POST   /api/auth/login             — AuthHandler.Login       (TASK-003, SEC-003) — public, rate-limited
 //	POST   /api/auth/logout            — AuthHandler.Logout      (TASK-003) — authenticated
 //	GET    /api/health                 — HealthHandler.Health    (TASK-001) — public
 //	GET    /api/openapi.json           — OpenAPIHandler.ServeSpec (TASK-027) — public
@@ -133,8 +134,10 @@ func (s *Server) Handler() http.Handler {
 	r.Get("/api/openapi.json", openAPIH.ServeSpec)
 
 	// Login is public — no auth middleware.
+	// Rate limiter (SEC-003): lock out an IP for 1 minute after 3 failed attempts.
 	authH := &AuthHandler{server: s}
-	r.Post("/api/auth/login", authH.Login)
+	loginRL := NewLoginRateLimiter(3, 60*time.Second)
+	r.Post("/api/auth/login", loginRL.Middleware(authH.Login))
 
 	// All routes below require a valid session token (ADR-006).
 	// The group applies auth.Middleware to every route registered within it.
