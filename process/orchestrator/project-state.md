@@ -22,19 +22,19 @@ SEC-003 fix is being implemented as an inline security fix (not a new task -- it
 3. ~~Execute remaining Cycle 3 tasks in dependency-aware order~~ ALL 7 TASKS COMPLETE
 4. ~~Sentinel cycle-level security review~~ PASS WITH CONDITIONS (2026-04-08)
 5. ~~Nexus decision on SEC-001, SEC-002, SEC-003~~ DECIDED (2026-04-08)
-6. **Builder: SEC-003 rate limiting fix** -- DISPATCHING NOW
-7. Verifier: SEC-003 verification
+6. ~~Builder: SEC-003 rate limiting fix~~ COMPLETE (2026-04-08)
+7. **Verifier: SEC-003 verification** -- DISPATCHING NOW
 8. Demo Sign-off Briefing (Cycle 3)
 9. Go-Live gate for v1.0.0
 
-**Awaiting:** Builder completion of SEC-003 rate limiting fix.
+**Awaiting:** Verifier completion of SEC-003 verification.
 
 ## Active Work
 
-**Agent in control:** Builder (SEC-003 rate limiting fix)
-**Current task:** Implement login rate limiting -- after 3 failed attempts from the same IP, disable login for 1 minute
-**Waiting for:** Builder handoff
-**Blocker:** None -- SEC-003 is the only remaining item before Demo Sign-off
+**Agent in control:** Verifier (SEC-003 rate limiting verification)
+**Current task:** Verify SEC-003 login rate limiting -- run go build, go vet, go test ./api/ -race, confirm 7/7 ACs PASS
+**Waiting for:** Verifier report
+**Blocker:** None -- SEC-003 verification is the only remaining item before Demo Sign-off
 **Total project progress:** 31 of 31 v1.0.0 tasks complete. SEC-003 fix in progress. SEC-001 deferred to Cycle 4. SEC-002 accepted risk.
 
 ---
