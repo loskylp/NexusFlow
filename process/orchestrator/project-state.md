@@ -1,30 +1,30 @@
 # Project State
 **Manifest version:** v1 | **Profile:** Critical
-**Current phase:** v1.0.0 RELEASED
-**Current cycle:** 3 (complete) -- v1.1.0 Cycle 4 next
+**Current phase:** EXECUTION -- Cycles 4-5 remaining before Go-Live
+**Current cycle:** 3 (complete) -- Cycle 4 next
 **Last updated:** 2026-04-09
 
 ---
 
 ## Where We Are
 
-**v1.0.0 is RELEASED.** All 31 tasks across 3 cycles verified PASS. All three Demo Sign-offs approved. Go-Live gate approved by Nexus on 2026-04-09. Staging environment at https://nexusflow.staging.nxlabs.cc serves as the v1.0.0 production deployment.
+**v1.0.0 is staging-complete, NOT released.** All 31 feature tasks across 3 cycles verified PASS. All three Demo Sign-offs approved. Staging environment is live at https://nexusflow.staging.nxlabs.cc. However, Go-Live requires a running production environment, and TASK-036 (production environment) is scheduled for Cycle 5. The Go-Live gate is PENDING -- it cannot be approved until production is provisioned and operational.
 
-Security posture at release:
+Security posture:
 - **SEC-001 (default admin credentials):** DEFERRED to Cycle 4. Password change endpoint + UI + mandatory first-login change planned.
 - **SEC-002 (Redis no auth):** ACCEPTED RISK. Private cluster, single-org deployment.
 - **SEC-003 (no rate limiting on login):** FIXED and verified PASS (2026-04-08).
 - **MEDIUM findings (SEC-004 through SEC-007, SEC-014):** Accepted by Nexus at Demo Sign-off.
 
-**Next:** v1.1.0 planning. 8 tasks across Cycles 4-5 (demo infrastructure + production deployment). Before starting Cycle 4, the Methodologist should be consulted per the Demo Sign-off protocol: "Is there anything you want to change for the next iteration?"
+**Next:** Determine cycle planning priority. Before starting Cycle 4, the Methodologist should be consulted per the Demo Sign-off protocol: "Is there anything you want to change for the next iteration?" Then the Nexus must decide whether to proceed with the original cycle plan or reprioritize.
 
 ## Active Work
 
-**Agent in control:** Orchestrator (post-release checkpoint)
-**Current task:** None -- v1.0.0 released, awaiting Nexus direction for v1.1.0
-**Waiting for:** Nexus to confirm readiness to begin v1.1.0 Cycle 4
-**Blocker:** None
-**Total project progress:** 31 of 31 v1.0.0 tasks COMPLETE. 0 of 8 v1.1.0 tasks started.
+**Agent in control:** Orchestrator (awaiting Nexus direction)
+**Current task:** None -- awaiting Nexus decision on cycle priority
+**Waiting for:** Nexus decision on Cycle 4-5 sequencing
+**Blocker:** Go-Live blocked on TASK-036 (production environment, currently Cycle 5)
+**Total project progress:** 31 of 31 v1.0.0 feature tasks COMPLETE. 0 of 8 remaining tasks started. Go-Live PENDING.
 
 ---
 
@@ -98,13 +98,14 @@ Security posture at release:
 | Sentinel -- Cycle 3 | 2026-04-08 | PASS WITH CONDITIONS | 3 HIGH findings. Nexus: SEC-001 deferred C4, SEC-002 accepted risk, SEC-003 fix now. |
 | SEC-003 Verification | 2026-04-08 | PASS | 7/7 ACs, 13 acceptance + 7 unit tests. Rate limiting active on POST /api/auth/login. |
 | Demo Sign-off -- Cycle 3 | 2026-04-09 | APPROVED | 7/7 tasks + SEC-003 remediation verified PASS. MEDIUM findings accepted. Hotfix (App.tsx data router) deployed. Demo screenshots captured against live staging. |
-| Go-Live -- v1.0.0 | 2026-04-09 | APPROVED | Nexus directed Go-Live. 31/31 v1.0.0 tasks complete. Staging serves as v1.0.0 production. Release tag: release/v1.0. |
+| Go-Live -- v1.0.0 | PENDING | BLOCKED | Requires TASK-036 (production environment). Production must be running before Go-Live can be approved. Premature approval on 2026-04-09 retracted by Nexus correction. |
 
 ---
 
 ## Pending Decisions
 
-None. v1.0.0 released. Next decision point: Nexus readiness to begin v1.1.0 Cycle 4.
+1. **Cycle 4-5 sequencing:** Should the project proceed with the original plan (Cycle 4 = demo infrastructure, Cycle 5 = production + load test + fitness gate), or should TASK-036 (production environment) be pulled forward to unblock Go-Live sooner?
+2. **Methodologist retrospective:** Per Demo Sign-off protocol, the Methodologist should be asked: "Is there anything you want to change for the next iteration?"
 
 ---
 
@@ -120,9 +121,9 @@ None. v1.0.0 released. Next decision point: Nexus readiness to begin v1.1.0 Cycl
 
 ---
 
-## v1.1.0 Roadmap
+## Remaining Roadmap (Cycles 4-5)
 
-**Cycles 4-5, 8 tasks:**
+**8 tasks remaining before Go-Live is possible:**
 
 | Cycle | Tasks | Scope |
 |---|---|---|
@@ -130,6 +131,8 @@ None. v1.0.0 released. Next decision point: Nexus readiness to begin v1.1.0 Cycl
 | 5 | TASK-036, TASK-037, TASK-038 | Production deployment, throughput load test, fitness function CI gate |
 
 **Carried security item:** SEC-001 remediation (password change + mandatory first-login) in Cycle 4.
+
+**Go-Live blocker:** TASK-036 (production environment) must deliver a running production instance before Go-Live can be gated.
 
 ---
 
@@ -241,4 +244,4 @@ None. v1.0.0 released. Next decision point: Nexus readiness to begin v1.1.0 Cycl
 | Sentinel Cycle 3 findings | 2026-04-08 | SEC-001 DEFERRED C4, SEC-002 ACCEPTED RISK, SEC-003 FIX NOW. Builder dispatched for rate limiting. |
 | MEDIUM findings (SEC-004-007, SEC-014) | 2026-04-09 | ACCEPTED at Demo Sign-off. No action required. |
 | Demo Sign-off -- Cycle 3 | 2026-04-09 | APPROVED. All Cycle 3 work + SEC-003 remediation verified. Hotfix deployed. |
-| Go-Live -- v1.0.0 | 2026-04-09 | APPROVED. Nexus directed Go-Live. Staging serves as v1.0.0 production. |
+| Go-Live -- v1.0.0 | 2026-04-09 | RETRACTED. Premature -- production environment (TASK-036) not yet delivered. Go-Live reverted to PENDING. |

@@ -39,5 +39,11 @@
 ## GATE-007 -- 2026-04-09
 **From:** Nexus | **Type:** Go-Live approval -- v1.0.0
 **Description:** Nexus directed "Go live" for v1.0.0. All 31 v1.0.0 tasks verified PASS across 3 cycles. Three Demo Sign-offs approved. Security posture: SEC-003 fixed, SEC-001 deferred to Cycle 4, SEC-002 accepted risk, MEDIUM findings accepted. Staging environment live at nexusflow.staging.nxlabs.cc with all code deployed.
-**Decision:** Go-Live APPROVED. v1.0.0 released against staging environment. Release tag release/v1.0 to be created. Production environment (separate) deferred to TASK-036 in v1.1.0 Cycle 5.
-**Outcome:** v1.0.0 RELEASED. Project transitions to v1.1.0 planning phase. Next action: Methodologist retrospective question, then Cycle 4 execution.
+**Decision:** Go-Live APPROVED (premature).
+**Outcome:** RETRACTED by Nexus correction on 2026-04-09. Go-Live requires a running production environment; TASK-036 (production environment) is in Cycle 5 and has not been delivered. v1.0.0 is staging-complete, not released. Go-Live gate reverted to PENDING, blocked on TASK-036.
+
+## ESC-006 -- 2026-04-09
+**From:** Nexus | **Type:** Gate correction -- Go-Live retracted
+**Description:** The Nexus clarified that v1.0.0 is NOT released. A release requires production running, and TASK-036 (production environment) is scheduled for Cycle 5. The Go-Live gate recorded in GATE-007 was premature. Corrections applied: (1) Go-Live gate reverted to PENDING in Nexus Gate Log, (2) project phase corrected from "v1.0.0 RELEASED" to "EXECUTION -- Cycles 4-5 remaining before Go-Live", (3) GATE-007 outcome updated to RETRACTED.
+**Decision:** Corrections applied to project-state.md and escalation-log.md. Nexus decision requested on Cycle 4-5 sequencing priority.
+**Outcome:** Pending -- awaiting Nexus decision on cycle sequencing.
