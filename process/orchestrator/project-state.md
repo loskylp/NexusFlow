@@ -2,7 +2,7 @@
 **Manifest version:** v1 | **Profile:** Critical
 **Current phase:** EXECUTION -- Cycle 4 in progress
 **Current cycle:** 4
-**Last updated:** 2026-04-15
+**Last updated:** 2026-04-15 (TASK-030 PASS; Builder dispatched for REG-030-1/2/3 CI regression fixes)
 
 ---
 
@@ -27,11 +27,15 @@ Security posture:
 
 ## Active Work
 
-**Agent in control:** Verifier (dispatched 2026-04-15 for TASK-030 initial verification)
-**Current task:** TASK-030 -- MinIO Fake-S3 connector (DataSource + Sink)
-**Waiting for:** Verifier to run acceptance scenarios + demo script against live MinIO container and produce Verification Report.
-**Builder handoff:** Wiring fix complete. `cmd/worker/main.go` now calls `registerMinIOConnectors(reg)`; `worker/minio_client.go` provides `MinioClientAdapter` over minio-go/v7 v7.0.91; `go build ./cmd/worker/` compiles; 9/9 `TestMinIO*` unit tests PASS. No unit tests added for the adapter (I/O wrapper -- integration-only).
-**Total project progress:** 31 of 31 v1.0.0 feature tasks COMPLETE. 1 of 7 Cycle 4 tasks in verification. Go-Live PENDING (requires Cycle 5 TASK-036).
+**Agent in control:** Builder (dispatched 2026-04-15 for REG-030-1/2/3 CI regression fixes)
+**Current task:** REG-030-1/2/3 -- Cycle 4 scaffold CI regressions (pre-existing; outside TASK-030 scope)
+**Waiting for:** Builder to apply three mechanical fixes restoring CI green before TASK-033 dispatch.
+**TASK-030 status:** VERIFIER PASS (2026-04-15) -- all 4 ACs PASS, 9 unit + 7 integration + 12 acceptance + 4 system tests. Report: `process/verifier/verification-reports/TASK-030-verification.md`. CI failures on this commit are pre-existing regressions from the Cycle 4 scaffold (66c4bf0), not TASK-030 code.
+**Regression scope:**
+- REG-030-1: `api/handlers_auth_test.go` -- `stubUserRepo` missing `ChangePassword` method (interface widened by SEC-001 scaffold)
+- REG-030-2: 7 web test files -- User mock fixtures missing `mustChangePassword: false` field (added by SEC-001 scaffold to `web/src/types/domain.ts`)
+- REG-030-3: 4 web stub files (`ChangePasswordPage.tsx`, `ChaosControllerPage.tsx`, `SinkInspectorPage.tsx`, `useSinkInspector.ts`) -- unused destructured variables flagged under `noUnusedLocals`
+**Total project progress:** 31 of 31 v1.0.0 feature tasks COMPLETE. 1 of 7 Cycle 4 tasks verified PASS (TASK-030). Go-Live PENDING (requires Cycle 5 TASK-036).
 
 ---
 
@@ -114,7 +118,8 @@ Security posture:
 
 | Task | Description | Dependencies (all satisfied) | Priority | Status |
 |---|---|---|---|---|
-| TASK-030 | MinIO Fake-S3 | TASK-007, TASK-018 | P1 MM | VERIFIER (dispatched 2026-04-15, initial verification; wiring fix applied, 9/9 unit tests PASS) |
+| TASK-030 | MinIO Fake-S3 | TASK-007, TASK-018 | P1 MM | COMPLETE (Verifier PASS, iteration 1, 2026-04-15; 9 unit + 7 integration + 12 acceptance + 4 system tests) |
+| REG-030 | Cycle 4 scaffold CI regression fixes (REG-030-1/2/3) | None | BLOCKER (CI green) | BUILDER (dispatched 2026-04-15) |
 | TASK-033 | Sink Before/After snapshot capture | TASK-018, TASK-015 | P1 MM | PENDING |
 | TASK-031 | Mock-Postgres with seed data | TASK-007, TASK-018 | P1 MM | PENDING |
 | TASK-032 | Sink Inspector GUI | TASK-019, TASK-015, TASK-033, TASK-030 | P1 MM | PENDING |
@@ -122,9 +127,9 @@ Security posture:
 | SEC-001 | Password change + mandatory first-login | TASK-003, TASK-017 | SECURITY | PENDING |
 | TASK-038 | Fitness function instrumentation | TASK-001, TASK-004, TASK-007, TASK-009, TASK-018 | P2 LM | PENDING |
 
-**Scaffolder:** COMPLETE (2026-04-09) -- committed as 66c4bf0. All 7 tasks scaffolded.
-**Builder:** TASK-030 COMPLETE (2026-04-15) -- connector code + wiring fix. MinioClientAdapter added; cmd/worker/main.go calls registerMinIOConnectors(reg); 9/9 unit tests PASS; go build clean. Handoff: `process/builder/handoff-notes/TASK-030-wiring-handoff.md`.
-**Verifier:** TASK-030 DISPATCHED 2026-04-15 -- initial verification.
+**Scaffolder:** COMPLETE (2026-04-09) -- committed as 66c4bf0. All 7 tasks scaffolded. Scaffold introduced three pre-existing CI regressions (REG-030-1/2/3) now being remediated by Builder.
+**Builder:** TASK-030 COMPLETE (2026-04-15). REG-030 DISPATCHED 2026-04-15 -- three mechanical fixes to restore CI green.
+**Verifier:** TASK-030 PASS (2026-04-15) -- all 4 ACs PASS, 3 CI regressions escalated (REG-030-1/2/3), outside TASK-030 scope.
 
 ---
 
