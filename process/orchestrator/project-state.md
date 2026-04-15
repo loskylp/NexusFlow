@@ -2,7 +2,7 @@
 **Manifest version:** v1 | **Profile:** Critical
 **Current phase:** EXECUTION -- Cycle 4 in progress
 **Current cycle:** 4
-**Last updated:** 2026-04-09
+**Last updated:** 2026-04-15
 
 ---
 
@@ -27,10 +27,10 @@ Security posture:
 
 ## Active Work
 
-**Agent in control:** Verifier (dispatched 2026-04-09)
-**Current task:** TASK-030 -- MinIO Fake-S3 connector (DataSource + Sink)
-**Waiting for:** Verifier initial verification
-**Blocker:** None
+**Agent in control:** Builder (re-dispatched 2026-04-15 for wiring fix)
+**Current task:** TASK-030 -- MinIO Fake-S3 connector (DataSource + Sink) -- wiring fix
+**Waiting for:** Builder to wire RegisterMinIOConnectors into cmd/worker/main.go
+**Blocker:** Builder nil-wiring pattern detected pre-Verifier. RegisterMinIOConnectors is defined in worker/connector_minio.go but never called from cmd/worker/main.go. Worker has no "minio" connector type at runtime. Docker-compose + env vars already wired; Go-side registration is the only gap.
 **Total project progress:** 31 of 31 v1.0.0 feature tasks COMPLETE. 1 of 7 Cycle 4 tasks in verification. Go-Live PENDING (requires Cycle 5 TASK-036).
 
 ---
@@ -114,7 +114,7 @@ Security posture:
 
 | Task | Description | Dependencies (all satisfied) | Priority | Status |
 |---|---|---|---|---|
-| TASK-030 | MinIO Fake-S3 | TASK-007, TASK-018 | P1 MM | VERIFYING (iteration 1, dispatched 2026-04-09) |
+| TASK-030 | MinIO Fake-S3 | TASK-007, TASK-018 | P1 MM | BUILDER WIRING FIX (pre-Verifier check caught nil-wiring; re-dispatched 2026-04-15) |
 | TASK-033 | Sink Before/After snapshot capture | TASK-018, TASK-015 | P1 MM | PENDING |
 | TASK-031 | Mock-Postgres with seed data | TASK-007, TASK-018 | P1 MM | PENDING |
 | TASK-032 | Sink Inspector GUI | TASK-019, TASK-015, TASK-033, TASK-030 | P1 MM | PENDING |
@@ -123,8 +123,8 @@ Security posture:
 | TASK-038 | Fitness function instrumentation | TASK-001, TASK-004, TASK-007, TASK-009, TASK-018 | P2 LM | PENDING |
 
 **Scaffolder:** COMPLETE (2026-04-09) -- committed as 66c4bf0. All 7 tasks scaffolded.
-**Builder:** TASK-030 complete (2026-04-09) -- 9 unit tests, full connector implementation.
-**Verifier:** TASK-030 dispatched for initial verification (2026-04-09).
+**Builder:** TASK-030 first pass complete (2026-04-09) -- 9 unit tests, connector code. Wiring fix re-dispatched 2026-04-15 (RegisterMinIOConnectors not called from cmd/worker/main.go).
+**Verifier:** TASK-030 dispatch HELD pending Builder wiring fix.
 
 ---
 
