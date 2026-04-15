@@ -1,14 +1,14 @@
 # Project State
 **Manifest version:** v1 | **Profile:** Critical
-**Current phase:** EXECUTION -- Cycle 4 execution COMPLETE; Sentinel Cycle 4 security review dispatched
+**Current phase:** EXECUTION -- Cycle 4 Sentinel review COMPLETE; Nexus accepted all findings as demo-scope; Demo Sign-off Briefing assembled
 **Current cycle:** 4
-**Last updated:** 2026-04-15 (TASK-038 Verifier PASS iteration 2 -- all 4 ACs, CI run 24474903030 green, FAIL-001 closed; Cycle 4 execution 7/7 complete; Sentinel dispatched for cycle security review)
+**Last updated:** 2026-04-15 (Nexus dispositioned Cycle 4 Sentinel findings: SEC-018 + SEC-019 ACCEPTED as demo-scope with Cycle 5 / TASK-036 remediation commitment; SEC-020/021/022/023/024/025/026 ACCEPTED as previously categorized; Demo Sign-off Briefing assembled at process/orchestrator/demo-signoff-briefing-cycle-4.md)
 
 ---
 
 ## Where We Are
 
-**Cycle 4 execution COMPLETE.** All 7 tasks verified PASS (TASK-030, TASK-033, TASK-031, TASK-032, TASK-034, SEC-001, TASK-038). Sentinel Cycle 4 security review dispatched per Manifest; Sentinel report will be collected into the Demo Sign-off Briefing along with cycle observations.
+**Cycle 4 Sentinel review COMPLETE; Demo Sign-off Briefing assembled and awaiting Nexus decision.** All 7 tasks verified PASS. Sentinel delivered PASS WITH CONDITIONS (2026-04-15): SEC-001 CLOSED; 2 new HIGH findings (SEC-018 Docker socket, SEC-019 change-password rate limit) + 1 MEDIUM (SEC-020 SQL Sprintf) + 1 MEDIUM (SEC-021 default demo creds) + 3 LOW/INFO. **Nexus decision 2026-04-15:** SEC-018 and SEC-019 ACCEPTED as demo-scope risk, both remediated in Cycle 5 / TASK-036; SEC-020/021/022/023/024/025/026 ACCEPTED as previously categorized. No blocking findings remain.
 
 **Cycle 4 execution order (sequential, dependency-respecting):**
 1. TASK-030 -- MinIO Fake-S3 -- COMPLETE
@@ -27,9 +27,9 @@ Security posture:
 
 ## Active Work
 
-**Agent in control:** Sentinel (dispatched 2026-04-15 for Cycle 4 security review)
-**Current task:** Cycle 4 cycle-level security review -- audit of all Cycle 4 deliverables (TASK-030, TASK-033, TASK-031, TASK-032, TASK-034, SEC-001, TASK-038)
-**Waiting for:** Sentinel Security Report for Cycle 4. Report will be included in Demo Sign-off Briefing. Blocking findings (Critical/High unresolved) would prevent Demo Sign-off.
+**Agent in control:** Orchestrator (assembling Demo Sign-off Briefing)
+**Current task:** Demo Sign-off Briefing for Cycle 4 assembled; awaiting Nexus sign-off decision.
+**Waiting for:** Nexus Demo Sign-off for Cycle 4. Upon APPROVE, route to Methodologist for optional retrospective, then begin Cycle 5 planning (TASK-036 production environment with SEC-018 + SEC-019 remediation bundled, TASK-037 throughput load test, TASK-039 fitness function CI gate).
 **TASK-038 status:** COMPLETE (Verifier PASS iteration 2, 2026-04-15; all 4 ACs, CI green run 24474903030, commit 5a6f519; FAIL-001 closed -- FF-003 full implementation + 10 t.Skip stubs with documented skip reasons; AC-1 1:1 coverage satisfied).
 **SEC-001 status:** COMPLETE (Verifier PASS iteration 1, 2026-04-15; all 7 backend + 9 frontend ACs, CI green run 24466108551, commit 6111d75).
 **TASK-034 status:** COMPLETE (Verifier PASS iteration 2, 2026-04-15; all 6 ACs, CI green run 24464513140, commit 8bc0edf).
@@ -114,8 +114,8 @@ Security posture:
 | Demo Sign-off -- Cycle 3 | 2026-04-09 | APPROVED | 7/7 tasks + SEC-003 remediation verified PASS. MEDIUM findings accepted. Hotfix (App.tsx data router) deployed. Demo screenshots captured against live staging. |
 | Go-Live -- v1.0.0 | PENDING | BLOCKED | Requires TASK-036 (production environment). Production must be running before Go-Live can be approved. Premature approval on 2026-04-09 retracted by Nexus correction. |
 | Cycle 4-5 Sequencing | 2026-04-09 | Option A (original plan) | Cycle 4 = demo infrastructure + SEC-001; Cycle 5 = production + load test. Methodologist retrospective skipped. |
-| Sentinel -- Cycle 4 | PENDING | IN PROGRESS | Dispatched 2026-04-15 after all 7 tasks verified PASS. |
-| Demo Sign-off -- Cycle 4 | PENDING | -- | Awaits Sentinel report. |
+| Sentinel -- Cycle 4 | 2026-04-15 | PASS WITH CONDITIONS | SEC-001 CLOSED. 2 new HIGH (SEC-018, SEC-019), 2 MEDIUM (SEC-020, SEC-021), 3 LOW/INFO. Nexus dispositioned: SEC-018 + SEC-019 ACCEPTED as demo-scope, remediated in Cycle 5 / TASK-036; all others ACCEPTED as previously categorized. |
+| Demo Sign-off -- Cycle 4 | PENDING | -- | Briefing assembled; no blocking findings. |
 
 ---
 
@@ -141,7 +141,29 @@ Security posture:
 
 ## Pending Decisions
 
-NONE -- Sentinel Cycle 4 review in progress; Demo Sign-off Briefing will follow on Sentinel completion.
+**ONE** -- Nexus Demo Sign-off decision for Cycle 4 (APPROVE / RETURN). Briefing assembled at `process/orchestrator/demo-signoff-briefing-cycle-4.md`. No blocking security findings; all Cycle 4 Sentinel findings dispositioned by Nexus 2026-04-15.
+
+---
+
+## Sentinel Findings -- Nexus Decisions (Cycle 4)
+
+| Finding | Severity | Nexus Decision (2026-04-15) | Action |
+|---|---|---|---|
+| SEC-001: Default admin credentials | HIGH (C3) | CLOSED | Password change + mandatory first-login verified PASS (commit 6111d75). Go-Live blocker cleared. |
+| SEC-018: API container mounts host Docker socket | HIGH (NEW) | ACCEPTED as demo-scope | Remediate in Cycle 5 / TASK-036: socket mount REMOVED from production compose; move under demo-profile override. |
+| SEC-019: No rate limiting on POST /api/auth/change-password | HIGH (NEW) | ACCEPTED as demo-scope | Remediate in Cycle 5 / TASK-036: add per-user rate limiter reusing SEC-003 rate-limiter infrastructure. |
+| SEC-020: SQL composition via fmt.Sprintf in PostgreSQL connector | MEDIUM | ACCEPTED as previously categorized | Demo-scope blast radius (demo-postgres only); no action before production. Recommend identifier regex validation if connector generalised. |
+| SEC-021: Default demo credentials (minioadmin, demo/demo) | MEDIUM | ACCEPTED as previously categorized | Consistent with SEC-002 treatment. Demo profile only. |
+| SEC-022: FloodQueue amplifies admin compromise | LOW | ACCEPTED | Admin-only, demo-scope. |
+| SEC-023: DisconnectDatabase targets production-path postgres | LOW | ACCEPTED | Documented chaos behaviour in demo profile. |
+| SEC-024: SQL identifier interpolation via record map keys | INFO | ACCEPTED | Subset of SEC-020. |
+| SEC-025: MinIO client default Secure=false | INFO | ACCEPTED | Internal Docker network only. |
+| SEC-026: Chaos activity logs leak infrastructure detail | INFO | ACCEPTED | Admin-only surface. |
+
+**Cycle 5 follow-up commitments (bundled into TASK-036 Production Hardening):**
+- Remove host Docker socket mount from `docker-compose.yml` base `api:` service; scope to demo-profile override only (SEC-018).
+- Add per-user rate limiter to `POST /api/auth/change-password` reusing the SEC-003 rate-limiter infrastructure (SEC-019).
+- Optional hardening: container-name allowlist for chaos endpoints; WARN-level logging on change-password 401s.
 
 ---
 
@@ -165,7 +187,7 @@ NONE -- Sentinel Cycle 4 review in progress; Demo Sign-off Briefing will follow 
 |---|---|---|
 | 5 | TASK-036, TASK-037, TASK-039 | Production deployment, throughput load test, fitness function CI gate |
 
-**Go-Live blocker:** TASK-036 (production environment) must deliver a running production instance before Go-Live can be gated.
+**Go-Live blocker:** TASK-036 (production environment) must deliver a running production instance before Go-Live can be gated. TASK-036 scope now includes SEC-018 (remove Docker socket mount from production) and SEC-019 (add rate limiter to change-password) per Nexus disposition 2026-04-15.
 
 ---
 
