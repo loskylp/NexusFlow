@@ -2,7 +2,7 @@
 **Manifest version:** v1 | **Profile:** Critical
 **Current phase:** EXECUTION -- Cycle 4 in progress
 **Current cycle:** 4
-**Last updated:** 2026-04-15 (REG-030 Verifier PARTIAL -- REG-030-1/2/3 fixed, REG-030-4 discovered: 11 staticcheck U1000 violations in scaffold stubs; Builder dispatched iteration 2)
+**Last updated:** 2026-04-15 (REG-030-4 Builder COMPLETE at commit e8b68cf -- //lint:ignore U1000 applied across scaffold stubs; local checks all green; Verifier dispatched in regression-confirmation mode)
 
 ---
 
@@ -27,10 +27,10 @@ Security posture:
 
 ## Active Work
 
-**Agent in control:** Builder (dispatched 2026-04-15, iteration 2, for REG-030-4 staticcheck U1000 suppressions)
-**Current task:** REG-030-4 -- Add //nolint:U1000 suppressions to 11 scaffold stub declarations across 4 files
-**Waiting for:** Builder to apply inline `//nolint:U1000 // scaffold placeholder for <TASK-NNN>` suppressions, push, then re-dispatch Verifier in regression-confirmation mode.
-**Builder local verification (809e299):** go vet/build/test clean, web typecheck clean, 574 web tests pass.
+**Agent in control:** Verifier (dispatched 2026-04-15, regression-confirmation mode, for REG-030-4 at commit e8b68cf)
+**Current task:** REG-030-4 -- Confirm staticcheck U1000 suppressions resolve CI regression; no new tests required
+**Waiting for:** Verifier to run CI equivalents (go vet/build/test, staticcheck, web typecheck) and confirm PASS on commit e8b68cf.
+**Builder local verification (e8b68cf):** go vet/build/test clean, staticcheck 0 violations (native format `//lint:ignore U1000` used since CI runs staticcheck standalone, not via golangci-lint), web typecheck clean.
 **TASK-030 status:** VERIFIER PASS (2026-04-15) -- all 4 ACs PASS, 9 unit + 7 integration + 12 acceptance + 4 system tests. Report: `process/verifier/verification-reports/TASK-030-verification.md`. CI failures on this commit are pre-existing regressions from the Cycle 4 scaffold (66c4bf0), not TASK-030 code.
 **Regression scope:**
 - REG-030-1: `api/handlers_auth_test.go` -- `stubUserRepo` missing `ChangePassword` method (FIXED 809e299, Verifier PASS)
@@ -125,7 +125,7 @@ Security posture:
 | Task | Description | Dependencies (all satisfied) | Priority | Status |
 |---|---|---|---|---|
 | TASK-030 | MinIO Fake-S3 | TASK-007, TASK-018 | P1 MM | COMPLETE (Verifier PASS, iteration 1, 2026-04-15; 9 unit + 7 integration + 12 acceptance + 4 system tests) |
-| REG-030 | Cycle 4 scaffold CI regression fixes (REG-030-1/2/3 FIXED; REG-030-4 in progress) | None | BLOCKER (CI green) | BUILDER iteration 2 (dispatched 2026-04-15 for REG-030-4 staticcheck suppressions) |
+| REG-030 | Cycle 4 scaffold CI regression fixes (REG-030-1/2/3 FIXED; REG-030-4 Builder complete @ e8b68cf) | None | BLOCKER (CI green) | VERIFIER dispatched 2026-04-15 (regression-confirmation mode) |
 | TASK-033 | Sink Before/After snapshot capture | TASK-018, TASK-015 | P1 MM | PENDING |
 | TASK-031 | Mock-Postgres with seed data | TASK-007, TASK-018 | P1 MM | PENDING |
 | TASK-032 | Sink Inspector GUI | TASK-019, TASK-015, TASK-033, TASK-030 | P1 MM | PENDING |
@@ -134,8 +134,8 @@ Security posture:
 | TASK-038 | Fitness function instrumentation | TASK-001, TASK-004, TASK-007, TASK-009, TASK-018 | P2 LM | PENDING |
 
 **Scaffolder:** COMPLETE (2026-04-09) -- committed as 66c4bf0. All 7 tasks scaffolded. Scaffold introduced four pre-existing CI regressions (REG-030-1/2/3/4) being remediated incrementally.
-**Builder:** TASK-030 COMPLETE (2026-04-15). REG-030 iteration 1 FIXED REG-030-1/2/3 (commit 809e299). REG-030 iteration 2 DISPATCHED 2026-04-15 for REG-030-4 staticcheck U1000 suppressions.
-**Verifier:** TASK-030 PASS (2026-04-15). REG-030 iteration 1 PARTIAL (2026-04-15) -- REG-030-1/2/3 PASS, REG-030-4 discovered as new blocker. Report: `process/verifier/verification-reports/REG-030-verification.md`.
+**Builder:** TASK-030 COMPLETE (2026-04-15). REG-030 iteration 1 FIXED REG-030-1/2/3 (commit 809e299). REG-030 iteration 2 COMPLETE @ commit e8b68cf -- `//lint:ignore U1000` applied across scaffold stubs (staticcheck native format, not `//nolint:` — CI runs staticcheck standalone). All local checks pass.
+**Verifier:** TASK-030 PASS (2026-04-15). REG-030 iteration 1 PARTIAL (2026-04-15) -- REG-030-1/2/3 PASS, REG-030-4 discovered. REG-030 iteration 2 DISPATCHED 2026-04-15 in regression-confirmation mode for commit e8b68cf. Report: `process/verifier/verification-reports/REG-030-verification.md`.
 
 ---
 
