@@ -280,3 +280,95 @@ The Verifier recommends Option A. The error is already logged via `log.Printf`; 
 
 ## Recommendation
 RETURN TO BUILDER — Iteration 2 of 3 — fix staticcheck SA4006 in api/handlers_chaos.go (two locations)
+
+---
+
+## Iteration 2 — 2026-04-15
+
+**Commit verified:** `8bc0edf` — `fix(chaos): remove unused activityLog appends on error-return paths (SA4006)`
+
+**Change reviewed:** Builder applied Option A as recommended. Both dead `activityLog = append(activityLog, ...)` calls on error-return paths in `KillWorker` (line 200) and `DisconnectDatabase` (line 278) are removed. Replaced by explanatory comments (`// activityLog is not sent on the error path; write the error directly.`). The `writeError` call and `log.Printf` are unchanged. Two lines removed, no behaviour change.
+
+### staticcheck SA4006 — Cleared
+
+```
+docker run --rm -v /workspace golang:1.23-alpine sh -c \
+  "go install honnef.co/go/tools/cmd/staticcheck@v0.5.1 && \
+   staticcheck ./api/... ./worker/... ./monitor/... ./internal/..."
+
+EXIT: 0   (no output — no violations)
+```
+
+Previously failing lines `api/handlers_chaos.go:200:3` and `api/handlers_chaos.go:278:3` no longer flagged. SA4006 is cleared.
+
+### Acceptance Tests — All 22 Pass
+
+```
+npm --prefix web run test -- --reporter=verbose --run ../tests/acceptance/TASK-034-acceptance.test.tsx
+
+ ✓ AC-5: Admin-only access > shows access denied message for non-admin user
+ ✓ AC-5: Admin-only access > shows access denied message when user is null (unauthenticated)
+ ✓ AC-5: Admin-only access > renders Chaos Controller page for admin user
+ ✓ AC-4: System status indicator > shows Nominal status when all health checks pass
+ ✓ AC-4: System status indicator > shows Degraded status when a health check fails
+ ✓ AC-4: System status indicator > shows Critical status when health endpoint is unreachable
+ ✓ AC-1: Kill Worker > populates worker selector from workers list
+ ✓ AC-1: Kill Worker > kill button is disabled when no worker is selected
+ ✓ AC-1: Kill Worker > shows confirmation dialog before kill action
+ ✓ AC-1: Kill Worker > AC-6: cancelling confirmation does not call kill endpoint
+ ✓ AC-1: Kill Worker > AC-1 + AC-6: confirming calls POST /api/chaos/kill-worker and updates activity log
+ ✓ AC-2: Disconnect Database > duration selector shows 15/30/60 options
+ ✓ AC-2: Disconnect Database > AC-6: confirmation dialog required before disconnect
+ ✓ AC-2: Disconnect Database > AC-6: cancelling disconnect confirmation does not call endpoint
+ ✓ AC-2: Disconnect Database > AC-2: confirming calls POST /api/chaos/disconnect-db
+ ✓ AC-2: Disconnect Database > AC-2: countdown timer appears after successful disconnect
+ ✓ AC-2: Disconnect Database > AC-2: disconnect button is disabled while countdown is active
+ ✓ AC-3: Flood Queue > pipeline selector is populated from pipelines list
+ ✓ AC-3: Flood Queue > task count input is present with default value
+ ✓ AC-3: Flood Queue > Submit Burst button is disabled without pipeline selection
+ ✓ AC-3: Flood Queue > Submit Burst button calls POST /api/chaos/flood-queue without confirmation
+ ✓ AC-3: Flood Queue > AC-3: activity log shows submission count after completion
+
+ Test Files  1 passed (1)
+      Tests  22 passed (22)
+   Duration  2.39s
+```
+
+### Full Go Regression
+
+```
+docker run --rm -v /workspace golang:1.23-alpine \
+  go test ./api/... ./worker/... ./monitor/... ./internal/... -count=1 -timeout 120s
+
+ok  github.com/nxlabs/nexusflow/api           4.842s
+ok  github.com/nxlabs/nexusflow/worker        14.644s
+ok  github.com/nxlabs/nexusflow/monitor       0.155s
+ok  github.com/nxlabs/nexusflow/internal/auth 2.089s
+ok  github.com/nxlabs/nexusflow/internal/config 0.001s
+ok  github.com/nxlabs/nexusflow/internal/db   0.002s
+ok  github.com/nxlabs/nexusflow/internal/pipeline 0.002s
+ok  github.com/nxlabs/nexusflow/internal/queue 1.882s
+ok  github.com/nxlabs/nexusflow/internal/retention 0.002s
+ok  github.com/nxlabs/nexusflow/internal/sse  0.210s
+```
+
+All packages pass. No regressions.
+
+### OBS-032-1 Status
+
+OBS-032-1 remains CLOSED for the TASK-034 surface. The SA4006 fix touched only error-return paths in `KillWorker` and `DisconnectDatabase`; the admin enforcement wiring in `server.go` (lines 202–209, `auth.RequireRole(models.RoleAdmin)` applied to all three chaos routes) is unchanged. The observation regarding TASK-032's Sink Inspector SSE endpoint remains as a deferred observation, outside this task's scope.
+
+### Acceptance Criteria — Iteration 2 Result
+
+Criterion | Result
+--- | ---
+AC-1: Kill Worker | PASS
+AC-2: Disconnect Database | PASS
+AC-3: Flood Queue | PASS
+AC-4: System status indicator | PASS
+AC-5: Admin-only access | PASS
+AC-6: Confirmation dialogs | PASS
+
+## Overall Result — PASS
+
+All 6 acceptance criteria pass. staticcheck SA4006 is cleared. Full Go regression is clean. CI push follows.
