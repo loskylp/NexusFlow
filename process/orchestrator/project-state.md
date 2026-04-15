@@ -2,13 +2,13 @@
 **Manifest version:** v1 | **Profile:** Critical
 **Current phase:** EXECUTION -- Cycle 4 in progress
 **Current cycle:** 4
-**Last updated:** 2026-04-15 (TASK-034 Verifier PASS iteration 2, commit 8bc0edf, CI green run 24464513140, all 6 ACs; 5 of 7 Cycle 4 tasks COMPLETE; Builder dispatched for SEC-001)
+**Last updated:** 2026-04-15 (SEC-001 Builder COMPLETE at commit d29f17b, Verifier dispatched; 5 of 7 Cycle 4 tasks PASS, SEC-001 in Verifier)
 
 ---
 
 ## Where We Are
 
-**Cycle 4 execution in progress.** 5 of 7 tasks COMPLETE (TASK-030, TASK-033, TASK-031, TASK-032, TASK-034). Next in sequence: SEC-001 (password change + mandatory first-login remediation), then TASK-038 (fitness function instrumentation) to close the cycle. Nexus chose Option A (original plan): Cycle 4 = demo infrastructure + SEC-001 remediation, Cycle 5 = production + load test.
+**Cycle 4 execution in progress.** 5 of 7 tasks COMPLETE (TASK-030, TASK-033, TASK-031, TASK-032, TASK-034). SEC-001 Builder COMPLETE at commit d29f17b -- ChangePassword endpoint, middleware enforcement, session invalidation, mandatory first-login seed, sqlc regenerated, 691 web tests + Go tests all green, staticcheck clean. Verifier dispatched for SEC-001. TASK-038 (fitness function instrumentation) remains to close the cycle.
 
 **Cycle 4 execution order (sequential, dependency-respecting):**
 1. TASK-030 -- MinIO Fake-S3 (unblocks TASK-032)
@@ -20,23 +20,24 @@
 7. TASK-038 -- Fitness function instrumentation (best last, tests everything)
 
 Security posture:
-- **SEC-001 (default admin credentials):** Scheduled for this cycle. Password change endpoint + UI + mandatory first-login change.
+- **SEC-001 (default admin credentials):** Builder COMPLETE at commit d29f17b (2026-04-15). Verifier dispatched. Password change endpoint + UI + mandatory first-login change implemented.
 - **SEC-002 (Redis no auth):** ACCEPTED RISK. Private cluster, single-org deployment.
 - **SEC-003 (no rate limiting on login):** FIXED and verified PASS (2026-04-08).
 - **MEDIUM findings (SEC-004 through SEC-007, SEC-014):** Accepted by Nexus at Demo Sign-off.
 
 ## Active Work
 
-**Agent in control:** Builder (dispatched 2026-04-15 for SEC-001 -- Password change + mandatory first-login)
+**Agent in control:** Verifier (dispatched 2026-04-15 for SEC-001 verification at commit d29f17b)
 **Current task:** SEC-001 -- Password change endpoint + UI + mandatory first-login change
-**Waiting for:** Builder to implement the scaffolded SEC-001 surface (handler, ChangePasswordPage, middleware enforcement, DB ChangePassword + sqlc regeneration, session invalidation) against the 7 acceptance steps in tests/acceptance/SEC-001-acceptance.sh and the frontend stub tests/acceptance/SEC-001-change-password-page.test.tsx. Builder must report final commit SHA and CI run before Verifier dispatch.
-**TASK-034 status:** COMPLETE (Verifier PASS iteration 2, 2026-04-15; all 6 ACs, CI green run 24464513140, commit 8bc0edf). Iteration 1 FAILED on CI staticcheck SA4006 only; iteration 2 removed dead activityLog assignments at handlers_chaos.go:200 and :278; clean CI.
-**TASK-032 status:** COMPLETE (Verifier PASS iteration 1, 2026-04-15; all 6 ACs, CI green run 24460040995, commit 922a949). 3 non-blocking observations carried (OBS-032-1 API-level admin enforcement CLOSED by TASK-034, OBS-032-2 JSDOM, OBS-032-3 keyframes).
+**Waiting for:** Verifier to execute acceptance tests against commit d29f17b -- tests/acceptance/SEC-001-acceptance.sh (7 steps) and tests/acceptance/SEC-001-change-password-page.test.tsx frontend acceptance. Builder reported 691 web tests + Go tests all green, staticcheck clean.
+**SEC-001 Builder summary:** Implemented ChangePassword endpoint, middleware enforcement for mandatory first-login, session invalidation on password change, mandatory first-login seed flag, sqlc regenerated. All local tests and staticcheck green.
+**TASK-034 status:** COMPLETE (Verifier PASS iteration 2, 2026-04-15; all 6 ACs, CI green run 24464513140, commit 8bc0edf).
+**TASK-032 status:** COMPLETE (Verifier PASS iteration 1, 2026-04-15; all 6 ACs, CI green run 24460040995, commit 922a949).
 **TASK-031 status:** COMPLETE (Verifier PASS iteration 1, 2026-04-15; all 4 ACs, CI green run 24458872430; commit e4d5d87).
 **TASK-030 status:** COMPLETE (Verifier PASS 2026-04-15, iteration 1).
 **TASK-033 status:** COMPLETE (Verifier PASS 2026-04-15, iteration 1, commit fb4b3d8, CI green run 24457333420, all 6 ACs).
 **REG-030 status:** FULLY CLOSED (2026-04-15). Iteration 2 Verifier PASS at commit e8b68cf.
-**Total project progress:** 31 of 31 v1.0.0 feature tasks COMPLETE. 5 of 7 Cycle 4 tasks verified PASS (TASK-030, TASK-033, TASK-031, TASK-032, TASK-034). SEC-001 in Builder. TASK-038 PENDING. Go-Live PENDING (requires Cycle 5 TASK-036).
+**Total project progress:** 31 of 31 v1.0.0 feature tasks COMPLETE. 5 of 7 Cycle 4 tasks verified PASS. SEC-001 in Verifier. TASK-038 PENDING. Go-Live PENDING (requires Cycle 5 TASK-036).
 
 ---
 
@@ -125,12 +126,12 @@ Security posture:
 | TASK-031 | Mock-Postgres with seed data | TASK-007, TASK-018 | P1 MM | COMPLETE (Verifier PASS, iteration 1, 2026-04-15; all 4 ACs, CI green run 24458872430, commit e4d5d87) |
 | TASK-032 | Sink Inspector GUI | TASK-019, TASK-015, TASK-033, TASK-030 | P1 MM | COMPLETE (Verifier PASS, iteration 1, 2026-04-15; all 6 ACs, CI green run 24460040995, commit 922a949) |
 | TASK-034 | Chaos Controller GUI | TASK-019, TASK-020, TASK-021, TASK-009 | P1 HM | COMPLETE (Verifier PASS, iteration 2, 2026-04-15; all 6 ACs, CI green run 24464513140, commit 8bc0edf) |
-| SEC-001 | Password change + mandatory first-login | TASK-003, TASK-017 | SECURITY | IN BUILD -- Builder dispatched 2026-04-15 |
+| SEC-001 | Password change + mandatory first-login | TASK-003, TASK-017 | SECURITY | IN VERIFICATION -- Builder COMPLETE at commit d29f17b, Verifier dispatched 2026-04-15 |
 | TASK-038 | Fitness function instrumentation | TASK-001, TASK-004, TASK-007, TASK-009, TASK-018 | P2 LM | PENDING |
 
-**Scaffolder:** COMPLETE (2026-04-09) -- committed as 66c4bf0. All 7 tasks scaffolded. Scaffold introduced four pre-existing CI regressions (REG-030-1/2/3/4) being remediated incrementally.
-**Builder:** TASK-030 COMPLETE. REG-030 CLOSED (iteration 2, commit e8b68cf). TASK-033 COMPLETE (commit e13e11c). TASK-031 COMPLETE (commit e4d5d87). TASK-032 COMPLETE (commit f3c9a95, 2026-04-15). TASK-034 COMPLETE iteration 2 at commit 8bc0edf. SEC-001 dispatched 2026-04-15.
-**Verifier:** TASK-030 PASS (2026-04-15). REG-030 PASS iteration 2 (commit e8b68cf). TASK-033 PASS (2026-04-15, commit fb4b3d8, CI green run 24457333420, 6/6 ACs). TASK-031 PASS (2026-04-15, iteration 1, commit e4d5d87, CI green run 24458872430, 4/4 ACs). TASK-032 PASS (2026-04-15, iteration 1, commit 922a949, CI green run 24460040995, 6/6 ACs). TASK-034 FAIL iteration 1 (2026-04-15, commit bfd22dd; CI staticcheck SA4006 only). TASK-034 PASS iteration 2 (2026-04-15, commit 8bc0edf, CI green run 24464513140, 6/6 ACs).
+**Scaffolder:** COMPLETE (2026-04-09) -- committed as 66c4bf0. All 7 tasks scaffolded. Scaffold introduced four pre-existing CI regressions (REG-030-1/2/3/4) remediated incrementally.
+**Builder:** TASK-030, REG-030, TASK-033, TASK-031, TASK-032, TASK-034 COMPLETE. SEC-001 COMPLETE at commit d29f17b (2026-04-15) -- ChangePassword endpoint, middleware enforcement, session invalidation, mandatory first-login seed, sqlc regenerated, 691 web tests + Go tests all green, staticcheck clean.
+**Verifier:** TASK-030/033/031/032 PASS iteration 1, TASK-034 PASS iteration 2 (commit 8bc0edf). SEC-001 dispatched 2026-04-15 at commit d29f17b.
 
 ---
 
@@ -144,7 +145,7 @@ NONE -- Nexus approved Option A (original plan) for Cycle 4-5 sequencing. Method
 
 | Finding | Severity | Nexus Decision | Action |
 |---|---|---|---|
-| SEC-001: Default admin credentials (admin/admin) | HIGH | DEFERRED to Cycle 4 | Add password change endpoint + UI + mandatory first-login change in Cycle 4 |
+| SEC-001: Default admin credentials (admin/admin) | HIGH | DEFERRED to Cycle 4 | Password change endpoint + UI + mandatory first-login change -- Builder COMPLETE at commit d29f17b, Verifier in progress |
 | SEC-002: Redis no authentication | HIGH | ACCEPTED RISK | Redis is in private cluster, test environment only. No action. |
 | SEC-003: No rate limiting on login | HIGH | FIXED | Rate limiting implemented and verified PASS (2026-04-08). 7/7 ACs, 13 acceptance + 7 unit tests. |
 | SEC-004 through SEC-007 | MEDIUM | ACCEPTED | Nexus accepted at Demo Sign-off (2026-04-09). |
@@ -154,14 +155,12 @@ NONE -- Nexus approved Option A (original plan) for Cycle 4-5 sequencing. Method
 
 ## Remaining Roadmap (Cycles 4-5)
 
-**8 tasks remaining before Go-Live is possible:**
+**2 tasks remaining before Cycle 4 closure; 3 tasks before Go-Live is possible:**
 
 | Cycle | Tasks | Scope |
 |---|---|---|
-| 4 | TASK-030, TASK-031, TASK-032, TASK-033, TASK-034 | Demo infrastructure: MinIO Fake-S3, Mock-Postgres, Sink Inspector, Chaos Controller, fitness function instrumentation |
+| 4 | SEC-001 (in verification), TASK-038 | Security remediation + fitness function instrumentation |
 | 5 | TASK-036, TASK-037, TASK-038 | Production deployment, throughput load test, fitness function CI gate |
-
-**Carried security item:** SEC-001 remediation (password change + mandatory first-login) in Cycle 4.
 
 **Go-Live blocker:** TASK-036 (production environment) must deliver a running production instance before Go-Live can be gated.
 
@@ -284,4 +283,4 @@ NONE -- Nexus approved Option A (original plan) for Cycle 4-5 sequencing. Method
 | MEDIUM findings (SEC-004-007, SEC-014) | 2026-04-09 | ACCEPTED at Demo Sign-off. No action required. |
 | Demo Sign-off -- Cycle 3 | 2026-04-09 | APPROVED. All Cycle 3 work + SEC-003 remediation verified. Hotfix deployed. |
 | Go-Live -- v1.0.0 | 2026-04-09 | RETRACTED. Premature -- production environment (TASK-036) not yet delivered. Go-Live reverted to PENDING. |
-| Cycle 4-5 sequencing | 2026-04-09 | Option A (original plan). Cycle 4 = demo infrastructure + SEC-001. Cycle 5 = production + load test. Methodologist retrospective not requested. |
+| Cycle 4-5 sequencing | 2026-04-09 | Option A (original plan). Cycle 4 = demo infrastructure + SEC-001. Kaas 5 = production + load test. Methodologist retrospective not requested. |
