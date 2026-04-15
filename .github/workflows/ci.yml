@@ -149,13 +149,15 @@ jobs:
         run: go test -tags integration -c -o /tmp/fitness-test ./tests/system/
 
       - name: Run fitness function tests (non-Docker)
-        # Runs FF-015 (compile-time), FF-013 (auth), FF-019 (schema validation),
-        # FF-022 (sink inspector), FF-005 (chain dedup), FF-006 (sink atomicity),
-        # FF-002 (queuing latency — requires Redis service), FF-017 (migrations —
-        # requires Postgres service), and FF-020 (skips — requires docker compose).
-        # Docker-dependent tests (FF-001, FF-007, FF-008, FF-024) are skipped via
-        # t.Skip and do not fail the build. See: TASK-038, fitness-functions.md
-        run: /tmp/fitness-test -test.v -test.run "TestFF002|TestFF005|TestFF006|TestFF013|TestFF015|TestFF017|TestFF019|TestFF020|TestFF022"
+        # Runs FF-002 (queuing latency), FF-003 (queue backlog via XPENDING),
+        # FF-005 (chain dedup), FF-006 (sink atomicity), FF-013 (auth enforcement),
+        # FF-015 (compile-time safety), FF-017 (schema migration — requires Postgres),
+        # FF-019 (schema validation), FF-020 (skips — requires docker compose),
+        # FF-022 (sink inspector). All require Redis; FF-017 also requires Postgres.
+        # Docker-dependent tests (FF-001, FF-007, FF-008, FF-024) and infra/load tests
+        # (FF-009 through FF-012, FF-014, FF-016, FF-018, FF-021, FF-023, FF-025)
+        # are skipped via t.Skip and do not fail the build. See: TASK-038, fitness-functions.md
+        run: /tmp/fitness-test -test.v -test.run "TestFF002|TestFF003|TestFF005|TestFF006|TestFF013|TestFF015|TestFF017|TestFF019|TestFF020|TestFF022"
 
   docker-build:
     name: Docker Build Smoke Test

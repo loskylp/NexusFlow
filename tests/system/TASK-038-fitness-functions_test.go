@@ -751,6 +751,243 @@ func (n *noopSnapshotPublisher) Publish(ctx context.Context, channel string, mes
 }
 
 // ---------------------------------------------------------------------------
+// Reliability and Data Integrity (continued)
+// ---------------------------------------------------------------------------
+
+// TestFF003_QueueBacklog validates FF-003 (queue backlog — pending entry count per stream).
+//
+// Creates a Redis stream, adds 10 entries without acknowledging any, and asserts that
+// XPENDING returns exactly 10 pending entries — confirming that the backlog monitoring
+// mechanism (XPENDING) reflects unacknowledged work correctly.
+//
+// Warning threshold: pending > 100 per stream.
+// Critical threshold: pending > 500 per stream.
+//
+// The test does not assert against the warning/critical thresholds themselves
+// (those are production monitoring thresholds, not test pass/fail criteria). It
+// asserts that XPENDING correctly counts unacknowledged entries, which is the
+// precondition for backlog monitoring to function.
+//
+// Preconditions:
+//   - Redis is running and reachable at REDIS_URL (or localhost:6379).
+//
+// See: FF-003, ADR-001
+func TestFF003_QueueBacklog(t *testing.T) {
+	client := redisClientOrSkip(t)
+	ctx := context.Background()
+
+	stream := fmt.Sprintf("ff003-backlog-test-%d", time.Now().UnixNano())
+	group := "ff003-consumers"
+	consumer := "ff003-worker-1"
+	t.Cleanup(func() { _ = client.Del(ctx, stream).Err() })
+
+	// Create a consumer group on the stream (MKSTREAM creates the stream if absent).
+	if err := client.XGroupCreateMkStream(ctx, stream, group, "0").Err(); err != nil {
+		t.Fatalf("FF-003: XGroupCreateMkStream failed: %v", err)
+	}
+
+	// Enqueue 10 entries.
+	const n = 10
+	for i := range n {
+		payload := fmt.Sprintf(`{"taskId":"ff003-%d"}`, i)
+		if err := client.XAdd(ctx, &redis.XAddArgs{
+			Stream: stream,
+			ID:     "*",
+			Values: map[string]any{"payload": payload},
+		}).Err(); err != nil {
+			t.Fatalf("FF-003: XAdd %d failed: %v", i, err)
+		}
+	}
+
+	// Read all entries into the consumer group without acknowledging (simulates
+	// in-flight / pending work that a backlog monitor would count via XPENDING).
+	msgs, err := client.XReadGroup(ctx, &redis.XReadGroupArgs{
+		Group:    group,
+		Consumer: consumer,
+		Streams:  []string{stream, ">"},
+		Count:    int64(n),
+		Block:    0,
+	}).Result()
+	if err != nil {
+		t.Fatalf("FF-003: XReadGroup failed: %v", err)
+	}
+	if len(msgs) == 0 || len(msgs[0].Messages) != n {
+		t.Fatalf("FF-003: expected %d messages from XReadGroup, got %d", n, len(msgs[0].Messages))
+	}
+
+	// XPENDING must report exactly n pending (unacknowledged) entries.
+	pending, err := client.XPending(ctx, stream, group).Result()
+	if err != nil {
+		t.Fatalf("FF-003: XPending failed: %v", err)
+	}
+	if pending.Count != int64(n) {
+		t.Errorf("FF-003 FAIL: XPENDING count = %d; want %d — backlog monitoring mechanism not reflecting unacknowledged entries correctly", pending.Count, n)
+	}
+
+	t.Logf("FF-003 PASS: XPENDING correctly reports %d pending (unacknowledged) entries in stream %s", pending.Count, stream)
+}
+
+// ---------------------------------------------------------------------------
+// Resilience and Failover (continued)
+// ---------------------------------------------------------------------------
+
+// TestFF009_FleetResilience is a documented skip for FF-009.
+//
+// FF-009 validates that the system continues to process all tasks when 50% of
+// the worker fleet is killed simultaneously. This requires spawning multiple
+// worker containers, killing half, and asserting no tasks are orphaned.
+// That setup requires Docker socket access and orchestrated multi-container
+// lifecycle management.
+//
+// See: FF-009, ADR-002
+func TestFF009_FleetResilience(t *testing.T) {
+	t.Skip("FF-009: requires multi-worker Docker environment (kill 50% of fleet, verify task completion) — run in ops-fitness CI job")
+}
+
+// ---------------------------------------------------------------------------
+// Performance and Throughput
+// ---------------------------------------------------------------------------
+
+// TestFF010_ThroughputCapacity is a documented skip for FF-010.
+//
+// FF-010 validates that the system processes 10,000 tasks/hour. This requires a
+// load test harness that submits 10K tasks and monitors progress over the full
+// hour. It cannot be run in the standard fitness-functions CI job due to time
+// and infrastructure constraints.
+//
+// See: FF-010, REQ-021, ADR-001
+func TestFF010_ThroughputCapacity(t *testing.T) {
+	t.Skip("FF-010: requires full load test harness (10K tasks, 1-hour window) — run in dedicated load-test CI job")
+}
+
+// TestFF011_APIResponseTime is a documented skip for FF-011.
+//
+// FF-011 validates that p95 API response time for non-queuing endpoints stays
+// under 100ms (warning) / 500ms (critical). This requires a running API server
+// with a representative dataset and a load-testing tool (e.g. k6, hey).
+//
+// See: FF-011, ADR-004
+func TestFF011_APIResponseTime(t *testing.T) {
+	t.Skip("FF-011: requires running API server and load-testing tool (k6/hey) for p95 latency measurement — run in ops-fitness CI job")
+}
+
+// TestFF012_RealtimeLatency is a documented skip for FF-012.
+//
+// FF-012 validates that SSE event delivery latency stays under 1.5s (warning) /
+// 2s (critical) after a task state change. This requires a running SSE endpoint,
+// a connected SSE client, and coordinated task state mutations. Cannot be run in
+// a unit or standard integration context.
+//
+// See: FF-012, ADR-007, NFR-003
+func TestFF012_RealtimeLatency(t *testing.T) {
+	t.Skip("FF-012: requires running SSE endpoint and coordinated state mutation to measure event delivery latency — run in ops-fitness CI job")
+}
+
+// ---------------------------------------------------------------------------
+// Security and Auth (continued)
+// ---------------------------------------------------------------------------
+
+// TestFF014_SessionPerformance is a documented skip for FF-014.
+//
+// FF-014 validates that session lookup latency stays under 5ms (warning) /
+// 50ms (critical). This requires a running Redis session store under load with
+// a latency measurement harness. The CI fitness-functions job Redis instance is
+// not under realistic load; a dedicated performance run is required.
+//
+// See: FF-014, ADR-006
+func TestFF014_SessionPerformance(t *testing.T) {
+	t.Skip("FF-014: requires session store under realistic load for p95 latency measurement — run in ops-fitness CI job")
+}
+
+// ---------------------------------------------------------------------------
+// Maintainability and Type Safety (continued)
+// ---------------------------------------------------------------------------
+
+// TestFF016_FrontendBundle is a documented skip for FF-016.
+//
+// FF-016 validates that the frontend bundle size stays under 2MB (warning).
+// Bundle size is measured from the Vite build output. This check belongs in
+// the frontend-build CI job (which already builds the bundle); it is not
+// executable from a Go integration test binary.
+//
+// See: FF-016, ADR-004
+func TestFF016_FrontendBundle(t *testing.T) {
+	t.Skip("FF-016: bundle size check belongs in the frontend-build CI job (Vite output) — not executable from a Go test binary")
+}
+
+// ---------------------------------------------------------------------------
+// Data Management (continued)
+// ---------------------------------------------------------------------------
+
+// TestFF018_LogRetention is a documented skip for FF-018.
+//
+// FF-018 validates that task logs older than the retention threshold are pruned
+// within 1 day. This requires inserting aged log records into the database, running
+// the pruning job, and verifying removal. The pruning job is a scheduled background
+// process that cannot be triggered synchronously in a fitness test without
+// additional infrastructure.
+//
+// Warning threshold: task_logs > 10GB.
+// Critical threshold: partitions not pruned > 7 days past retention.
+//
+// See: FF-018, ADR-008
+func TestFF018_LogRetention(t *testing.T) {
+	t.Skip("FF-018: requires aged log records and an invocable pruning job — run in ops-fitness CI job with a seeded database")
+}
+
+// ---------------------------------------------------------------------------
+// Deployment and Operability (continued)
+// ---------------------------------------------------------------------------
+
+// TestFF021_ImageIntegrity is a documented skip for FF-021.
+//
+// FF-021 validates that staging and production run the same container image SHA.
+// This is a deployment-time assertion that compares image SHAs across environments.
+// It cannot be checked from a Go test binary; it belongs in the release pipeline
+// as a post-deploy gate.
+//
+// Warning threshold: container restart > 2x in 10 min.
+// Critical threshold: different image SHAs after release.
+//
+// See: FF-021, ADR-005
+func TestFF021_ImageIntegrity(t *testing.T) {
+	t.Skip("FF-021: image SHA comparison requires access to staging and production registries — run as a post-deploy gate in the release pipeline")
+}
+
+// TestFF025_InfrastructureHealth is a documented skip for FF-025.
+//
+// FF-025 validates Uptime Kuma availability and PostgreSQL connectivity. This is a
+// monitoring system check that requires a running Uptime Kuma instance and access
+// to the production PostgreSQL service. It cannot be run in a CI fitness test context.
+//
+// Warning threshold: availability < 99.5%.
+// Critical threshold: PostgreSQL connection failure.
+//
+// See: FF-025, ADR-005
+func TestFF025_InfrastructureHealth(t *testing.T) {
+	t.Skip("FF-025: requires running Uptime Kuma instance and production PostgreSQL access — monitored via Uptime Kuma alerting, not CI fitness tests")
+}
+
+// ---------------------------------------------------------------------------
+// Observability (continued)
+// ---------------------------------------------------------------------------
+
+// TestFF023_SSEReconnection is a documented skip for FF-023.
+//
+// FF-023 validates that an SSE client reconnecting with Last-Event-ID receives
+// replay of log lines produced during the disconnection. This requires a running
+// SSE endpoint, a controlled disconnect/reconnect cycle, and 5 log lines produced
+// during the gap. Cannot be run without a live SSE server.
+//
+// Warning threshold: reconnection rate > 10%/min.
+// Critical threshold: SSE endpoint errors.
+//
+// See: FF-023, ADR-007
+func TestFF023_SSEReconnection(t *testing.T) {
+	t.Skip("FF-023: requires running SSE endpoint with controlled disconnect/reconnect cycle and Last-Event-ID replay verification — run in ops-fitness CI job")
+}
+
+// ---------------------------------------------------------------------------
 // FF-013 stub types
 // ---------------------------------------------------------------------------
 // These stubs satisfy the db.UserRepository and queue.SessionStore interfaces
