@@ -144,11 +144,6 @@ func (d *InMemoryPostgresDB) BeginTx(ctx context.Context) (postgresTx, error) {
 	return &inMemoryPostgresTx{db: d, failAfter: failAfter}, nil
 }
 
-// RowCount implements postgresBackend.RowCount. Returns the committed row count.
-func (d *InMemoryPostgresDB) rowCountLocked(table string) int {
-	return len(d.committed[table])
-}
-
 // inMemoryPostgresTx is the transaction handle returned by InMemoryPostgresDB.BeginTx.
 // It buffers inserted rows and only promotes them to committed state on Commit.
 type inMemoryPostgresTx struct {
