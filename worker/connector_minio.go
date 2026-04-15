@@ -14,6 +14,9 @@ package worker
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
+	"path"
 )
 
 // minioBackend is the narrow interface the MinIO connectors depend on.
@@ -78,8 +81,10 @@ type MinIODataSourceConnector struct {
 // Preconditions:
 //   - minio is non-nil.
 func NewMinIODataSourceConnector(minio minioBackend) *MinIODataSourceConnector {
-	// TODO: implement
-	panic("not implemented")
+	if minio == nil {
+		panic("NewMinIODataSourceConnector: minio backend must not be nil")
+	}
+	return &MinIODataSourceConnector{minio: minio}
 }
 
 // Type implements DataSourceConnector.Type.
@@ -112,8 +117,39 @@ func (c *MinIODataSourceConnector) Type() string { return "minio" }
 //     no objects match prefix).
 //   - On error: returns nil slice and a wrapped error describing the failure.
 func (c *MinIODataSourceConnector) Fetch(ctx context.Context, config map[string]any, input map[string]any) ([]map[string]any, error) {
-	// TODO: implement
-	panic("not implemented")
+	bucket, _ := config["bucket"].(string)
+	if bucket == "" {
+		return nil, fmt.Errorf("minio datasource: config missing required key \"bucket\"")
+	}
+	prefix, _ := config["prefix"].(string)
+
+	keys, err := c.minio.ListKeys(bucket, prefix)
+	if err != nil {
+		return nil, fmt.Errorf("minio datasource: list keys in bucket %q prefix %q: %w", bucket, prefix, err)
+	}
+
+	records := make([]map[string]any, 0, len(keys))
+	for _, key := range keys {
+		// Check for context cancellation between objects.
+		select {
+		case <-ctx.Done():
+			return nil, fmt.Errorf("minio datasource: fetch cancelled after %d objects: %w", len(records), ctx.Err())
+		default:
+		}
+
+		data, err := c.minio.GetObject(bucket, key)
+		if err != nil {
+			return nil, fmt.Errorf("minio datasource: get object %q/%q: %w", bucket, key, err)
+		}
+
+		var record map[string]any
+		if err := json.Unmarshal(data, &record); err != nil {
+			return nil, fmt.Errorf("minio datasource: decode object %q/%q as JSON: %w", bucket, key, err)
+		}
+		records = append(records, record)
+	}
+
+	return records, nil
 }
 
 // -----------------------------------------------------------------------
@@ -149,8 +185,13 @@ type MinIOSinkConnector struct {
 //   - minio is non-nil.
 //   - dedup is non-nil.
 func NewMinIOSinkConnector(minio minioBackend, dedup DedupStore) *MinIOSinkConnector {
-	// TODO: implement
-	panic("not implemented")
+	if minio == nil {
+		panic("NewMinIOSinkConnector: minio backend must not be nil")
+	}
+	if dedup == nil {
+		panic("NewMinIOSinkConnector: dedup store must not be nil")
+	}
+	return &MinIOSinkConnector{minio: minio, dedup: dedup}
 }
 
 // Type implements SinkConnector.Type.
@@ -173,8 +214,15 @@ func (c *MinIOSinkConnector) Type() string { return "minio" }
 //   - Returns a non-nil map. Never returns an error for the in-memory backend.
 //   - Map contains "object_count" (int).
 func (c *MinIOSinkConnector) Snapshot(ctx context.Context, config map[string]any, taskID string) (map[string]any, error) {
-	// TODO: implement
-	panic("not implemented")
+	bucket, _ := config["bucket"].(string)
+	key, _ := config["key"].(string)
+	// Use path (not filepath) because S3/MinIO keys always use forward slashes.
+	prefix := path.Dir(key)
+	if prefix == "." {
+		prefix = ""
+	}
+	count := c.minio.ListObjectCount(bucket, prefix)
+	return map[string]any{"object_count": count}, nil
 }
 
 // Write serialises records as a JSON array and uploads them to MinIO as a single
@@ -208,8 +256,40 @@ func (c *MinIOSinkConnector) Snapshot(ctx context.Context, config map[string]any
 //   - On ErrAlreadyApplied: no change to MinIO state.
 //   - On any other error: no object at bucket/key; multipart upload aborted.
 func (c *MinIOSinkConnector) Write(ctx context.Context, config map[string]any, records []map[string]any, executionID string) error {
-	// TODO: implement
-	panic("not implemented")
+	if c.dedup.Applied(executionID) {
+		return ErrAlreadyApplied
+	}
+
+	bucket, _ := config["bucket"].(string)
+	key, _ := config["key"].(string)
+	if bucket == "" {
+		return fmt.Errorf("minio sink: config missing required key \"bucket\"")
+	}
+	if key == "" {
+		return fmt.Errorf("minio sink: config missing required key \"key\"")
+	}
+
+	payload, err := json.Marshal(records)
+	if err != nil {
+		return fmt.Errorf("minio sink: serialise records: %w", err)
+	}
+
+	uploadID := c.minio.CreateMultipartUpload(bucket, key)
+
+	if err := c.minio.UploadPart(uploadID, payload); err != nil {
+		c.minio.AbortMultipartUpload(uploadID)
+		return fmt.Errorf("minio sink: upload failed (aborted): %w", err)
+	}
+
+	if err := c.minio.CompleteMultipartUpload(uploadID); err != nil {
+		c.minio.AbortMultipartUpload(uploadID)
+		return fmt.Errorf("minio sink: complete failed (aborted): %w", err)
+	}
+
+	if err := c.dedup.Record(ctx, executionID); err != nil {
+		_ = err // best-effort; see DatabaseSinkConnector.Write for rationale
+	}
+	return nil
 }
 
 // -----------------------------------------------------------------------
@@ -229,6 +309,6 @@ func (c *MinIOSinkConnector) Write(ctx context.Context, config map[string]any, r
 //
 // See: DEMO-001, TASK-030, cmd/worker/main.go
 func RegisterMinIOConnectors(reg *DefaultConnectorRegistry, minio minioBackend) {
-	// TODO: implement
-	panic("not implemented")
+	reg.Register("datasource", NewMinIODataSourceConnector(minio))
+	reg.Register("sink", NewMinIOSinkConnector(minio, NewInMemoryDedupStore()))
 }

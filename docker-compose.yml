@@ -151,6 +151,42 @@ services:
       - internal
     profiles:
       - demo
+    healthcheck:
+      # MinIO exposes a /minio/health/live readiness endpoint on the S3 port.
+      # curl -f returns non-zero on HTTP error codes; wget is used here because
+      # the minio/minio image includes wget but not curl.
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://localhost:9000/minio/health/live || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  # minio-init seeds demo buckets on first startup.
+  # Creates demo-input (pre-seeded with sample JSON records) and demo-output
+  # (empty, ready to receive writes from MinIOSinkConnector).
+  # See: TASK-030, DEMO-001
+  minio-init:
+    image: minio/mc:latest
+    depends_on:
+      minio:
+        condition: service_healthy
+    environment:
+      - MINIO_ROOT_USER=${MINIO_ROOT_USER:-minioadmin}
+      - MINIO_ROOT_PASSWORD=${MINIO_ROOT_PASSWORD:-minioadmin}
+    networks:
+      - internal
+    profiles:
+      - demo
+    entrypoint: >
+      /bin/sh -c "
+        mc alias set local http://minio:9000 $$MINIO_ROOT_USER $$MINIO_ROOT_PASSWORD;
+        mc mb --ignore-existing local/demo-input;
+        mc mb --ignore-existing local/demo-output;
+        echo '{\"id\":1,\"name\":\"alice\",\"value\":100}' | mc pipe local/demo-input/data/record-001.json;
+        echo '{\"id\":2,\"name\":\"bob\",\"value\":200}' | mc pipe local/demo-input/data/record-002.json;
+        echo '{\"id\":3,\"name\":\"carol\",\"value\":300}' | mc pipe local/demo-input/data/record-003.json;
+        echo 'MinIO seed complete: demo-input seeded with 3 sample records, demo-output ready';
+      "
 
   demo-postgres:
     image: postgres:16-alpine

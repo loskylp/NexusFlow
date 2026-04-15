@@ -430,6 +430,40 @@ func (s *InMemoryS3) AbortMultipartUpload(uploadID string) {
 	delete(s.multiparts, uploadID)
 }
 
+// GetObject retrieves the raw bytes stored at bucket/key.
+// Returns nil and an error when the object does not exist.
+// Satisfies the minioBackend interface so InMemoryS3 can back MinIODataSourceConnector
+// in unit tests.
+func (s *InMemoryS3) GetObject(bucket, key string) ([]byte, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	data, ok := s.objects[bucket+"/"+key]
+	if !ok {
+		return nil, fmt.Errorf("InMemoryS3: object not found: %s/%s", bucket, key)
+	}
+	cp := make([]byte, len(data))
+	copy(cp, data)
+	return cp, nil
+}
+
+// ListKeys returns the keys of all objects in the given bucket whose key starts with prefix.
+// Returns an empty slice (not an error) when no matching objects exist.
+// Satisfies the minioBackend interface so InMemoryS3 can back MinIODataSourceConnector
+// in unit tests.
+func (s *InMemoryS3) ListKeys(bucket, prefix string) ([]string, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	fullPrefix := bucket + "/" + prefix
+	var keys []string
+	for k := range s.objects {
+		if len(k) >= len(fullPrefix) && k[:len(fullPrefix)] == fullPrefix {
+			// Strip the "bucket/" prefix to return just the object key.
+			keys = append(keys, k[len(bucket)+1:])
+		}
+	}
+	return keys, nil
+}
+
 // -----------------------------------------------------------------------
 // S3SinkConnector
 // -----------------------------------------------------------------------
