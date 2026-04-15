@@ -1,23 +1,23 @@
 # Project State
 **Manifest version:** v1 | **Profile:** Critical
-**Current phase:** EXECUTION -- Cycle 4 in progress
+**Current phase:** EXECUTION -- Cycle 4 execution COMPLETE; Sentinel Cycle 4 security review dispatched
 **Current cycle:** 4
-**Last updated:** 2026-04-15 (TASK-038 Builder iter 2 complete at commit 5a6f519 -- FF-003 full + 10 stubs; Verifier dispatched iter 2 run-only mode)
+**Last updated:** 2026-04-15 (TASK-038 Verifier PASS iteration 2 -- all 4 ACs, CI run 24474903030 green, FAIL-001 closed; Cycle 4 execution 7/7 complete; Sentinel dispatched for cycle security review)
 
 ---
 
 ## Where We Are
 
-**Cycle 4 execution in progress.** 6 of 7 tasks COMPLETE (TASK-030, TASK-033, TASK-031, TASK-032, TASK-034, SEC-001). SEC-001 Verifier PASS iteration 1 at commit 6111d75 (all 7 backend + 9 frontend ACs; CI green run 24466108551). TASK-038 (fitness function instrumentation) is the final task to close the cycle.
+**Cycle 4 execution COMPLETE.** All 7 tasks verified PASS (TASK-030, TASK-033, TASK-031, TASK-032, TASK-034, SEC-001, TASK-038). Sentinel Cycle 4 security review dispatched per Manifest; Sentinel report will be collected into the Demo Sign-off Briefing along with cycle observations.
 
 **Cycle 4 execution order (sequential, dependency-respecting):**
-1. TASK-030 -- MinIO Fake-S3 (unblocks TASK-032)
-2. TASK-033 -- Sink Before/After snapshot capture (unblocks TASK-032)
-3. TASK-031 -- Mock-Postgres with seed data
-4. TASK-032 -- Sink Inspector GUI (needs TASK-033 + TASK-030)
-5. TASK-034 -- Chaos Controller GUI
-6. SEC-001 -- Password change endpoint + UI + mandatory first-login change
-7. TASK-038 -- Fitness function instrumentation (best last, tests everything)
+1. TASK-030 -- MinIO Fake-S3 -- COMPLETE
+2. TASK-033 -- Sink Before/After snapshot capture -- COMPLETE
+3. TASK-031 -- Mock-Postgres with seed data -- COMPLETE
+4. TASK-032 -- Sink Inspector GUI -- COMPLETE
+5. TASK-034 -- Chaos Controller GUI -- COMPLETE
+6. SEC-001 -- Password change endpoint + UI + mandatory first-login change -- COMPLETE
+7. TASK-038 -- Fitness function instrumentation -- COMPLETE
 
 Security posture:
 - **SEC-001 (default admin credentials):** FIXED and verified PASS (2026-04-15, commit 6111d75, CI run 24466108551). All 7 backend + 9 frontend ACs. Password change endpoint + UI + mandatory first-login change.
@@ -27,9 +27,10 @@ Security posture:
 
 ## Active Work
 
-**Agent in control:** Verifier (dispatched 2026-04-15 for TASK-038 iteration 2, run-only mode)
-**Current task:** TASK-038 -- Fitness function instrumentation
-**Waiting for:** Verifier iter 2 to run the now-complete FF suite and confirm FAIL-001 closed. Builder iter 2 at commit 5a6f519 delivered FF-003 full implementation plus 10 t.Skip stubs (FF-009/010/011/012/014/016/018/021/023/025) with documented skip reasons. All 25 FFs now have 1:1 test coverage per AC-1. All previously passing tests untouched.
+**Agent in control:** Sentinel (dispatched 2026-04-15 for Cycle 4 security review)
+**Current task:** Cycle 4 cycle-level security review -- audit of all Cycle 4 deliverables (TASK-030, TASK-033, TASK-031, TASK-032, TASK-034, SEC-001, TASK-038)
+**Waiting for:** Sentinel Security Report for Cycle 4. Report will be included in Demo Sign-off Briefing. Blocking findings (Critical/High unresolved) would prevent Demo Sign-off.
+**TASK-038 status:** COMPLETE (Verifier PASS iteration 2, 2026-04-15; all 4 ACs, CI green run 24474903030, commit 5a6f519; FAIL-001 closed -- FF-003 full implementation + 10 t.Skip stubs with documented skip reasons; AC-1 1:1 coverage satisfied).
 **SEC-001 status:** COMPLETE (Verifier PASS iteration 1, 2026-04-15; all 7 backend + 9 frontend ACs, CI green run 24466108551, commit 6111d75).
 **TASK-034 status:** COMPLETE (Verifier PASS iteration 2, 2026-04-15; all 6 ACs, CI green run 24464513140, commit 8bc0edf).
 **TASK-032 status:** COMPLETE (Verifier PASS iteration 1, 2026-04-15; all 6 ACs, CI green run 24460040995, commit 922a949).
@@ -37,7 +38,7 @@ Security posture:
 **TASK-030 status:** COMPLETE (Verifier PASS 2026-04-15, iteration 1).
 **TASK-033 status:** COMPLETE (Verifier PASS 2026-04-15, iteration 1, commit fb4b3d8, CI green run 24457333420, all 6 ACs).
 **REG-030 status:** FULLY CLOSED (2026-04-15). Iteration 2 Verifier PASS at commit e8b68cf.
-**Total project progress:** 31 of 31 v1.0.0 feature tasks COMPLETE. 6 of 7 Cycle 4 tasks verified PASS. TASK-038 IN PROGRESS. Go-Live PENDING (requires Cycle 5 TASK-036).
+**Total project progress:** 31 of 31 v1.0.0 feature tasks COMPLETE. 7 of 7 Cycle 4 tasks verified PASS. Cycle 4 execution complete; Sentinel review in progress; Demo Sign-off next. Go-Live PENDING (requires Cycle 5 TASK-036).
 
 ---
 
@@ -113,6 +114,8 @@ Security posture:
 | Demo Sign-off -- Cycle 3 | 2026-04-09 | APPROVED | 7/7 tasks + SEC-003 remediation verified PASS. MEDIUM findings accepted. Hotfix (App.tsx data router) deployed. Demo screenshots captured against live staging. |
 | Go-Live -- v1.0.0 | PENDING | BLOCKED | Requires TASK-036 (production environment). Production must be running before Go-Live can be approved. Premature approval on 2026-04-09 retracted by Nexus correction. |
 | Cycle 4-5 Sequencing | 2026-04-09 | Option A (original plan) | Cycle 4 = demo infrastructure + SEC-001; Cycle 5 = production + load test. Methodologist retrospective skipped. |
+| Sentinel -- Cycle 4 | PENDING | IN PROGRESS | Dispatched 2026-04-15 after all 7 tasks verified PASS. |
+| Demo Sign-off -- Cycle 4 | PENDING | -- | Awaits Sentinel report. |
 
 ---
 
@@ -127,17 +130,18 @@ Security posture:
 | TASK-032 | Sink Inspector GUI | TASK-019, TASK-015, TASK-033, TASK-030 | P1 MM | COMPLETE (Verifier PASS, iteration 1, 2026-04-15; all 6 ACs, CI green run 24460040995, commit 922a949) |
 | TASK-034 | Chaos Controller GUI | TASK-019, TASK-020, TASK-021, TASK-009 | P1 HM | COMPLETE (Verifier PASS, iteration 2, 2026-04-15; all 6 ACs, CI green run 24464513140, commit 8bc0edf) |
 | SEC-001 | Password change + mandatory first-login | TASK-003, TASK-017 | SECURITY | COMPLETE (Verifier PASS, iteration 1, 2026-04-15; 7 backend + 9 frontend ACs, CI green run 24466108551, commit 6111d75) |
-| TASK-038 | Fitness function instrumentation | TASK-001, TASK-004, TASK-007, TASK-009, TASK-018 | P2 LM | IN PROGRESS -- Builder iter 2 COMPLETE at commit 5a6f519 (FF-003 full + 10 stubs for 009/010/011/012/014/016/018/021/023/025, AC-1 1:1 coverage now satisfied); Verifier dispatched iter 2 run-only mode |
+| TASK-038 | Fitness function instrumentation | TASK-001, TASK-004, TASK-007, TASK-009, TASK-018 | P2 LM | COMPLETE (Verifier PASS, iteration 2, 2026-04-15; all 4 ACs, CI green run 24474903030, commit 5a6f519; FAIL-001 closed) |
 
 **Scaffolder:** COMPLETE (2026-04-09) -- committed as 66c4bf0. All 7 tasks scaffolded. Scaffold introduced four pre-existing CI regressions (REG-030-1/2/3/4) remediated incrementally.
-**Builder:** TASK-030, REG-030, TASK-033, TASK-031, TASK-032, TASK-034, SEC-001 COMPLETE. TASK-038 iter 2 COMPLETE at commit 5a6f519 (FF-003 full implementation + 10 t.Skip stubs for FF-009/010/011/012/014/016/018/021/023/025 with documented skip reasons; AC-1 1:1 coverage satisfied; previously passing tests untouched).
-**Verifier:** TASK-030/033/031/032 PASS iteration 1, TASK-034 PASS iteration 2 (commit 8bc0edf), SEC-001 PASS iteration 1 (commit 6111d75, CI run 24466108551). TASK-038 iter 2 IN PROGRESS -- run-only mode dispatched 2026-04-15.
+**Builder:** All 7 tasks COMPLETE.
+**Verifier:** All 7 tasks PASS. TASK-030/033/031/032/SEC-001 iteration 1; TASK-034/TASK-038 iteration 2. Final: TASK-038 PASS iteration 2, 2026-04-15, CI run 24474903030, commit 5a6f519, FAIL-001 closed.
+**Sentinel:** Dispatched 2026-04-15 for Cycle 4 cycle-level security review. Security Report pending.
 
 ---
 
 ## Pending Decisions
 
-NONE -- Nexus approved Option A (original plan) for Cycle 4-5 sequencing. Methodologist retrospective not requested.
+NONE -- Sentinel Cycle 4 review in progress; Demo Sign-off Briefing will follow on Sentinel completion.
 
 ---
 
@@ -153,14 +157,13 @@ NONE -- Nexus approved Option A (original plan) for Cycle 4-5 sequencing. Method
 
 ---
 
-## Remaining Roadmap (Cycles 4-5)
+## Remaining Roadmap (Cycle 5)
 
-**2 tasks remaining before Cycle 4 closure; 3 tasks before Go-Live is possible:**
+**1 cycle remaining before Go-Live is possible:**
 
 | Cycle | Tasks | Scope |
 |---|---|---|
-| 4 | SEC-001 (in verification), TASK-038 | Security remediation + fitness function instrumentation |
-| 5 | TASK-036, TASK-037, TASK-038 | Production deployment, throughput load test, fitness function CI gate |
+| 5 | TASK-036, TASK-037, TASK-039 | Production deployment, throughput load test, fitness function CI gate |
 
 **Go-Live blocker:** TASK-036 (production environment) must deliver a running production instance before Go-Live can be gated.
 
@@ -283,4 +286,4 @@ NONE -- Nexus approved Option A (original plan) for Cycle 4-5 sequencing. Method
 | MEDIUM findings (SEC-004-007, SEC-014) | 2026-04-09 | ACCEPTED at Demo Sign-off. No action required. |
 | Demo Sign-off -- Cycle 3 | 2026-04-09 | APPROVED. All Cycle 3 work + SEC-003 remediation verified. Hotfix deployed. |
 | Go-Live -- v1.0.0 | 2026-04-09 | RETRACTED. Premature -- production environment (TASK-036) not yet delivered. Go-Live reverted to PENDING. |
-| Cycle 4-5 sequencing | 2026-04-09 | Option A (original plan). Cycle 4 = demo infrastructure + SEC-001. Kaas 5 = production + load test. Methodologist retrospective not requested. |
+| Cycle 4-5 sequencing | 2026-04-09 | Option A (original plan). Cycle 4 = demo infrastructure + SEC-001. Cycle 5 = production + load test. Methodologist retrospective not requested. |
