@@ -25,6 +25,7 @@ type ChaosHandler struct {
 	server *Server
 }
 
+//lint:ignore U1000 scaffold placeholder for TASK-034
 // killWorkerRequest is the JSON body for POST /api/chaos/kill-worker.
 type killWorkerRequest struct {
 	// WorkerID is the ID of the worker to kill. Must match a currently registered
@@ -32,6 +33,7 @@ type killWorkerRequest struct {
 	WorkerID string `json:"workerId"`
 }
 
+//lint:ignore U1000 scaffold placeholder for TASK-034
 // disconnectDBRequest is the JSON body for POST /api/chaos/disconnect-db.
 type disconnectDBRequest struct {
 	// DurationSeconds is the number of seconds to simulate database unavailability.
@@ -39,6 +41,7 @@ type disconnectDBRequest struct {
 	DurationSeconds int `json:"durationSeconds"`
 }
 
+//lint:ignore U1000 scaffold placeholder for TASK-034
 // floodQueueRequest is the JSON body for POST /api/chaos/flood-queue.
 type floodQueueRequest struct {
 	// PipelineID is the ID of the pipeline to use for the flood tasks. Required.
@@ -49,6 +52,7 @@ type floodQueueRequest struct {
 	TaskCount int `json:"taskCount"`
 }
 
+//lint:ignore U1000 scaffold placeholder for TASK-034
 // chaosActivityEntry is one timestamped log line returned from chaos endpoints.
 // The GUI appends these to the relevant card's activity log.
 type chaosActivityEntry struct {

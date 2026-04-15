@@ -66,6 +66,7 @@ type postgresTx interface {
 //
 // See: DEMO-002, TASK-031
 type PostgreSQLDataSourceConnector struct {
+	//lint:ignore U1000 scaffold placeholder for TASK-031
 	db postgresBackend
 }
 
@@ -128,7 +129,9 @@ func (c *PostgreSQLDataSourceConnector) Fetch(ctx context.Context, config map[st
 //
 // See: DEMO-002, ADR-003, ADR-009, TASK-031
 type PostgreSQLSinkConnector struct {
+	//lint:ignore U1000 scaffold placeholder for TASK-031
 	db    postgresBackend
+	//lint:ignore U1000 scaffold placeholder for TASK-031
 	dedup DedupStore
 }
 

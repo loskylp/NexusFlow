@@ -30,6 +30,7 @@ type PasswordChangeHandler struct {
 	server *Server
 }
 
+//lint:ignore U1000 scaffold placeholder for SEC-001
 // changePasswordRequest is the JSON body for POST /api/auth/change-password.
 type changePasswordRequest struct {
 	// CurrentPassword is the user's current password for verification before

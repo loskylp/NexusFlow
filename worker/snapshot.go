@@ -42,7 +42,9 @@ const (
 //
 // See: ADR-009, TASK-033
 type SnapshotCapturer struct {
+	//lint:ignore U1000 scaffold placeholder for TASK-033
 	connector SinkConnector
+	//lint:ignore U1000 scaffold placeholder for TASK-033
 	publisher snapshotPublisher
 }
 
@@ -112,6 +114,7 @@ func (s *SnapshotCapturer) CaptureAndWrite(
 	panic("not implemented")
 }
 
+//lint:ignore U1000 scaffold placeholder for TASK-033
 // sinkSnapshotEvent is the payload published to events:sink:{taskID}.
 // The Sink Inspector GUI receives this via SSE and populates its Before/After panels.
 // See: DEMO-003, ADR-007, TASK-032, TASK-033
