@@ -31,6 +31,17 @@ services:
         condition: service_healthy
     networks:
       - internal
+    # Docker socket mount for Chaos Controller (TASK-034, DEMO-004).
+    # Allows the API container to invoke 'docker kill' and 'docker stop/start'
+    # for chaos actions (kill-worker, disconnect-db). The chaos endpoints check for
+    # Admin role via RequireRole middleware, but the Docker daemon itself is
+    # accessible through this mount from within the container.
+    # If the socket does not exist (non-demo deployments), chaos actions return 500
+    # with a descriptive error; all other API operations are unaffected.
+    # In production (TASK-036) this mount should be absent — chaos endpoints are
+    # demo-infrastructure only (DEMO-004).
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
     healthcheck:
       # Sends an HTTP GET to /api/health and checks the response contains a JSON "status" field.
       # This passes on both HTTP 200 (all healthy) and HTTP 503 (degraded but alive),
