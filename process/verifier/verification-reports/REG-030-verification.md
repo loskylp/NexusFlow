@@ -15,7 +15,7 @@ limitations under the License.
 -->
 
 # Verification Report — REG-030
-**Date:** 2026-04-15 | **Result:** PARTIAL
+**Date:** 2026-04-15 | **Result:** PASS (iteration 2)
 **Task:** REG-030 — Restore CI green after Cycle 4 scaffold regressions | **Commit verified:** 809e299
 
 ## Regression Check Summary
@@ -91,6 +91,7 @@ All 11 violations are in `//nolint`-free scaffold stubs. The fix is to add `//no
 |---|---|---|---|
 | 24440076332 | 6b954c1 (pre-fix) | FAIL | go vet (REG-030-1) + TypeScript (REG-030-2/3) |
 | 24440602758 | e5260d0 (post-fix, includes 809e299) | FAIL | staticcheck U1000 × 11 (REG-030-4) |
+| 24441213113 | 01c16fe (includes e8b68cf) | PASS | — |
 
 ## Recommendation
 
@@ -99,3 +100,58 @@ RETURN TO BUILDER — Iteration 2.
 REG-030-1, REG-030-2, and REG-030-3 are resolved. A new blocking failure (REG-030-4) has been uncovered: 11 staticcheck U1000 violations in Cycle 4 scaffold stubs that were previously masked. The Builder must suppress these violations with inline `//nolint` comments referencing the implementing task for each declaration, then push to trigger a clean CI run.
 
 `go test` result cannot be confirmed until staticcheck passes and the CI job completes fully.
+
+---
+
+## Iteration 2 — REG-030-4 Regression Confirmation
+
+**Date:** 2026-04-15 | **Commit verified:** e8b68cf | **CI run:** 24441213113 | **Result:** PASS
+
+### Summary
+
+Commit e8b68cf adds `//lint:ignore U1000 scaffold placeholder for <TASK-NNN>` directives immediately above all 11 flagged declarations across 4 scaffold stub files. The `//lint:ignore` syntax is the staticcheck-native suppression format and is accepted by standalone `staticcheck ./...` as run in CI.
+
+All four CI jobs passed on GHA run 24441213113:
+
+| Job | Result |
+|---|---|
+| Go Build, Vet, and Test | PASS |
+| Frontend Build and Typecheck | PASS |
+| Fitness Function Tests | PASS |
+| Docker Build Smoke Test | PASS |
+
+### REG-030-4 Check Results (Iteration 2)
+
+| Check | CI Step | Result | Notes |
+|---|---|---|---|
+| go build | Build all Go packages | PASS | 0 errors |
+| go vet | Run go vet | PASS | 0 violations |
+| staticcheck | Run staticcheck | PASS | 0 violations — all 11 U1000 suppressions accepted |
+| go test | Run tests | PASS | 13 packages: api, internal/auth, internal/config, internal/db, internal/pipeline, internal/queue, internal/retention, internal/sse, monitor, tests/acceptance, tests/integration, tests/system, worker — all ok |
+| web typecheck | TypeScript typecheck | PASS | 0 TS errors |
+
+### Suppression Placement Verification
+
+All 11 `//lint:ignore U1000` directives verified as correctly placed in the source:
+
+| File | Declaration | Suppression task ref |
+|---|---|---|
+| `api/handlers_chaos.go` | `killWorkerRequest` | TASK-034 |
+| `api/handlers_chaos.go` | `disconnectDBRequest` | TASK-034 |
+| `api/handlers_chaos.go` | `floodQueueRequest` | TASK-034 |
+| `api/handlers_chaos.go` | `chaosActivityEntry` | TASK-034 |
+| `api/handlers_password_change.go` | `changePasswordRequest` | SEC-001 |
+| `worker/connector_postgres.go` | `PostgreSQLDataSourceConnector.db` | TASK-031 |
+| `worker/connector_postgres.go` | `PostgreSQLSinkConnector.db` | TASK-031 |
+| `worker/connector_postgres.go` | `PostgreSQLSinkConnector.dedup` | TASK-031 |
+| `worker/snapshot.go` | `SnapshotCapturer.connector` | TASK-033 |
+| `worker/snapshot.go` | `SnapshotCapturer.publisher` | TASK-033 |
+| `worker/snapshot.go` | `sinkSnapshotEvent` | TASK-033 |
+
+### Final Verdict
+
+**REG-030: PASS**
+
+All four regressions resolved. CI is fully green across all 4 jobs. The suppression directives are self-documenting: each cites the implementing task, making them trivially removable when TASK-031, TASK-033, TASK-034, and SEC-001 land.
+
+Annotations in the CI run reference Node.js 20 deprecation on GHA runners (not a failure — informational only; runner infrastructure concern, not application code).
