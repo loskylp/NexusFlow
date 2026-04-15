@@ -37,48 +37,8 @@ import React from 'react'
 // Sub-component contracts
 // ---------------------------------------------------------------------------
 
-/**
- * ChangePasswordFormProps feeds the password change form.
- */
-interface ChangePasswordFormProps {
-  /** True while the form submission is in progress. Disables all inputs. */
-  isSubmitting: boolean
-  /** Non-null error message to display below the current password field. */
-  currentPasswordError: string | null
-  /** Non-null error message to display below the new password field. */
-  newPasswordError: string | null
-  /** Non-null error message to display below the confirm password field. */
-  confirmPasswordError: string | null
-  /** Called when the form is submitted with the three field values. */
-  onSubmit: (currentPassword: string, newPassword: string, confirmPassword: string) => void
-}
-
-/**
- * ChangePasswordForm renders the three-field password change form.
- *
- * Client-side validation (before calling onSubmit):
- *   - Current password: must be non-empty.
- *   - New password: must be at least 8 characters.
- *   - Confirm new password: must match new password.
- *
- * The Enter key in any field submits the form.
- * Tab order: current password -> new password -> confirm -> submit button.
- *
- * Postconditions:
- *   - onSubmit is not called if any client-side validation fails.
- *   - All inputs are disabled while isSubmitting is true.
- *   - Submit button shows inline spinner while isSubmitting is true.
- */
-function ChangePasswordForm({
-  isSubmitting,
-  currentPasswordError,
-  newPasswordError,
-  confirmPasswordError,
-  onSubmit,
-}: ChangePasswordFormProps): React.ReactElement {
-  // TODO: implement
-  throw new Error('Not implemented')
-}
+// Stub — see SEC-001 (scaffold: process/scaffolder/cycle-4-scaffold.md)
+// ChangePasswordForm and its props contract will be implemented in SEC-001.
 
 // ---------------------------------------------------------------------------
 // Page

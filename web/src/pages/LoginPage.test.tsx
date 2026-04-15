@@ -83,7 +83,7 @@ describe('LoginPage — success redirect (AC-2)', () => {
   it('redirects admin to /workers on successful login', async () => {
     mockClientLogin.mockResolvedValueOnce({
       token: 'tok-1',
-      user: { id: 'u1', username: 'alice', role: 'admin', active: true, createdAt: '' },
+      user: { id: 'u1', username: 'alice', role: 'admin', active: true, mustChangePassword: false, createdAt: '' },
     })
 
     renderLoginPage()
@@ -101,7 +101,7 @@ describe('LoginPage — success redirect (AC-2)', () => {
   it('redirects user to /tasks on successful login', async () => {
     mockClientLogin.mockResolvedValueOnce({
       token: 'tok-2',
-      user: { id: 'u2', username: 'bob', role: 'user', active: true, createdAt: '' },
+      user: { id: 'u2', username: 'bob', role: 'user', active: true, mustChangePassword: false, createdAt: '' },
     })
 
     renderLoginPage()

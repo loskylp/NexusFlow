@@ -78,7 +78,7 @@ function stubPipelinesHook(partial: Partial<UsePipelinesReturn>): void {
 
 function stubAuth(isAdmin: boolean): void {
   mockUseAuth.mockReturnValue({
-    user: { id: 'user-001', username: 'testuser', role: isAdmin ? 'admin' : 'user', active: true, createdAt: '2026-01-01T00:00:00Z' },
+    user: { id: 'user-001', username: 'testuser', role: isAdmin ? 'admin' : 'user', active: true, mustChangePassword: false, createdAt: '2026-01-01T00:00:00Z' },
     login: vi.fn(),
     logout: vi.fn(),
     isLoading: false,

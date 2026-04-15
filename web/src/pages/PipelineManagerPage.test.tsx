@@ -126,6 +126,7 @@ function stubAuth(role: 'user' | 'admin' = 'user'): void {
       username: 'testuser',
       role,
       active: true,
+      mustChangePassword: false,
       createdAt: '2026-01-01T00:00:00Z',
     },
     login: vi.fn(),

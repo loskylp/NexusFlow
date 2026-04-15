@@ -15,7 +15,7 @@
  * See: DEMO-003, ADR-007, TASK-032, TASK-033
  */
 
-import type { SinkSnapshot, SinkInspectorState } from '@/types/domain'
+import type { SinkSnapshot } from '@/types/domain'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -98,7 +98,8 @@ export interface UseSinkInspectorReturn {
  *   - After sink:before-snapshot: beforeSnapshot is non-null, afterSnapshot is null.
  *   - After sink:after-result: afterSnapshot is non-null, isWaitingForSinkPhase is false.
  */
-export function useSinkInspector(options: UseSinkInspectorOptions): UseSinkInspectorReturn {
-  // TODO: implement
+// Stub — see TASK-032 (scaffold: process/scaffolder/cycle-4-scaffold.md)
+export function useSinkInspector(): UseSinkInspectorReturn {
+  // TODO: implement — wire options: UseSinkInspectorOptions when TASK-032 is implemented
   throw new Error('Not implemented')
 }

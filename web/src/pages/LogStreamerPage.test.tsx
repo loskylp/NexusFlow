@@ -93,7 +93,7 @@ beforeEach(() => {
   mockUseLogs.mockReturnValue(defaultLogsReturn())
   mockUseTasks.mockReturnValue(defaultTasksReturn())
   mockUseAuth.mockReturnValue({
-    user: { id: 'user-001', username: 'alice', role: 'user', active: true, createdAt: '2026-01-01T00:00:00Z' },
+    user: { id: 'user-001', username: 'alice', role: 'user', active: true, mustChangePassword: false, createdAt: '2026-01-01T00:00:00Z' },
     isLoading: false,
     login: vi.fn(),
     logout: vi.fn(),

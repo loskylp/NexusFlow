@@ -73,6 +73,12 @@ func (r *stubUserRepo) Deactivate(_ context.Context, id uuid.UUID) error {
 	return nil
 }
 
+// ChangePassword is a no-op stub satisfying db.UserRepository for tests that do not
+// exercise password change behaviour. The real implementation belongs to SEC-001.
+func (r *stubUserRepo) ChangePassword(_ context.Context, _ uuid.UUID, _ string) error {
+	return nil
+}
+
 // stubSessionStore is an in-memory SessionStore for testing.
 type stubSessionStore struct {
 	sessions map[string]*models.Session

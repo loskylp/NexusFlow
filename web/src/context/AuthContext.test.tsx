@@ -77,7 +77,7 @@ describe('AuthProvider — login()', () => {
   it('sets user in context on successful login', async () => {
     const response: AuthResponse = {
       token: 'tok-1',
-      user: { id: 'u1', username: 'alice', role: 'admin', active: true, createdAt: '' },
+      user: { id: 'u1', username: 'alice', role: 'admin', active: true, mustChangePassword: false, createdAt: '' },
     }
     mockLogin.mockResolvedValueOnce(response)
 
@@ -105,7 +105,7 @@ describe('AuthProvider — login()', () => {
   it('returns user with role "user" for a regular user login', async () => {
     const response: AuthResponse = {
       token: 'tok-2',
-      user: { id: 'u2', username: 'bob', role: 'user', active: true, createdAt: '' },
+      user: { id: 'u2', username: 'bob', role: 'user', active: true, mustChangePassword: false, createdAt: '' },
     }
     mockLogin.mockResolvedValueOnce(response)
 
@@ -120,7 +120,7 @@ describe('AuthProvider — logout()', () => {
   it('clears user from context after logout', async () => {
     const loginResp: AuthResponse = {
       token: 'tok-3',
-      user: { id: 'u3', username: 'charlie', role: 'admin', active: true, createdAt: '' },
+      user: { id: 'u3', username: 'charlie', role: 'admin', active: true, mustChangePassword: false, createdAt: '' },
     }
     mockLogin.mockResolvedValueOnce(loginResp)
     mockLogout.mockResolvedValueOnce(undefined)

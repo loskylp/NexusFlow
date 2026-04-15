@@ -16,10 +16,10 @@ vi.mock('@/context/AuthContext')
 const mockUseAuth = vi.mocked(AuthContext.useAuth)
 
 function adminUser(): User {
-  return { id: 'u1', username: 'alice', role: 'admin', active: true, createdAt: '' }
+  return { id: 'u1', username: 'alice', role: 'admin', active: true, mustChangePassword: false, createdAt: '' }
 }
 function regularUser(): User {
-  return { id: 'u2', username: 'bob', role: 'user', active: true, createdAt: '' }
+  return { id: 'u2', username: 'bob', role: 'user', active: true, mustChangePassword: false, createdAt: '' }
 }
 
 function makeAuthValue(user: User) {

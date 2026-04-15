@@ -15,7 +15,7 @@ vi.mock('@/context/AuthContext')
 const mockUseAuth = vi.mocked(AuthContext.useAuth)
 
 function authenticated(role: 'admin' | 'user' = 'admin'): User {
-  return { id: 'u1', username: 'alice', role, active: true, createdAt: '' }
+  return { id: 'u1', username: 'alice', role, active: true, mustChangePassword: false, createdAt: '' }
 }
 
 function renderProtected(user: User | null, loadingState = false) {
