@@ -127,6 +127,8 @@ func main() {
 	logPublisher := workerPkg.NewRedisLogPublisher(redisClient, sseBroker)
 
 	// Construct the worker.
+	// redisClient is passed as the snapshotPublisher so Before/After Sink snapshots are
+	// streamed to events:sink:{taskId} for the Sink Inspector GUI (TASK-033, ADR-009).
 	w := workerPkg.NewWorkerWithPipelines(
 		cfg,
 		taskRepo,
@@ -137,7 +139,7 @@ func main() {
 		sseBroker,  // TaskEventBroker — wired in TASK-015
 		connectorRegistry,
 		redisQueue, // CancellationStore — TASK-012
-	).WithChainTrigger(chainTrigger).WithLogPublisher(logPublisher)
+	).WithChainTrigger(chainTrigger).WithLogPublisher(logPublisher).WithSnapshotPublisher(redisClient)
 
 	// Run blocks until SIGTERM/SIGINT.
 	runCtx, runCancel := context.WithCancel(context.Background())

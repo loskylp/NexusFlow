@@ -50,6 +50,10 @@ type Worker struct {
 	// logPublisher writes log lines to Redis Streams and fires SSE events (TASK-016).
 	// May be nil; when nil, log production is skipped silently.
 	logPublisher LogPublisher
+	// snapshotPub is the Redis Pub/Sub publisher used to stream Before/After sink
+	// snapshots to the Sink Inspector GUI (TASK-033, ADR-009).
+	// May be nil; when nil, snapshot capture is skipped silently.
+	snapshotPub snapshotPublisher
 }
 
 // NewWorker constructs a Worker with all required dependencies.
@@ -169,6 +173,25 @@ func (w *Worker) WithLogPublisher(publisher LogPublisher) *Worker {
 		panic("worker.WithLogPublisher: publisher must not be nil")
 	}
 	w.logPublisher = publisher
+	return w
+}
+
+// WithSnapshotPublisher attaches a Redis Pub/Sub publisher used to stream
+// Before/After Sink snapshots to the Sink Inspector GUI (TASK-033, ADR-009).
+// When not attached, snapshot capture is disabled silently.
+//
+// Args:
+//
+//	pub: The snapshotPublisher to use. Must not be nil.
+//
+// Returns:
+//
+//	The same Worker instance (fluent API for construction-time wiring).
+func (w *Worker) WithSnapshotPublisher(pub snapshotPublisher) *Worker {
+	if pub == nil {
+		panic("worker.WithSnapshotPublisher: publisher must not be nil")
+	}
+	w.snapshotPub = pub
 	return w
 }
 
@@ -540,6 +563,11 @@ func (w *Worker) runProcess(ctx context.Context, pipeline *models.Pipeline, reco
 }
 
 // runSink executes Phase 3: writes records to the Sink connector with idempotency guard.
+//
+// When a snapshotPublisher is wired, the write is delegated to a SnapshotCapturer
+// which captures Before/After destination snapshots and publishes them to
+// events:sink:{taskID} for the Sink Inspector GUI (TASK-033, ADR-009).
+//
 // ErrAlreadyApplied is treated as a successful no-op (ADR-003: idempotent redelivery).
 func (w *Worker) runSink(ctx context.Context, taskID uuid.UUID, pipeline *models.Pipeline, records []map[string]any, executionID string) error {
 	connector, err := w.resolveSink(pipeline.SinkConfig.ConnectorType)
@@ -547,7 +575,15 @@ func (w *Worker) runSink(ctx context.Context, taskID uuid.UUID, pipeline *models
 		return err
 	}
 
-	if writeErr := connector.Write(ctx, pipeline.SinkConfig.Config, records, executionID); writeErr != nil {
+	var writeErr error
+	if w.snapshotPub != nil {
+		capturer := NewSnapshotCapturer(connector, w.snapshotPub)
+		writeErr = capturer.CaptureAndWrite(ctx, pipeline.SinkConfig.Config, records, executionID, taskID.String())
+	} else {
+		writeErr = connector.Write(ctx, pipeline.SinkConfig.Config, records, executionID)
+	}
+
+	if writeErr != nil {
 		if errors.Is(writeErr, ErrAlreadyApplied) {
 			// Idempotent redelivery: this executionID was already committed. Treat as success (ADR-003).
 			log.Printf("worker: task %s: Sink.Write: ErrAlreadyApplied for executionID=%q — treating as no-op", taskID, executionID)
