@@ -1,87 +1,66 @@
 <!-- Copyright 2026 Pablo Ochendrowitsch — Apache License 2.0 -->
 
-# Routing Instruction — Builder — REG-030 CI Regression Fixes
-**Date:** 2026-04-15 | **From:** Orchestrator | **To:** Builder
-**Cycle:** 4 | **Task:** REG-030 (bundled: REG-030-1, REG-030-2, REG-030-3)
+# Routing Instruction — Builder (REG-030 iteration 2)
+
+**To:** @nexus-builder
+**From:** Orchestrator
+**Date:** 2026-04-15
+**Cycle:** 4
+**Task:** REG-030-4 — Suppress staticcheck U1000 violations in Cycle 4 scaffold stubs
+**Iteration:** 2
 
 ## Context
 
-TASK-030 (MinIO Fake-S3) Verifier returned PASS — all 4 ACs PASS. During the CI regression check, the Verifier identified three **pre-existing CI regressions** introduced by the Cycle 4 scaffold commit (66c4bf0). These failures are present on every commit since the scaffold was pushed and are **outside TASK-030's scope** — they affect code owned by SEC-001, TASK-032, and TASK-034 scaffolds.
+REG-030 iteration 1 (commit 809e299) fixed REG-030-1 (`go vet` ChangePassword method), REG-030-2 (7 web test User fixtures), and REG-030-3 (4 web scaffold stubs unused locals). Verifier confirmed all three PASS.
 
-CI is currently red on `main`. This must be restored to green before the next verification in Cycle 4 (TASK-033), otherwise subsequent Verifier CI reports will be polluted by pre-existing noise and may mask new regressions.
+Advancing past `go vet` exposed a fourth regression previously masked: `staticcheck ./...` reports 11 U1000 "declared and unused" violations in Cycle 4 scaffold stubs from commit 66c4bf0. CI remains red.
 
-All three fixes are small and mechanical. Bundle them in a single Builder dispatch and single commit.
+These declarations are intentional placeholders for not-yet-implemented tasks. The fix is inline `//nolint:U1000` suppressions that reference the implementing task, so the suppression is self-documenting and removable when the task lands.
 
-## What to do
+Verifier report: [process/verifier/verification-reports/REG-030-verification.md](../verifier/verification-reports/REG-030-verification.md)
 
-Apply the three fixes described below. Do not modify TASK-030 / MinIO code. Do not modify behaviour of SEC-001, TASK-032, or TASK-034 scaffolds — these fixes are purely to make the scaffolds type-check and pass `go vet` against pre-existing tests.
+## Scope — exactly 11 declarations across 4 files
 
-### REG-030-1 — Go vet: `stubUserRepo` missing `ChangePassword`
+Add a line-level suppression comment directly above each declaration:
 
-**File:** `api/handlers_auth_test.go`
-**Fix:** Add a no-op `ChangePassword(ctx context.Context, userID string, newHash string) error` method to `stubUserRepo` (signature must match the `db.UserRepository` interface as defined in `internal/db/user_repository.go`). Return `nil`. The stub is for tests that do not exercise password change.
+```
+//nolint:U1000 // scaffold placeholder for <TASK-NNN>
+```
 
-**Verification:** `go vet ./...` must return clean. `go test ./api/...` must pass.
+The implementing task for each file:
 
-### REG-030-2 — TypeScript: `mustChangePassword` missing from User fixtures
+| File | Implementing task | Declarations to suppress |
+|---|---|---|
+| `api/handlers_chaos.go` | TASK-034 (Chaos Controller GUI) | line 29 `killWorkerRequest`, line 36 `disconnectDBRequest`, line 43 `floodQueueRequest`, line 54 `chaosActivityEntry` |
+| `api/handlers_password_change.go` | SEC-001 (Password change + mandatory first-login) | line 34 `changePasswordRequest` |
+| `worker/connector_postgres.go` | TASK-031 (Mock-Postgres with seed data) | line 69 `db` field, line 131 `db` field, line 132 `dedup` field |
+| `worker/snapshot.go` | TASK-033 (Sink Before/After snapshot capture) | line 45 `connector` field, line 46 `publisher` field, line 118 `sinkSnapshotEvent` type |
 
-**Files (7):**
-- `web/src/components/ProtectedRoute.test.tsx`
-- `web/src/components/Sidebar.test.tsx`
-- `web/src/context/AuthContext.test.tsx`
-- `web/src/pages/LogStreamerPage.test.tsx`
-- `web/src/pages/LoginPage.test.tsx`
-- `web/src/pages/PipelineManagerPage.test.tsx`
-- `web/src/pages/TaskFeedPage.test.tsx`
+## Required Documents
 
-**Fix:** Add `mustChangePassword: false` to every inline `User` mock object in these files. Do not modify the `User` type in `web/src/types/domain.ts`.
+- Verifier report (Failure Details §FAIL-001 has the line-by-line list): [process/verifier/verification-reports/REG-030-verification.md](../verifier/verification-reports/REG-030-verification.md)
+- Project state: [process/orchestrator/project-state.md](./project-state.md)
 
-**Verification:** `npm run typecheck` (or `tsc --noEmit`) in `web/` must return clean. `npm test` in `web/` must pass.
+## Acceptance Criteria
 
-### REG-030-3 — TypeScript: unused variables in scaffold stubs
+1. All 11 declarations carry an inline `//nolint:U1000 // scaffold placeholder for <TASK-NNN>` comment immediately preceding the declaration, with the correct task ID per the table above.
+2. No other changes to the scaffold stubs (no logic, no struct-field renames, no signature changes).
+3. Local verification:
+   - `go vet ./...` — PASS
+   - `go build ./...` — PASS
+   - `staticcheck ./...` — PASS (0 violations)
+   - `go test ./...` — PASS (previously blocked by staticcheck halt in CI; must run clean locally)
+   - `npm --prefix web run typecheck` — PASS (still green from 809e299)
+4. Commit message references REG-030-4 and the Verifier report, and describes the mechanical nature of the change.
 
-**Files (4):**
-- `web/src/hooks/useSinkInspector.ts`
-- `web/src/pages/ChangePasswordPage.tsx`
-- `web/src/pages/ChaosControllerPage.tsx`
-- `web/src/pages/SinkInspectorPage.tsx`
+## You Must Not
 
-**Fix:** Preferred approach — **remove** the unused destructured names/imports from the scaffold stubs. They will be re-introduced when TASK-032, TASK-034, and SEC-001 are implemented and actually wire the components into JSX. Do not use `_`-prefix suppression; remove rather than hide, since the placeholder intent is clearer when the future implementer sees an empty component body rather than an unused `_Foo` binding.
-
-Preserve any file-level comments or TODO markers that signal the stub's intent. If a scaffold stub becomes effectively empty, leave a single line comment `// Stub — see TASK-<nnn> (scaffold: process/scaffolder/...)` so the next Builder knows where to start.
-
-**Verification:** `npm run typecheck` in `web/` must return clean.
-
-## Required documents
-
-- Verifier report (source of the regression descriptions): [`process/verifier/verification-reports/TASK-030-verification.md`](../verifier/verification-reports/TASK-030-verification.md) — CI Regression Report section
-- Interface definition for REG-030-1: [`internal/db/user_repository.go`](../../internal/db/user_repository.go) — `UserRepository` interface, `ChangePassword` signature
-- User type for REG-030-2: [`web/src/types/domain.ts`](../../web/src/types/domain.ts) — `User` type, `mustChangePassword` field
-
-## Out of scope
-
-- Do NOT implement `ChangePassword` persistence logic. The real implementation is SEC-001's responsibility.
-- Do NOT render the Sink Inspector, Chaos Controller, or Change Password pages. Those are TASK-032, TASK-034, SEC-001 responsibilities respectively.
-- Do NOT change test assertions or add new tests. This is a compile/typecheck restoration only.
-
-## Acceptance signals
-
-Before handing back to the Orchestrator, confirm ALL of the following locally:
-
-1. `go vet ./...` — clean
-2. `go build ./...` — clean
-3. `go test ./...` — all pre-existing tests pass (no new failures)
-4. `cd web && npm run typecheck` — clean (no TS errors)
-5. `cd web && npm test` — all pre-existing tests pass
-
-Commit the fixes as a single commit with message `fix(cycle-4): restore CI green — REG-030-1/2/3 scaffold regressions` (follow commit-discipline skill).
+- Implement any of the placeholder types or fields — they must remain stubs.
+- Change staticcheck configuration at the package or repo level (do not add `staticcheck.conf` disabling U1000). Per-declaration suppression is the required approach — it is self-documenting.
+- Touch unrelated files.
 
 ## Handoff
 
-When complete, report back with:
-- Commit SHA
-- Files changed (list)
-- Confirmation of all five acceptance signals above
-- Any deviations from the fix descriptions above (there should be none — these are mechanical)
+On completion, return control with: commit SHA, local verification output, and a one-line status. The Orchestrator will re-dispatch the Verifier in regression-confirmation mode.
 
-**Next after Builder:** Orchestrator will route to Verifier in **regression-confirmation mode** (run CI locally/remote; no new tests written) to confirm CI green. On Verifier PASS, Orchestrator will dispatch Builder for TASK-033 (next task in Cycle 4 sequence).
+**Next:** Invoke @nexus-builder.
