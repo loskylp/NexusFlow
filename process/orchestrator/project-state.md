@@ -2,7 +2,7 @@
 **Manifest version:** v1 | **Profile:** Critical
 **Current phase:** EXECUTION -- Cycle 4 in progress
 **Current cycle:** 4
-**Last updated:** 2026-04-15 (TASK-030 PASS; Builder dispatched for REG-030-1/2/3 CI regression fixes)
+**Last updated:** 2026-04-15 (REG-030 Builder complete, commit 809e299; Verifier dispatched in regression-confirmation mode)
 
 ---
 
@@ -27,9 +27,10 @@ Security posture:
 
 ## Active Work
 
-**Agent in control:** Builder (dispatched 2026-04-15 for REG-030-1/2/3 CI regression fixes)
-**Current task:** REG-030-1/2/3 -- Cycle 4 scaffold CI regressions (pre-existing; outside TASK-030 scope)
-**Waiting for:** Builder to apply three mechanical fixes restoring CI green before TASK-033 dispatch.
+**Agent in control:** Verifier (dispatched 2026-04-15 in regression-confirmation mode for REG-030 fixes at 809e299)
+**Current task:** REG-030-1/2/3 -- Cycle 4 scaffold CI regression fixes (Builder complete at 809e299)
+**Waiting for:** Verifier to confirm CI green (go vet/build/test, web typecheck, web tests) on 809e299 before TASK-033 dispatch.
+**Builder local verification (809e299):** go vet/build/test clean, web typecheck clean, 574 web tests pass.
 **TASK-030 status:** VERIFIER PASS (2026-04-15) -- all 4 ACs PASS, 9 unit + 7 integration + 12 acceptance + 4 system tests. Report: `process/verifier/verification-reports/TASK-030-verification.md`. CI failures on this commit are pre-existing regressions from the Cycle 4 scaffold (66c4bf0), not TASK-030 code.
 **Regression scope:**
 - REG-030-1: `api/handlers_auth_test.go` -- `stubUserRepo` missing `ChangePassword` method (interface widened by SEC-001 scaffold)
@@ -119,7 +120,7 @@ Security posture:
 | Task | Description | Dependencies (all satisfied) | Priority | Status |
 |---|---|---|---|---|
 | TASK-030 | MinIO Fake-S3 | TASK-007, TASK-018 | P1 MM | COMPLETE (Verifier PASS, iteration 1, 2026-04-15; 9 unit + 7 integration + 12 acceptance + 4 system tests) |
-| REG-030 | Cycle 4 scaffold CI regression fixes (REG-030-1/2/3) | None | BLOCKER (CI green) | BUILDER (dispatched 2026-04-15) |
+| REG-030 | Cycle 4 scaffold CI regression fixes (REG-030-1/2/3) | None | BLOCKER (CI green) | VERIFIER (regression-confirmation mode, dispatched 2026-04-15 at 809e299) |
 | TASK-033 | Sink Before/After snapshot capture | TASK-018, TASK-015 | P1 MM | PENDING |
 | TASK-031 | Mock-Postgres with seed data | TASK-007, TASK-018 | P1 MM | PENDING |
 | TASK-032 | Sink Inspector GUI | TASK-019, TASK-015, TASK-033, TASK-030 | P1 MM | PENDING |
@@ -128,8 +129,8 @@ Security posture:
 | TASK-038 | Fitness function instrumentation | TASK-001, TASK-004, TASK-007, TASK-009, TASK-018 | P2 LM | PENDING |
 
 **Scaffolder:** COMPLETE (2026-04-09) -- committed as 66c4bf0. All 7 tasks scaffolded. Scaffold introduced three pre-existing CI regressions (REG-030-1/2/3) now being remediated by Builder.
-**Builder:** TASK-030 COMPLETE (2026-04-15). REG-030 DISPATCHED 2026-04-15 -- three mechanical fixes to restore CI green.
-**Verifier:** TASK-030 PASS (2026-04-15) -- all 4 ACs PASS, 3 CI regressions escalated (REG-030-1/2/3), outside TASK-030 scope.
+**Builder:** TASK-030 COMPLETE (2026-04-15). REG-030 COMPLETE (commit 809e299, 2026-04-15) -- three mechanical fixes applied; local verification green (go vet/build/test, web typecheck, 574 web tests pass).
+**Verifier:** TASK-030 PASS (2026-04-15). REG-030 DISPATCHED 2026-04-15 in regression-confirmation mode.
 
 ---
 
