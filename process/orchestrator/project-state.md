@@ -2,7 +2,7 @@
 **Manifest version:** v1 | **Profile:** Critical
 **Current phase:** EXECUTION -- Cycle 4 in progress
 **Current cycle:** 4
-**Last updated:** 2026-04-15 (REG-030-4 Builder COMPLETE at commit e8b68cf -- //lint:ignore U1000 applied across scaffold stubs; local checks all green; Verifier dispatched in regression-confirmation mode)
+**Last updated:** 2026-04-15 (REG-030 FULLY CLOSED at commit e8b68cf, iteration 2 Verifier PASS, CI green; Cycle 4 TASK-033 Builder dispatched)
 
 ---
 
@@ -27,21 +27,12 @@ Security posture:
 
 ## Active Work
 
-**Agent in control:** Verifier (dispatched 2026-04-15, regression-confirmation mode, for REG-030-4 at commit e8b68cf)
-**Current task:** REG-030-4 -- Confirm staticcheck U1000 suppressions resolve CI regression; no new tests required
-**Waiting for:** Verifier to run CI equivalents (go vet/build/test, staticcheck, web typecheck) and confirm PASS on commit e8b68cf.
-**Builder local verification (e8b68cf):** go vet/build/test clean, staticcheck 0 violations (native format `//lint:ignore U1000` used since CI runs staticcheck standalone, not via golangci-lint), web typecheck clean.
-**TASK-030 status:** VERIFIER PASS (2026-04-15) -- all 4 ACs PASS, 9 unit + 7 integration + 12 acceptance + 4 system tests. Report: `process/verifier/verification-reports/TASK-030-verification.md`. CI failures on this commit are pre-existing regressions from the Cycle 4 scaffold (66c4bf0), not TASK-030 code.
-**Regression scope:**
-- REG-030-1: `api/handlers_auth_test.go` -- `stubUserRepo` missing `ChangePassword` method (FIXED 809e299, Verifier PASS)
-- REG-030-2: 7 web test files -- User mock fixtures missing `mustChangePassword: false` field (FIXED 809e299, Verifier PASS)
-- REG-030-3: 4 web stub files -- unused destructured variables flagged under `noUnusedLocals` (FIXED 809e299, Verifier PASS)
-- REG-030-4: 11 staticcheck U1000 violations in Cycle 4 scaffold stubs (DISCOVERED 2026-04-15; was masked by pre-fix go vet halt):
-  - `api/handlers_chaos.go` lines 29, 36, 43, 54 (4 unused types)
-  - `api/handlers_password_change.go` line 34 (1 unused type)
-  - `worker/connector_postgres.go` lines 69, 131, 132 (3 unused fields)
-  - `worker/snapshot.go` lines 45, 46, 118 (2 unused fields + 1 unused type)
-**Total project progress:** 31 of 31 v1.0.0 feature tasks COMPLETE. 1 of 7 Cycle 4 tasks verified PASS (TASK-030). Go-Live PENDING (requires Cycle 5 TASK-036).
+**Agent in control:** Builder (dispatched 2026-04-15 for TASK-033 -- Sink Before/After snapshot capture)
+**Current task:** TASK-033 -- Sink Before/After snapshot capture (scaffold exists in `worker/snapshot.go`)
+**Waiting for:** Builder to implement SnapshotCapturer, wire into worker execution, publish snapshots via Redis Pub/Sub on events:sink:{taskId}.
+**REG-030 status:** FULLY CLOSED (2026-04-15). Iteration 2 Verifier PASS at commit e8b68cf. CI green across Go + web. All four sub-regressions (REG-030-1/2/3/4) resolved.
+**TASK-030 status:** COMPLETE (Verifier PASS 2026-04-15, iteration 1).
+**Total project progress:** 31 of 31 v1.0.0 feature tasks COMPLETE. 1 of 7 Cycle 4 tasks verified PASS (TASK-030). TASK-033 in progress. Go-Live PENDING (requires Cycle 5 TASK-036).
 
 ---
 
@@ -125,8 +116,8 @@ Security posture:
 | Task | Description | Dependencies (all satisfied) | Priority | Status |
 |---|---|---|---|---|
 | TASK-030 | MinIO Fake-S3 | TASK-007, TASK-018 | P1 MM | COMPLETE (Verifier PASS, iteration 1, 2026-04-15; 9 unit + 7 integration + 12 acceptance + 4 system tests) |
-| REG-030 | Cycle 4 scaffold CI regression fixes (REG-030-1/2/3 FIXED; REG-030-4 Builder complete @ e8b68cf) | None | BLOCKER (CI green) | VERIFIER dispatched 2026-04-15 (regression-confirmation mode) |
-| TASK-033 | Sink Before/After snapshot capture | TASK-018, TASK-015 | P1 MM | PENDING |
+| REG-030 | Cycle 4 scaffold CI regression fixes (all four sub-regressions resolved) | None | BLOCKER (CI green) | CLOSED (iteration 2 PASS, commit e8b68cf, 2026-04-15) |
+| TASK-033 | Sink Before/After snapshot capture | TASK-018, TASK-015 | P1 MM | IN PROGRESS -- Builder dispatched 2026-04-15 |
 | TASK-031 | Mock-Postgres with seed data | TASK-007, TASK-018 | P1 MM | PENDING |
 | TASK-032 | Sink Inspector GUI | TASK-019, TASK-015, TASK-033, TASK-030 | P1 MM | PENDING |
 | TASK-034 | Chaos Controller GUI | TASK-019, TASK-020, TASK-021, TASK-009 | P1 HM | PENDING |
@@ -134,8 +125,8 @@ Security posture:
 | TASK-038 | Fitness function instrumentation | TASK-001, TASK-004, TASK-007, TASK-009, TASK-018 | P2 LM | PENDING |
 
 **Scaffolder:** COMPLETE (2026-04-09) -- committed as 66c4bf0. All 7 tasks scaffolded. Scaffold introduced four pre-existing CI regressions (REG-030-1/2/3/4) being remediated incrementally.
-**Builder:** TASK-030 COMPLETE (2026-04-15). REG-030 iteration 1 FIXED REG-030-1/2/3 (commit 809e299). REG-030 iteration 2 COMPLETE @ commit e8b68cf -- `//lint:ignore U1000` applied across scaffold stubs (staticcheck native format, not `//nolint:` — CI runs staticcheck standalone). All local checks pass.
-**Verifier:** TASK-030 PASS (2026-04-15). REG-030 iteration 1 PARTIAL (2026-04-15) -- REG-030-1/2/3 PASS, REG-030-4 discovered. REG-030 iteration 2 DISPATCHED 2026-04-15 in regression-confirmation mode for commit e8b68cf. Report: `process/verifier/verification-reports/REG-030-verification.md`.
+**Builder:** TASK-030 COMPLETE (2026-04-15). REG-030 CLOSED (iteration 2, commit e8b68cf). TASK-033 DISPATCHED 2026-04-15.
+**Verifier:** TASK-030 PASS (2026-04-15). REG-030 PASS iteration 2 (2026-04-15, commit e8b68cf, CI green). Report: `process/verifier/verification-reports/REG-030-verification.md`.
 
 ---
 
