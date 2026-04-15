@@ -15,7 +15,7 @@ limitations under the License.
 -->
 
 # Verification Report — TASK-034
-**Date:** 2026-04-15 | **Result:** PASS
+**Date:** 2026-04-15 | **Result:** FAIL (CI regression — staticcheck SA4006)
 **Task:** Chaos Controller GUI | **Requirement(s):** DEMO-004, UX Spec (Chaos Controller)
 
 ## Acceptance Criteria Results
@@ -190,9 +190,23 @@ The 409 atomic guard ensures concurrent disconnect requests are rejected during 
 
 ## CI Run
 
-At the time of verification, commit `bfd22dd` is 3 commits ahead of `origin/main` (the three commits are: `bfd22dd` implementation, plus two Orchestrator process commits). These commits are being pushed to remote as part of this verification's commit step. CI will run on push; the CI section will be updated once the pipeline completes.
+Run ID: 24464013380 | Branch: main | Commit: 4c95d38 (Verifier commit including bfd22dd)
 
-**Prior CI baseline:** Run 24460040995 (commit `922a949`, task(TASK-032) verified PASS) — all four jobs green. The local Go regression run above confirms no new failures have been introduced between that baseline and `bfd22dd`.
+Job | Result
+--- | ---
+Frontend Build and Typecheck | PASS
+Go Build, Vet, and Test | FAIL — staticcheck step
+Fitness Function Tests | skipped (depends on Go job)
+Docker Build Smoke Test | skipped (depends on Go job)
+
+**Failure details:**
+
+```
+api/handlers_chaos.go:200:3: this value of activityLog is never used (SA4006)
+api/handlers_chaos.go:278:3: this value of activityLog is never used (SA4006)
+```
+
+In `KillWorker` (line 200) and `DisconnectDatabase` (line 278), the code appends an error entry to `activityLog` on Docker failure, then immediately calls `writeError` and returns. The updated slice is never read — staticcheck SA4006 flags this correctly. The Verifier cannot modify `api/handlers_chaos.go` (Builder-owned file). This is routed back to the Builder as a CI regression fix.
 
 ## Observations (non-blocking)
 
@@ -211,5 +225,58 @@ The routing summary explicitly listed `tests/acceptance/TASK-034-acceptance.test
 **OBS-034-5: `FloodQueue` uses hardcoded `floodDefaultTags = []string{"demo"}` for task routing.**
 Tasks are always routed to the "demo" tag regardless of the selected pipeline's actual configuration. This is appropriate for the Chaos Controller's demo purpose (the worker fleet is configured with `WORKER_TAGS=demo,etl`), but it means flood tasks may not exercise the same routing path as normal tasks submitted for that pipeline. Not a defect for the demo use case.
 
+## Failure Details
+
+### FAIL-034-1: staticcheck SA4006 — unused activityLog append on Docker error paths
+**Criterion:** CI pipeline — staticcheck step (Go Build, Vet, and Test job)
+**File:** `api/handlers_chaos.go`
+
+**Locations:**
+- Line 200 (`KillWorker` Docker failure branch)
+- Line 278 (`DisconnectDatabase` Docker failure branch)
+
+**Expected:** staticcheck passes with no SA4006 violations
+
+**Actual:**
+```
+api/handlers_chaos.go:200:3: this value of activityLog is never used (SA4006)
+api/handlers_chaos.go:278:3: this value of activityLog is never used (SA4006)
+```
+
+**Root cause:** In both Docker-failure branches, the code appends a log entry to `activityLog` then calls `writeError` and returns immediately. The updated slice is never consumed — the error response from `writeError` is the final response, not a response carrying the log.
+
+**Suggested fix (two options — Builder's choice):**
+
+Option A — Remove the unused appends (simplest; no behaviour change since the log is discarded anyway):
+```go
+// KillWorker line 198–205: remove the activityLog append
+if dockerErr != nil {
+    log.Printf("chaos.KillWorker: docker kill %q: %v (output: %s)", req.WorkerID, dockerErr, output)
+    writeError(w, http.StatusInternalServerError, "docker kill failed: "+dockerErr.Error())
+    return
+}
+
+// DisconnectDatabase line 275–281: remove the activityLog append
+if dockerErr != nil {
+    h.disconnectActive.Store(0)
+    log.Printf(...)
+    writeError(w, http.StatusInternalServerError, "docker stop failed: "+dockerErr.Error())
+    return
+}
+```
+
+Option B — Return a 200 with the error log instead of a 500 (consistent with the comment "Return 200 with error log so the GUI can display the failure inline" — but then the comment and writeError call are inconsistent):
+```go
+// If the intent is to surface the log to the GUI, return 200 with the log.
+w.Header().Set("Content-Type", "application/json")
+w.WriteHeader(http.StatusOK)
+_ = json.NewEncoder(w).Encode(killWorkerResponse{Log: activityLog})
+return
+```
+
+Option A is the simpler fix with no behaviour change. Option B would require a frontend change to handle the partial-success path.
+
+The Verifier recommends Option A. The error is already logged via `log.Printf`; the frontend handles 500 with a generic error message. The activityLog entry adds no value when it is never transmitted.
+
 ## Recommendation
-PASS TO NEXT STAGE
+RETURN TO BUILDER — Iteration 2 of 3 — fix staticcheck SA4006 in api/handlers_chaos.go (two locations)
