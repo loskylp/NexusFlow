@@ -2,7 +2,7 @@
 **Manifest version:** v1 | **Profile:** Critical
 **Current phase:** EXECUTION -- Cycle 4 in progress
 **Current cycle:** 4
-**Last updated:** 2026-04-15 (REG-030 Builder complete, commit 809e299; Verifier dispatched in regression-confirmation mode)
+**Last updated:** 2026-04-15 (REG-030 Verifier PARTIAL -- REG-030-1/2/3 fixed, REG-030-4 discovered: 11 staticcheck U1000 violations in scaffold stubs; Builder dispatched iteration 2)
 
 ---
 
@@ -27,15 +27,20 @@ Security posture:
 
 ## Active Work
 
-**Agent in control:** Verifier (dispatched 2026-04-15 in regression-confirmation mode for REG-030 fixes at 809e299)
-**Current task:** REG-030-1/2/3 -- Cycle 4 scaffold CI regression fixes (Builder complete at 809e299)
-**Waiting for:** Verifier to confirm CI green (go vet/build/test, web typecheck, web tests) on 809e299 before TASK-033 dispatch.
+**Agent in control:** Builder (dispatched 2026-04-15, iteration 2, for REG-030-4 staticcheck U1000 suppressions)
+**Current task:** REG-030-4 -- Add //nolint:U1000 suppressions to 11 scaffold stub declarations across 4 files
+**Waiting for:** Builder to apply inline `//nolint:U1000 // scaffold placeholder for <TASK-NNN>` suppressions, push, then re-dispatch Verifier in regression-confirmation mode.
 **Builder local verification (809e299):** go vet/build/test clean, web typecheck clean, 574 web tests pass.
 **TASK-030 status:** VERIFIER PASS (2026-04-15) -- all 4 ACs PASS, 9 unit + 7 integration + 12 acceptance + 4 system tests. Report: `process/verifier/verification-reports/TASK-030-verification.md`. CI failures on this commit are pre-existing regressions from the Cycle 4 scaffold (66c4bf0), not TASK-030 code.
 **Regression scope:**
-- REG-030-1: `api/handlers_auth_test.go` -- `stubUserRepo` missing `ChangePassword` method (interface widened by SEC-001 scaffold)
-- REG-030-2: 7 web test files -- User mock fixtures missing `mustChangePassword: false` field (added by SEC-001 scaffold to `web/src/types/domain.ts`)
-- REG-030-3: 4 web stub files (`ChangePasswordPage.tsx`, `ChaosControllerPage.tsx`, `SinkInspectorPage.tsx`, `useSinkInspector.ts`) -- unused destructured variables flagged under `noUnusedLocals`
+- REG-030-1: `api/handlers_auth_test.go` -- `stubUserRepo` missing `ChangePassword` method (FIXED 809e299, Verifier PASS)
+- REG-030-2: 7 web test files -- User mock fixtures missing `mustChangePassword: false` field (FIXED 809e299, Verifier PASS)
+- REG-030-3: 4 web stub files -- unused destructured variables flagged under `noUnusedLocals` (FIXED 809e299, Verifier PASS)
+- REG-030-4: 11 staticcheck U1000 violations in Cycle 4 scaffold stubs (DISCOVERED 2026-04-15; was masked by pre-fix go vet halt):
+  - `api/handlers_chaos.go` lines 29, 36, 43, 54 (4 unused types)
+  - `api/handlers_password_change.go` line 34 (1 unused type)
+  - `worker/connector_postgres.go` lines 69, 131, 132 (3 unused fields)
+  - `worker/snapshot.go` lines 45, 46, 118 (2 unused fields + 1 unused type)
 **Total project progress:** 31 of 31 v1.0.0 feature tasks COMPLETE. 1 of 7 Cycle 4 tasks verified PASS (TASK-030). Go-Live PENDING (requires Cycle 5 TASK-036).
 
 ---
@@ -120,7 +125,7 @@ Security posture:
 | Task | Description | Dependencies (all satisfied) | Priority | Status |
 |---|---|---|---|---|
 | TASK-030 | MinIO Fake-S3 | TASK-007, TASK-018 | P1 MM | COMPLETE (Verifier PASS, iteration 1, 2026-04-15; 9 unit + 7 integration + 12 acceptance + 4 system tests) |
-| REG-030 | Cycle 4 scaffold CI regression fixes (REG-030-1/2/3) | None | BLOCKER (CI green) | VERIFIER (regression-confirmation mode, dispatched 2026-04-15 at 809e299) |
+| REG-030 | Cycle 4 scaffold CI regression fixes (REG-030-1/2/3 FIXED; REG-030-4 in progress) | None | BLOCKER (CI green) | BUILDER iteration 2 (dispatched 2026-04-15 for REG-030-4 staticcheck suppressions) |
 | TASK-033 | Sink Before/After snapshot capture | TASK-018, TASK-015 | P1 MM | PENDING |
 | TASK-031 | Mock-Postgres with seed data | TASK-007, TASK-018 | P1 MM | PENDING |
 | TASK-032 | Sink Inspector GUI | TASK-019, TASK-015, TASK-033, TASK-030 | P1 MM | PENDING |
@@ -128,9 +133,9 @@ Security posture:
 | SEC-001 | Password change + mandatory first-login | TASK-003, TASK-017 | SECURITY | PENDING |
 | TASK-038 | Fitness function instrumentation | TASK-001, TASK-004, TASK-007, TASK-009, TASK-018 | P2 LM | PENDING |
 
-**Scaffolder:** COMPLETE (2026-04-09) -- committed as 66c4bf0. All 7 tasks scaffolded. Scaffold introduced three pre-existing CI regressions (REG-030-1/2/3) now being remediated by Builder.
-**Builder:** TASK-030 COMPLETE (2026-04-15). REG-030 COMPLETE (commit 809e299, 2026-04-15) -- three mechanical fixes applied; local verification green (go vet/build/test, web typecheck, 574 web tests pass).
-**Verifier:** TASK-030 PASS (2026-04-15). REG-030 DISPATCHED 2026-04-15 in regression-confirmation mode.
+**Scaffolder:** COMPLETE (2026-04-09) -- committed as 66c4bf0. All 7 tasks scaffolded. Scaffold introduced four pre-existing CI regressions (REG-030-1/2/3/4) being remediated incrementally.
+**Builder:** TASK-030 COMPLETE (2026-04-15). REG-030 iteration 1 FIXED REG-030-1/2/3 (commit 809e299). REG-030 iteration 2 DISPATCHED 2026-04-15 for REG-030-4 staticcheck U1000 suppressions.
+**Verifier:** TASK-030 PASS (2026-04-15). REG-030 iteration 1 PARTIAL (2026-04-15) -- REG-030-1/2/3 PASS, REG-030-4 discovered as new blocker. Report: `process/verifier/verification-reports/REG-030-verification.md`.
 
 ---
 
