@@ -2,7 +2,7 @@
 **Manifest version:** v1 | **Profile:** Critical
 **Current phase:** EXECUTION -- Cycle 4 in progress
 **Current cycle:** 4
-**Last updated:** 2026-04-15 (SEC-001 Verifier PASS at commit 6111d75; 6 of 7 Cycle 4 tasks COMPLETE; Builder dispatched for TASK-038)
+**Last updated:** 2026-04-15 (TASK-038 Builder complete at commit b4242a8; Verifier dispatched for TASK-038)
 
 ---
 
@@ -27,9 +27,9 @@ Security posture:
 
 ## Active Work
 
-**Agent in control:** Builder (dispatched 2026-04-15 for TASK-038 fitness function instrumentation)
+**Agent in control:** Verifier (dispatched 2026-04-15 for TASK-038 verification, iteration 1)
 **Current task:** TASK-038 -- Fitness function instrumentation
-**Waiting for:** Builder to implement automated fitness function checks (FF-001 through FF-025) as CI test targets / monitoring scripts.
+**Waiting for:** Verifier to validate TASK-038 Builder output. Builder complete at commit b4242a8 -- all 9 FF tests implemented, CI fitness-functions job expanded to run full non-Docker suite (FF-002, 005, 006, 013, 015, 017, 019, 020, 022), one bug fixed (snapshotRowCount key mismatch).
 **SEC-001 status:** COMPLETE (Verifier PASS iteration 1, 2026-04-15; all 7 backend + 9 frontend ACs, CI green run 24466108551, commit 6111d75).
 **TASK-034 status:** COMPLETE (Verifier PASS iteration 2, 2026-04-15; all 6 ACs, CI green run 24464513140, commit 8bc0edf).
 **TASK-032 status:** COMPLETE (Verifier PASS iteration 1, 2026-04-15; all 6 ACs, CI green run 24460040995, commit 922a949).
@@ -127,10 +127,10 @@ Security posture:
 | TASK-032 | Sink Inspector GUI | TASK-019, TASK-015, TASK-033, TASK-030 | P1 MM | COMPLETE (Verifier PASS, iteration 1, 2026-04-15; all 6 ACs, CI green run 24460040995, commit 922a949) |
 | TASK-034 | Chaos Controller GUI | TASK-019, TASK-020, TASK-021, TASK-009 | P1 HM | COMPLETE (Verifier PASS, iteration 2, 2026-04-15; all 6 ACs, CI green run 24464513140, commit 8bc0edf) |
 | SEC-001 | Password change + mandatory first-login | TASK-003, TASK-017 | SECURITY | COMPLETE (Verifier PASS, iteration 1, 2026-04-15; 7 backend + 9 frontend ACs, CI green run 24466108551, commit 6111d75) |
-| TASK-038 | Fitness function instrumentation | TASK-001, TASK-004, TASK-007, TASK-009, TASK-018 | P2 LM | IN PROGRESS -- Builder dispatched 2026-04-15 |
+| TASK-038 | Fitness function instrumentation | TASK-001, TASK-004, TASK-007, TASK-009, TASK-018 | P2 LM | IN VERIFICATION -- Builder complete at commit b4242a8; Verifier dispatched 2026-04-15 (iteration 1) |
 
 **Scaffolder:** COMPLETE (2026-04-09) -- committed as 66c4bf0. All 7 tasks scaffolded. Scaffold introduced four pre-existing CI regressions (REG-030-1/2/3/4) remediated incrementally.
-**Builder:** TASK-030, REG-030, TASK-033, TASK-031, TASK-032, TASK-034, SEC-001 COMPLETE. TASK-038 dispatched 2026-04-15 -- final Cycle 4 task.
+**Builder:** TASK-030, REG-030, TASK-033, TASK-031, TASK-032, TASK-034, SEC-001, TASK-038 COMPLETE (TASK-038 at commit b4242a8 -- all 9 FF tests implemented, CI fitness-functions job expanded, snapshotRowCount bug fixed). Verifier dispatched for TASK-038 -- final Cycle 4 verification.
 **Verifier:** TASK-030/033/031/032 PASS iteration 1, TASK-034 PASS iteration 2 (commit 8bc0edf), SEC-001 PASS iteration 1 (commit 6111d75, CI run 24466108551).
 
 ---
