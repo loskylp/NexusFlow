@@ -3,8 +3,10 @@
 -- See: ADR-008, TASK-002, TASK-017
 
 -- name: CreateUser :one
-INSERT INTO users (id, username, password_hash, role, active, created_at)
-VALUES ($1, $2, $3, $4, $5, $6)
+-- SEC-001: must_change_password is included so seed and admin-created users can be
+-- flagged for forced rotation on first login.
+INSERT INTO users (id, username, password_hash, role, active, must_change_password, created_at)
+VALUES ($1, $2, $3, $4, $5, $6, $7)
 RETURNING *;
 
 -- name: GetUserByID :one

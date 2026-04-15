@@ -48,3 +48,19 @@ SELECT * FROM tasks
 WHERE pipeline_id = $1
   AND status = ANY($2::text[])
 ORDER BY created_at DESC;
+
+-- name: SetTaskRetryAfterAndTags :exec
+-- TASK-010: set retry_after and retry_tags atomically for a task after XCLAIM reclamation.
+UPDATE tasks
+SET retry_after = $2,
+    retry_tags  = $3,
+    updated_at  = NOW()
+WHERE id = $1;
+
+-- name: ListRetryReadyTasks :many
+-- TASK-010: return tasks in "queued" status whose retry_after has elapsed.
+SELECT * FROM tasks
+WHERE status = 'queued'
+  AND retry_after IS NOT NULL
+  AND retry_after <= NOW()
+ORDER BY retry_after ASC;

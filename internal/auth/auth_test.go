@@ -299,6 +299,140 @@ func TestRequireRole_UserRoleAllowsUserEndpoint(t *testing.T) {
 	}
 }
 
+// --- MustChangePassword enforcement (SEC-001) ---
+
+// TestMiddleware_MustChangePasswordBlocks403 verifies that a session with
+// MustChangePassword=true is blocked with 403 on any non-exempt endpoint.
+func TestMiddleware_MustChangePasswordBlocks403(t *testing.T) {
+	store := newStubSessionStore()
+	sess := &models.Session{
+		UserID:             uuid.New(),
+		Role:               models.RoleUser,
+		CreatedAt:          time.Now(),
+		MustChangePassword: true,
+	}
+	_ = store.Create(context.Background(), "flaggedtoken", sess)
+
+	mw := Middleware(store)
+	called := false
+	next := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		called = true
+		w.WriteHeader(http.StatusOK)
+	})
+
+	req := httptest.NewRequest(http.MethodGet, "/api/workers", nil)
+	req.Header.Set("Authorization", "Bearer flaggedtoken")
+	rec := httptest.NewRecorder()
+
+	mw(next).ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusForbidden {
+		t.Errorf("expected 403 for MustChangePassword session on /api/workers, got %d", rec.Code)
+	}
+	if called {
+		t.Error("next handler must not be called when MustChangePassword is true")
+	}
+}
+
+// TestMiddleware_MustChangePasswordAllowsChangePasswordEndpoint verifies the
+// change-password endpoint is exempt from the MustChangePassword block (AC-2).
+func TestMiddleware_MustChangePasswordAllowsChangePasswordEndpoint(t *testing.T) {
+	store := newStubSessionStore()
+	sess := &models.Session{
+		UserID:             uuid.New(),
+		Role:               models.RoleUser,
+		CreatedAt:          time.Now(),
+		MustChangePassword: true,
+	}
+	_ = store.Create(context.Background(), "flaggedtoken2", sess)
+
+	mw := Middleware(store)
+	called := false
+	next := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		called = true
+		w.WriteHeader(http.StatusOK)
+	})
+
+	req := httptest.NewRequest(http.MethodPost, "/api/auth/change-password", nil)
+	req.Header.Set("Authorization", "Bearer flaggedtoken2")
+	rec := httptest.NewRecorder()
+
+	mw(next).ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Errorf("expected 200 for change-password endpoint, got %d", rec.Code)
+	}
+	if !called {
+		t.Error("next handler must be called for the change-password endpoint")
+	}
+}
+
+// TestMiddleware_MustChangePasswordAllowsLogout verifies that logout is exempt
+// so users can log out during the forced-change flow.
+func TestMiddleware_MustChangePasswordAllowsLogout(t *testing.T) {
+	store := newStubSessionStore()
+	sess := &models.Session{
+		UserID:             uuid.New(),
+		Role:               models.RoleUser,
+		CreatedAt:          time.Now(),
+		MustChangePassword: true,
+	}
+	_ = store.Create(context.Background(), "flaggedtoken3", sess)
+
+	mw := Middleware(store)
+	called := false
+	next := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		called = true
+		w.WriteHeader(http.StatusNoContent)
+	})
+
+	req := httptest.NewRequest(http.MethodPost, "/api/auth/logout", nil)
+	req.Header.Set("Authorization", "Bearer flaggedtoken3")
+	rec := httptest.NewRecorder()
+
+	mw(next).ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusNoContent {
+		t.Errorf("expected 204 for logout endpoint, got %d", rec.Code)
+	}
+	if !called {
+		t.Error("next handler must be called for the logout endpoint")
+	}
+}
+
+// TestMiddleware_MustChangeFalseAllowsNormalAccess verifies that a session without
+// MustChangePassword set passes through to all protected routes normally.
+func TestMiddleware_MustChangeFalseAllowsNormalAccess(t *testing.T) {
+	store := newStubSessionStore()
+	sess := &models.Session{
+		UserID:             uuid.New(),
+		Role:               models.RoleUser,
+		CreatedAt:          time.Now(),
+		MustChangePassword: false,
+	}
+	_ = store.Create(context.Background(), "normaltoken", sess)
+
+	mw := Middleware(store)
+	called := false
+	next := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		called = true
+		w.WriteHeader(http.StatusOK)
+	})
+
+	req := httptest.NewRequest(http.MethodGet, "/api/workers", nil)
+	req.Header.Set("Authorization", "Bearer normaltoken")
+	rec := httptest.NewRecorder()
+
+	mw(next).ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Errorf("expected 200 for normal session, got %d", rec.Code)
+	}
+	if !called {
+		t.Error("next handler must be called for normal session")
+	}
+}
+
 // --- SessionFromContext ---
 
 func TestSessionFromContext_ReturnsNilWhenNoSession(t *testing.T) {

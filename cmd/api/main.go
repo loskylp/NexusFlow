@@ -174,8 +174,11 @@ func main() {
 // seedAdminIfEmpty creates the default admin user when no users exist in the database.
 // This satisfies TASK-003 AC-7: "admin user (admin/admin) is seeded if no users exist".
 //
+// SEC-001: The seeded admin is created with MustChangePassword=true so the first login
+// forces an immediate credential rotation. The auth middleware will block all protected
+// endpoints until the password is changed via POST /api/auth/change-password.
+//
 // Admin credentials: username=admin, password=admin (bcrypt-hashed at cost 12).
-// Email/username domain: admin@nexusflow.local per TASK-003 spec.
 //
 // Args:
 //
@@ -184,7 +187,7 @@ func main() {
 //
 // Postconditions:
 //   - If users exist: no action taken; returns nil.
-//   - If no users exist: admin user is created and logged; returns nil on success.
+//   - If no users exist: admin user is created with MustChangePassword=true; returns nil on success.
 //   - On failure: returns a non-fatal error (caller logs and continues startup).
 func seedAdminIfEmpty(ctx context.Context, userRepo db.UserRepository) error {
 	users, err := userRepo.List(ctx)
@@ -201,18 +204,19 @@ func seedAdminIfEmpty(ctx context.Context, userRepo db.UserRepository) error {
 	}
 
 	admin := &models.User{
-		ID:           uuid.New(),
-		Username:     "admin",
-		PasswordHash: hash,
-		Role:         models.RoleAdmin,
-		Active:       true,
-		CreatedAt:    time.Now().UTC(),
+		ID:                 uuid.New(),
+		Username:           "admin",
+		PasswordHash:       hash,
+		Role:               models.RoleAdmin,
+		Active:             true,
+		MustChangePassword: true, // SEC-001: force password rotation on first login.
+		CreatedAt:          time.Now().UTC(),
 	}
 
 	if _, err := userRepo.Create(ctx, admin); err != nil {
 		return fmt.Errorf("seedAdmin: create admin user: %w", err)
 	}
 
-	log.Printf("api: admin user seeded (username=admin) — change password immediately in production")
+	log.Printf("api: admin user seeded (username=admin, must_change_password=true) — change password immediately")
 	return nil
 }

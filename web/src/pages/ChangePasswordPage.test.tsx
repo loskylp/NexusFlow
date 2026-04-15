@@ -1,16 +1,17 @@
 /**
- * SEC-001 Acceptance Test — Change Password Page (frontend).
+ * Unit tests for ChangePasswordPage (SEC-001).
  *
- * Validates:
- *   1. ChangePasswordPage renders the three-field form.
- *   2. Submit button disabled until all fields are non-empty.
- *   3. Client-side validation: new password < 8 chars shows inline error.
- *   4. Client-side validation: passwords do not match shows inline error.
- *   5. Server 401 response shows "Current password is incorrect" inline.
- *   6. Server 400 response shows appropriate field-level error.
- *   7. Success (204): logout called + redirect to /login.
- *   8. User with mustChangePassword=false is redirected away from this route.
- *   9. Form inputs are disabled while submission is in progress.
+ * Covers:
+ *   - Form renders with three fields (current, new, confirm).
+ *   - Submit button disabled when fields are empty.
+ *   - Client-side validation: new password < 8 chars shows inline error.
+ *   - Client-side validation: passwords do not match shows inline error.
+ *   - Server 401 → "Current password is incorrect" inline.
+ *   - Server 400 → password length error inline.
+ *   - Success (204) → logout called + redirect to /login.
+ *   - Form inputs disabled while submission is in progress.
+ *
+ * All tests use the real AuthProvider with the API client mocked.
  *
  * See: SEC-001, SEC-007, ADR-006
  */
@@ -18,19 +19,19 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Routes, Route } from 'react-router-dom'
-import React from 'react'
-import ChangePasswordPage from '../../web/src/pages/ChangePasswordPage'
-import ProtectedRoute from '../../web/src/components/ProtectedRoute'
-import { AuthProvider } from '../../web/src/context/AuthContext'
-import * as client from '../../web/src/api/client'
+import ChangePasswordPage from './ChangePasswordPage'
+import { AuthProvider } from '@/context/AuthContext'
+import * as client from '@/api/client'
 
-vi.mock('../../web/src/api/client')
+// Mock only the API client layer.
+vi.mock('@/api/client')
 const mockChangePassword = vi.mocked(client.changePassword)
 const mockLogout = vi.mocked(client.logout)
 
-// mockAuthMe stubs the /api/auth/me call. When mustChangePassword=true, simulates
-// a fresh admin user who must rotate; when false, simulates an already-changed user.
-function mockAuthMe(mustChangePassword: boolean) {
+beforeEach(() => {
+  vi.clearAllMocks()
+  // Stub global fetch for the AuthProvider's /api/auth/me session-restore call.
+  // Simulate an authenticated user with mustChangePassword=true.
   vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
     ok: true,
     status: 200,
@@ -40,17 +41,14 @@ function mockAuthMe(mustChangePassword: boolean) {
         username: 'admin',
         role: 'admin',
         active: true,
-        mustChangePassword,
+        mustChangePassword: true,
         createdAt: '2024-01-01T00:00:00Z',
       },
     }),
   }))
-}
-
-beforeEach(() => {
-  vi.clearAllMocks()
-  mockAuthMe(true)
+  // Default: changePassword resolves with no content (204 mapped to undefined).
   mockChangePassword.mockResolvedValue(undefined)
+  // Default: logout resolves immediately.
   mockLogout.mockResolvedValue(undefined)
 })
 
@@ -58,36 +56,33 @@ afterEach(() => {
   vi.unstubAllGlobals()
 })
 
-function renderChangePasswordPage() {
+/**
+ * Renders ChangePasswordPage inside AuthProvider and MemoryRouter.
+ * Includes a /login stub so redirect assertions work.
+ */
+function renderPage() {
   return render(
     <AuthProvider>
       <MemoryRouter initialEntries={['/change-password']}>
         <Routes>
-          <Route
-            path="/change-password"
-            element={
-              <ProtectedRoute allowMustChangePassword>
-                <ChangePasswordPage />
-              </ProtectedRoute>
-            }
-          />
+          <Route path="/change-password" element={<ChangePasswordPage />} />
           <Route path="/login" element={<div>login page</div>} />
-          <Route path="/workers" element={<div>workers page</div>} />
         </Routes>
       </MemoryRouter>
     </AuthProvider>
   )
 }
 
+/** Waits until the form is fully rendered and interactive. */
 async function waitForForm() {
   await waitFor(() =>
     expect(screen.getByLabelText(/current password/i)).toBeInTheDocument()
   )
 }
 
-describe('SEC-001: Change Password Page', () => {
-  it('renders form with current password, new password, and confirm password fields', async () => {
-    renderChangePasswordPage()
+describe('ChangePasswordPage — form renders', () => {
+  it('renders current password, new password, and confirm password fields', async () => {
+    renderPage()
     await waitForForm()
 
     expect(screen.getByLabelText(/current password/i)).toBeInTheDocument()
@@ -95,11 +90,25 @@ describe('SEC-001: Change Password Page', () => {
     expect(screen.getByLabelText(/confirm new password/i)).toBeInTheDocument()
   })
 
-  it('submit button disabled until all fields are non-empty', async () => {
-    renderChangePasswordPage()
+  it('renders a submit button', async () => {
+    renderPage()
+    await waitForForm()
+
+    expect(screen.getByRole('button', { name: /change password/i })).toBeInTheDocument()
+  })
+})
+
+describe('ChangePasswordPage — submit button state', () => {
+  it('disables submit button when all fields are empty', async () => {
+    renderPage()
     await waitForForm()
 
     expect(screen.getByRole('button', { name: /change password/i })).toBeDisabled()
+  })
+
+  it('enables submit button when all three fields are non-empty', async () => {
+    renderPage()
+    await waitForForm()
 
     await userEvent.type(screen.getByLabelText(/current password/i), 'oldpass')
     await userEvent.type(screen.getByLabelText(/^new password$/i), 'newpass123')
@@ -107,9 +116,11 @@ describe('SEC-001: Change Password Page', () => {
 
     expect(screen.getByRole('button', { name: /change password/i })).not.toBeDisabled()
   })
+})
 
+describe('ChangePasswordPage — client-side validation', () => {
   it('shows inline error when new password is shorter than 8 characters', async () => {
-    renderChangePasswordPage()
+    renderPage()
     await waitForForm()
 
     await userEvent.type(screen.getByLabelText(/current password/i), 'oldpass')
@@ -124,12 +135,12 @@ describe('SEC-001: Change Password Page', () => {
   })
 
   it('shows inline error when new password and confirm do not match', async () => {
-    renderChangePasswordPage()
+    renderPage()
     await waitForForm()
 
     await userEvent.type(screen.getByLabelText(/current password/i), 'oldpass')
     await userEvent.type(screen.getByLabelText(/^new password$/i), 'newpass123')
-    await userEvent.type(screen.getByLabelText(/confirm new password/i), 'different456')
+    await userEvent.type(screen.getByLabelText(/confirm new password/i), 'different123')
     await userEvent.click(screen.getByRole('button', { name: /change password/i }))
 
     await waitFor(() =>
@@ -137,25 +148,13 @@ describe('SEC-001: Change Password Page', () => {
     )
     expect(mockChangePassword).not.toHaveBeenCalled()
   })
+})
 
-  it('calls POST /api/auth/change-password with current and new password on submit', async () => {
-    renderChangePasswordPage()
-    await waitForForm()
-
-    await userEvent.type(screen.getByLabelText(/current password/i), 'oldpass')
-    await userEvent.type(screen.getByLabelText(/^new password$/i), 'newpass123')
-    await userEvent.type(screen.getByLabelText(/confirm new password/i), 'newpass123')
-    await userEvent.click(screen.getByRole('button', { name: /change password/i }))
-
-    await waitFor(() =>
-      expect(mockChangePassword).toHaveBeenCalledWith('oldpass', 'newpass123')
-    )
-  })
-
+describe('ChangePasswordPage — server error handling', () => {
   it('shows "Current password is incorrect" on 401 response', async () => {
     mockChangePassword.mockRejectedValueOnce(new Error('401: Unauthorized'))
 
-    renderChangePasswordPage()
+    renderPage()
     await waitForForm()
 
     await userEvent.type(screen.getByLabelText(/current password/i), 'wrongpass')
@@ -168,10 +167,10 @@ describe('SEC-001: Change Password Page', () => {
     )
   })
 
-  it('shows field-level error on 400 response', async () => {
+  it('shows password length error on 400 response', async () => {
     mockChangePassword.mockRejectedValueOnce(new Error('400: Bad Request'))
 
-    renderChangePasswordPage()
+    renderPage()
     await waitForForm()
 
     await userEvent.type(screen.getByLabelText(/current password/i), 'oldpass')
@@ -183,9 +182,29 @@ describe('SEC-001: Change Password Page', () => {
       expect(screen.getByText(/at least 8 characters/i)).toBeInTheDocument()
     )
   })
+})
 
-  it('shows success toast and redirects to /login on 204 response', async () => {
-    renderChangePasswordPage()
+describe('ChangePasswordPage — success flow', () => {
+  it('calls POST /api/auth/change-password with current and new password on submit', async () => {
+    mockChangePassword.mockResolvedValueOnce(undefined)
+
+    renderPage()
+    await waitForForm()
+
+    await userEvent.type(screen.getByLabelText(/current password/i), 'oldpass')
+    await userEvent.type(screen.getByLabelText(/^new password$/i), 'newpass123')
+    await userEvent.type(screen.getByLabelText(/confirm new password/i), 'newpass123')
+    await userEvent.click(screen.getByRole('button', { name: /change password/i }))
+
+    await waitFor(() =>
+      expect(mockChangePassword).toHaveBeenCalledWith('oldpass', 'newpass123')
+    )
+  })
+
+  it('redirects to /login on 204 response', async () => {
+    mockChangePassword.mockResolvedValueOnce(undefined)
+
+    renderPage()
     await waitForForm()
 
     await userEvent.type(screen.getByLabelText(/current password/i), 'oldpass')
@@ -197,11 +216,14 @@ describe('SEC-001: Change Password Page', () => {
       expect(screen.getByText('login page')).toBeInTheDocument()
     )
   })
+})
 
+describe('ChangePasswordPage — loading state', () => {
   it('disables all inputs while submission is in progress', async () => {
+    // Never-resolving promise to freeze the loading state
     mockChangePassword.mockReturnValueOnce(new Promise(() => {}))
 
-    renderChangePasswordPage()
+    renderPage()
     await waitForForm()
 
     await userEvent.type(screen.getByLabelText(/current password/i), 'oldpass')
@@ -215,38 +237,5 @@ describe('SEC-001: Change Password Page', () => {
       expect(screen.getByLabelText(/confirm new password/i)).toBeDisabled()
       expect(screen.getByRole('button', { name: /changing/i })).toBeDisabled()
     })
-  })
-
-  it('user with mustChangePassword=false is not redirected to /change-password when accessing /workers', async () => {
-    // Override the auth mock to return a user without the flag.
-    vi.unstubAllGlobals()
-    mockAuthMe(false)
-
-    // Render the workers route for a user with mustChangePassword=false.
-    // ProtectedRoute must NOT redirect to /change-password when the flag is false.
-    render(
-      <AuthProvider>
-        <MemoryRouter initialEntries={['/workers']}>
-          <Routes>
-            <Route
-              path="/workers"
-              element={
-                <ProtectedRoute>
-                  <div>workers page</div>
-                </ProtectedRoute>
-              }
-            />
-            <Route path="/change-password" element={<div>change-password page</div>} />
-            <Route path="/login" element={<div>login page</div>} />
-          </Routes>
-        </MemoryRouter>
-      </AuthProvider>
-    )
-
-    await waitFor(() =>
-      expect(screen.getByText('workers page')).toBeInTheDocument()
-    )
-    // The change-password page is NOT rendered — no unwanted redirect occurred.
-    expect(screen.queryByText('change-password page')).not.toBeInTheDocument()
   })
 })

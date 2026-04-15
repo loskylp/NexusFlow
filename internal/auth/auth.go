@@ -133,9 +133,11 @@ func Middleware(sessions queue.SessionStore) func(http.Handler) http.Handler {
 			}
 
 			// SEC-001: enforce mandatory password change before any other endpoint.
-			// The change-password endpoint itself is exempt so the user can reach it.
-			if sess.MustChangePassword &&
-				!(r.Method == http.MethodPost && r.URL.Path == "/api/auth/change-password") {
+			// Exempt endpoints that the client needs during the forced-change flow:
+			//   - POST /api/auth/change-password — to submit the new password.
+			//   - POST /api/auth/logout         — to allow the user to log out.
+			//   - GET  /api/auth/me             — for session restore on page reload.
+			if sess.MustChangePassword && !isMustChangePasswordExempt(r) {
 				w.Header().Set("Content-Type", "application/json")
 				w.WriteHeader(http.StatusForbidden)
 				_, _ = w.Write([]byte(`{"error":"password_change_required"}`))
@@ -216,6 +218,25 @@ func extractToken(r *http.Request) string {
 		return cookie.Value
 	}
 	return ""
+}
+
+// isMustChangePasswordExempt returns true for the small set of endpoints that
+// must remain accessible even when the session's MustChangePassword flag is true.
+// Exemptions (SEC-001):
+//   - POST /api/auth/change-password — the endpoint the user must call to clear the flag.
+//   - POST /api/auth/logout          — so the user can log out from the forced-change screen.
+//   - GET  /api/auth/me              — so the frontend can restore session state on page reload.
+func isMustChangePasswordExempt(r *http.Request) bool {
+	switch {
+	case r.Method == http.MethodPost && r.URL.Path == "/api/auth/change-password":
+		return true
+	case r.Method == http.MethodPost && r.URL.Path == "/api/auth/logout":
+		return true
+	case r.Method == http.MethodGet && r.URL.Path == "/api/auth/me":
+		return true
+	default:
+		return false
+	}
 }
 
 // hasRole returns true when userRole satisfies the required minimum role.

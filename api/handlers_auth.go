@@ -37,10 +37,13 @@ type loginResponse struct {
 
 // publicUser is the user representation safe to return in API responses
 // (omits PasswordHash per models.User json:"-" tag).
+// SEC-001: mustChangePassword is included so the frontend can redirect to
+// the change-password page immediately after login when the flag is set.
 type publicUser struct {
-	ID       uuid.UUID   `json:"id"`
-	Username string      `json:"username"`
-	Role     models.Role `json:"role"`
+	ID                 uuid.UUID   `json:"id"`
+	Username           string      `json:"username"`
+	Role               models.Role `json:"role"`
+	MustChangePassword bool        `json:"mustChangePassword"`
 }
 
 // Login handles POST /api/auth/login.
@@ -110,10 +113,13 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// SEC-001: carry the MustChangePassword flag into the session so the auth
+	// middleware can enforce the mandatory first-login password rotation.
 	sess := &models.Session{
-		UserID:    user.ID,
-		Role:      user.Role,
-		CreatedAt: time.Now().UTC(),
+		UserID:             user.ID,
+		Role:               user.Role,
+		CreatedAt:          time.Now().UTC(),
+		MustChangePassword: user.MustChangePassword,
 	}
 	if err := h.server.sessions.Create(r.Context(), token, sess); err != nil {
 		log.Printf("auth.Login: sessions.Create: %v", err)
@@ -137,9 +143,10 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 	_ = json.NewEncoder(w).Encode(loginResponse{
 		Token: token,
 		User: publicUser{
-			ID:       user.ID,
-			Username: user.Username,
-			Role:     user.Role,
+			ID:                 user.ID,
+			Username:           user.Username,
+			Role:               user.Role,
+			MustChangePassword: user.MustChangePassword,
 		},
 	})
 }

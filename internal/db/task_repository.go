@@ -261,7 +261,7 @@ func (r *PgTaskRepository) ListByPipelineAndStatuses(ctx context.Context, pipeli
 	}
 	rows, err := r.queries.ListTasksByPipelineAndStatuses(ctx, sqlcdb.ListTasksByPipelineAndStatusesParams{
 		PipelineID: uuid.NullUUID{UUID: pipelineID, Valid: true},
-		Statuses:   strStatuses,
+		Column2:    strStatuses,
 	})
 	if err != nil {
 		return nil, err

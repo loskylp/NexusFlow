@@ -39,17 +39,21 @@ func NewPgUserRepository(pool *Pool) *PgUserRepository {
 // Inserts a new user record. The PasswordHash must already be bcrypt-hashed.
 // Returns ErrConflict if the username is already taken.
 //
+// SEC-001: MustChangePassword is passed through so seed users and admin-created users
+// can be flagged for forced password rotation on first login.
+//
 // Postconditions:
 //   - On success: user is persisted; returned User has database-populated timestamps.
 //   - On ErrConflict: no user is created; caller maps to 409.
 func (r *PgUserRepository) Create(ctx context.Context, user *models.User) (*models.User, error) {
 	row, err := r.queries.CreateUser(ctx, sqlcdb.CreateUserParams{
-		ID:           user.ID,
-		Username:     user.Username,
-		PasswordHash: user.PasswordHash,
-		Role:         string(user.Role),
-		Active:       user.Active,
-		CreatedAt:    pgtype.Timestamptz{Time: user.CreatedAt, Valid: true},
+		ID:                 user.ID,
+		Username:           user.Username,
+		PasswordHash:       user.PasswordHash,
+		Role:               string(user.Role),
+		Active:             user.Active,
+		MustChangePassword: user.MustChangePassword,
+		CreatedAt:          pgtype.Timestamptz{Time: user.CreatedAt, Valid: true},
 	})
 	if err != nil {
 		if isUniqueViolation(err) {
