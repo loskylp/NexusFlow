@@ -2,7 +2,7 @@
 **Manifest version:** v1 | **Profile:** Critical
 **Current phase:** EXECUTION -- Cycle 4 in progress
 **Current cycle:** 4
-**Last updated:** 2026-04-15 (TASK-031 Builder complete at commit e4d5d87, nil-wiring verified in cmd/worker/main.go, 14 unit tests pass, demo-postgres seeded with 10K rows; Verifier dispatched for TASK-031)
+**Last updated:** 2026-04-15 (TASK-031 Verifier PASS iteration 1, all 4 ACs, CI green run 24458872430; 3 of 7 Cycle 4 tasks COMPLETE; Builder dispatched for TASK-032 -- Sink Inspector GUI)
 
 ---
 
@@ -27,14 +27,14 @@ Security posture:
 
 ## Active Work
 
-**Agent in control:** Verifier (dispatched 2026-04-15 for TASK-031 -- Mock-Postgres with seed data)
-**Current task:** TASK-031 -- Mock-Postgres with seed data
-**Waiting for:** Verifier to validate acceptance criteria for TASK-031: PostgreSQLDataSourceConnector + PostgreSQLSinkConnector behaviour against demo-postgres container (10K seed rows), connector registration wiring when DEMO_POSTGRES_DSN is set, and nil-wiring guard.
-**Builder output (TASK-031):** Commit e4d5d87. Implements PostgreSQLDataSourceConnector + PostgreSQLSinkConnector over postgresBackend interface (InMemoryPostgresDB for unit tests, PgxBackendAdapter for demo profile). 14 unit tests pass. registerPostgresConnectors wired in cmd/worker/main.go with explicit nil guard (lines 109-113, 244-260). demo-postgres healthcheck + deploy/demo-postgres/01-seed.sql (10K rows via generate_series) + docker-compose volume mount added.
-**REG-030 status:** FULLY CLOSED (2026-04-15). Iteration 2 Verifier PASS at commit e8b68cf.
+**Agent in control:** Builder (dispatched 2026-04-15 for TASK-032 -- Sink Inspector GUI)
+**Current task:** TASK-032 -- Sink Inspector GUI
+**Waiting for:** Builder to implement Sink Inspector GUI against the Cycle 4 scaffold, consuming Before/After snapshots (TASK-033) and demo MinIO sink (TASK-030).
+**TASK-031 status:** COMPLETE (Verifier PASS iteration 1, 2026-04-15; all 4 ACs, CI green run 24458872430; commit e4d5d87).
 **TASK-030 status:** COMPLETE (Verifier PASS 2026-04-15, iteration 1).
 **TASK-033 status:** COMPLETE (Verifier PASS 2026-04-15, iteration 1, commit fb4b3d8, CI green run 24457333420, all 6 ACs).
-**Total project progress:** 31 of 31 v1.0.0 feature tasks COMPLETE. 2 of 7 Cycle 4 tasks verified PASS (TASK-030, TASK-033). TASK-031 in Verifier. Go-Live PENDING (requires Cycle 5 TASK-036).
+**REG-030 status:** FULLY CLOSED (2026-04-15). Iteration 2 Verifier PASS at commit e8b68cf.
+**Total project progress:** 31 of 31 v1.0.0 feature tasks COMPLETE. 3 of 7 Cycle 4 tasks verified PASS (TASK-030, TASK-033, TASK-031). TASK-032 in Builder. Go-Live PENDING (requires Cycle 5 TASK-036).
 
 ---
 
@@ -120,15 +120,15 @@ Security posture:
 | TASK-030 | MinIO Fake-S3 | TASK-007, TASK-018 | P1 MM | COMPLETE (Verifier PASS, iteration 1, 2026-04-15; 9 unit + 7 integration + 12 acceptance + 4 system tests) |
 | REG-030 | Cycle 4 scaffold CI regression fixes (all four sub-regressions resolved) | None | BLOCKER (CI green) | CLOSED (iteration 2 PASS, commit e8b68cf, 2026-04-15) |
 | TASK-033 | Sink Before/After snapshot capture | TASK-018, TASK-015 | P1 MM | COMPLETE (Verifier PASS, iteration 1, 2026-04-15; commit fb4b3d8; 6/6 ACs, CI green run 24457333420) |
-| TASK-031 | Mock-Postgres with seed data | TASK-007, TASK-018 | P1 MM | IN PROGRESS -- Builder complete (commit e4d5d87, 14 unit tests, nil-wiring verified); Verifier dispatched 2026-04-15 |
-| TASK-032 | Sink Inspector GUI | TASK-019, TASK-015, TASK-033, TASK-030 | P1 MM | PENDING |
+| TASK-031 | Mock-Postgres with seed data | TASK-007, TASK-018 | P1 MM | COMPLETE (Verifier PASS, iteration 1, 2026-04-15; all 4 ACs, CI green run 24458872430, commit e4d5d87) |
+| TASK-032 | Sink Inspector GUI | TASK-019, TASK-015, TASK-033, TASK-030 | P1 MM | IN PROGRESS -- Builder dispatched 2026-04-15 |
 | TASK-034 | Chaos Controller GUI | TASK-019, TASK-020, TASK-021, TASK-009 | P1 HM | PENDING |
 | SEC-001 | Password change + mandatory first-login | TASK-003, TASK-017 | SECURITY | PENDING |
 | TASK-038 | Fitness function instrumentation | TASK-001, TASK-004, TASK-007, TASK-009, TASK-018 | P2 LM | PENDING |
 
 **Scaffolder:** COMPLETE (2026-04-09) -- committed as 66c4bf0. All 7 tasks scaffolded. Scaffold introduced four pre-existing CI regressions (REG-030-1/2/3/4) being remediated incrementally.
-**Builder:** TASK-030 COMPLETE. REG-030 CLOSED (iteration 2, commit e8b68cf). TASK-033 COMPLETE (commit e13e11c). TASK-031 COMPLETE (commit e4d5d87, 14 unit tests, nil-wiring verified).
-**Verifier:** TASK-030 PASS (2026-04-15). REG-030 PASS iteration 2 (commit e8b68cf). TASK-033 PASS (2026-04-15, commit fb4b3d8, CI green run 24457333420, 6/6 ACs). TASK-031 DISPATCHED 2026-04-15.
+**Builder:** TASK-030 COMPLETE. REG-030 CLOSED (iteration 2, commit e8b68cf). TASK-033 COMPLETE (commit e13e11c). TASK-031 COMPLETE (commit e4d5d87). TASK-032 DISPATCHED 2026-04-15.
+**Verifier:** TASK-030 PASS (2026-04-15). REG-030 PASS iteration 2 (commit e8b68cf). TASK-033 PASS (2026-04-15, commit fb4b3d8, CI green run 24457333420, 6/6 ACs). TASK-031 PASS (2026-04-15, iteration 1, commit e4d5d87, CI green run 24458872430, 4/4 ACs).
 
 ---
 
