@@ -27,10 +27,10 @@ Security posture:
 
 ## Active Work
 
-**Agent in control:** Builder (re-dispatched 2026-04-15 for wiring fix)
-**Current task:** TASK-030 -- MinIO Fake-S3 connector (DataSource + Sink) -- wiring fix
-**Waiting for:** Builder to wire RegisterMinIOConnectors into cmd/worker/main.go
-**Blocker:** Builder nil-wiring pattern detected pre-Verifier. RegisterMinIOConnectors is defined in worker/connector_minio.go but never called from cmd/worker/main.go. Worker has no "minio" connector type at runtime. Docker-compose + env vars already wired; Go-side registration is the only gap.
+**Agent in control:** Verifier (dispatched 2026-04-15 for TASK-030 initial verification)
+**Current task:** TASK-030 -- MinIO Fake-S3 connector (DataSource + Sink)
+**Waiting for:** Verifier to run acceptance scenarios + demo script against live MinIO container and produce Verification Report.
+**Builder handoff:** Wiring fix complete. `cmd/worker/main.go` now calls `registerMinIOConnectors(reg)`; `worker/minio_client.go` provides `MinioClientAdapter` over minio-go/v7 v7.0.91; `go build ./cmd/worker/` compiles; 9/9 `TestMinIO*` unit tests PASS. No unit tests added for the adapter (I/O wrapper -- integration-only).
 **Total project progress:** 31 of 31 v1.0.0 feature tasks COMPLETE. 1 of 7 Cycle 4 tasks in verification. Go-Live PENDING (requires Cycle 5 TASK-036).
 
 ---
@@ -114,7 +114,7 @@ Security posture:
 
 | Task | Description | Dependencies (all satisfied) | Priority | Status |
 |---|---|---|---|---|
-| TASK-030 | MinIO Fake-S3 | TASK-007, TASK-018 | P1 MM | BUILDER WIRING FIX (pre-Verifier check caught nil-wiring; re-dispatched 2026-04-15) |
+| TASK-030 | MinIO Fake-S3 | TASK-007, TASK-018 | P1 MM | VERIFIER (dispatched 2026-04-15, initial verification; wiring fix applied, 9/9 unit tests PASS) |
 | TASK-033 | Sink Before/After snapshot capture | TASK-018, TASK-015 | P1 MM | PENDING |
 | TASK-031 | Mock-Postgres with seed data | TASK-007, TASK-018 | P1 MM | PENDING |
 | TASK-032 | Sink Inspector GUI | TASK-019, TASK-015, TASK-033, TASK-030 | P1 MM | PENDING |
@@ -123,8 +123,8 @@ Security posture:
 | TASK-038 | Fitness function instrumentation | TASK-001, TASK-004, TASK-007, TASK-009, TASK-018 | P2 LM | PENDING |
 
 **Scaffolder:** COMPLETE (2026-04-09) -- committed as 66c4bf0. All 7 tasks scaffolded.
-**Builder:** TASK-030 first pass complete (2026-04-09) -- 9 unit tests, connector code. Wiring fix re-dispatched 2026-04-15 (RegisterMinIOConnectors not called from cmd/worker/main.go).
-**Verifier:** TASK-030 dispatch HELD pending Builder wiring fix.
+**Builder:** TASK-030 COMPLETE (2026-04-15) -- connector code + wiring fix. MinioClientAdapter added; cmd/worker/main.go calls registerMinIOConnectors(reg); 9/9 unit tests PASS; go build clean. Handoff: `process/builder/handoff-notes/TASK-030-wiring-handoff.md`.
+**Verifier:** TASK-030 DISPATCHED 2026-04-15 -- initial verification.
 
 ---
 
