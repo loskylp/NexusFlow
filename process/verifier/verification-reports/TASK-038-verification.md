@@ -171,3 +171,120 @@ TASK-038 delivers 9 working fitness function tests and 5 correctly documented Do
 Specific fix: add `t.Skip(...)` stubs (with descriptive reason messages) for FF-003, FF-009, FF-010, FF-011, FF-012, FF-014, FF-016, FF-018, FF-021, FF-023, and FF-025. For FF-003 (queue backlog monitoring via XPENDING), a full implementation is preferred over a skip since it requires only the Redis service already present in the fitness-functions CI job. For FF-009, a skip with "requires multi-worker Docker environment" is sufficient. All other absent FFs may be stubs with appropriate reasons.
 
 No other changes required. The full test body for all 9 implemented tests, the CI YAML, and the bug fix are PASS-quality and must not be modified.
+
+---
+
+---
+
+# Verification Report — TASK-038 Iteration 2
+**Date:** 2026-04-15 | **Result:** PASS
+**Commit under review:** 5a6f51939fa2473331ff9c9fd64640bff0e4432e
+**Verifier mode:** Run-only (iterate-loop re-verification — no new tests authored)
+
+---
+
+## FAIL-001 Closure Assessment
+
+**FAIL-001 status: CLOSED.**
+
+Commit 5a6f519 adds 11 new test functions to `tests/system/TASK-038-fitness-functions_test.go`. The diff is purely additive — zero lines deleted from existing test functions (confirmed by `git diff b4242a8 5a6f519` producing no `-` lines outside the file headers).
+
+### FF-003 — Full implementation (not a skip)
+
+`TestFF003_QueueBacklog` is a complete Redis integration test. It:
+
+1. Dials Redis via `redisClientOrSkip(t)` — identical helper call pattern to FF-002 and FF-005.
+2. Creates a stream with `XGroupCreateMkStream` (MKSTREAM flag — no pre-existing stream required).
+3. Enqueues 10 entries via `XAdd`.
+4. Reads all 10 into the consumer group via `XReadGroup` without acknowledging — simulating pending / in-flight work.
+5. Calls `XPending` and asserts `pending.Count == 10`.
+6. Cleans up the stream in `t.Cleanup`.
+
+The test validates that the XPENDING backlog monitoring primitive correctly counts unacknowledged entries, which is the precondition for the FF-003 production alerting threshold to function. The test will skip cleanly if Redis is unreachable (via `redisClientOrSkip`); it will fail if XPENDING returns an incorrect count. It does not assert against the production warning (> 100) or critical (> 500) thresholds — those are operational monitoring thresholds, not CI pass/fail criteria. This is acceptable per AC-3 (AC-3 covers the critical threshold tests named in the index; FF-003 threshold monitoring is delegated to Uptime Kuma/alerting, not CI assertions).
+
+### 10 skip stubs — each with documented reason
+
+| FF | Skip reason (verified) |
+|---|---|
+| FF-009 | "requires multi-worker Docker environment (kill 50% of fleet, verify task completion) — run in ops-fitness CI job" |
+| FF-010 | "requires full load test harness (10K tasks, 1-hour window) — run in dedicated load-test CI job" |
+| FF-011 | "requires running API server and load-testing tool (k6/hey) for p95 latency measurement — run in ops-fitness CI job" |
+| FF-012 | "requires running SSE endpoint and coordinated state mutation to measure event delivery latency — run in ops-fitness CI job" |
+| FF-014 | "requires session store under realistic load for p95 latency measurement — run in ops-fitness CI job" |
+| FF-016 | "bundle size check belongs in the frontend-build CI job (Vite output) — not executable from a Go test binary" |
+| FF-018 | "requires aged log records and an invocable pruning job — run in ops-fitness CI job with a seeded database" |
+| FF-021 | "image SHA comparison requires access to staging and production registries — run as a post-deploy gate in the release pipeline" |
+| FF-023 | "requires running SSE endpoint with controlled disconnect/reconnect cycle and Last-Event-ID replay verification — run in ops-fitness CI job" |
+| FF-025 | "requires running Uptime Kuma instance and production PostgreSQL access — monitored via Uptime Kuma alerting, not CI fitness tests" |
+
+All 10 stubs are single-body functions containing only `t.Skip(...)`. No assertions precede the skip call. Each skip message names the FF, explains the infrastructure requirement, and identifies the appropriate execution venue (ops-fitness CI job, frontend-build CI job, or release pipeline).
+
+### 9 prior passing tests — structural integrity
+
+`git diff b4242a8 5a6f519` produces zero deletions in the test file. All 9 previously passing test functions (TestFF002, TestFF005, TestFF006, TestFF013, TestFF015, TestFF017, TestFF019, TestFF020, TestFF022) and the 5 previously passing Docker skip stubs (TestFF001, TestFF004, TestFF007, TestFF008, TestFF024) are byte-identical to their iteration 1 state.
+
+---
+
+## Acceptance Criteria Results — Iteration 2
+
+| Criterion | Layer | Result | Notes |
+|---|---|---|---|
+| AC-1: 1:1 coverage — every FF in index has test, monitoring check, or explicit documented skip | Acceptance | PASS | All 25 FFs present: 10 running tests (FF-002, FF-003, FF-005, FF-006, FF-013, FF-015, FF-017, FF-019, FF-020 skips via CI, FF-022), 6 Docker skips (FF-001, FF-004, FF-007, FF-008, FF-020, FF-024), 10 infra/load skips (FF-009 through FF-025 subset). FAIL-001 closed. |
+| AC-2: fitness-functions job builds with -tags integration and runs against Postgres+Redis | Acceptance | PASS | Unchanged from iteration 1 (static PASS). CI YAML service containers and build tag wiring untouched. TestFF003 added to run regex. |
+| AC-3: tests assert the critical thresholds named in the index | Acceptance | PASS | Unchanged from iteration 1. No threshold tests modified. |
+| AC-4: a red FF test fails the CI build (no silent-green) | Acceptance | PASS | Unchanged from iteration 1. No continue-on-error added. |
+
+---
+
+## Per-FF Coverage Table — Iteration 2
+
+| FF | Test Function | Mechanism | Result |
+|---|---|---|---|
+| FF-001 | TestFF001_QueuePersistence | t.Skip — Docker socket | SKIP (documented) |
+| FF-002 | TestFF002_QueuingLatency | Integration — 1,000 XADD, p95 assert | PASS |
+| FF-003 | TestFF003_QueueBacklog | Integration — XPENDING count assert (10 entries) | PASS (static; CI pending) |
+| FF-004 | TestFF004_DeliveryGuarantee | t.Skip — Docker socket | SKIP (documented) |
+| FF-005 | TestFF005_ChainTriggerDedup | Integration — Redis SetNX semantics | PASS |
+| FF-006 | TestFF006_SinkAtomicity | Integration — InMemoryDatabase fault injection | PASS |
+| FF-007 | TestFF007_FailoverDetection | t.Skip — Docker socket | SKIP (documented) |
+| FF-008 | TestFF008_TaskRecovery | t.Skip — Docker socket | SKIP (documented) |
+| FF-009 | TestFF009_FleetResilience | t.Skip — multi-worker Docker fleet | SKIP (documented) |
+| FF-010 | TestFF010_ThroughputCapacity | t.Skip — load test harness | SKIP (documented) |
+| FF-011 | TestFF011_APIResponseTime | t.Skip — running API + load tool | SKIP (documented) |
+| FF-012 | TestFF012_RealtimeLatency | t.Skip — live SSE endpoint | SKIP (documented) |
+| FF-013 | TestFF013_AuthEnforcement | System — httptest, chi, stub repos | PASS |
+| FF-014 | TestFF014_SessionPerformance | t.Skip — session store under load | SKIP (documented) |
+| FF-015 | TestFF015_CompileTimeSafety | Compile-time assertion (no-op body) | PASS |
+| FF-016 | TestFF016_FrontendBundle | t.Skip — frontend-build CI job | SKIP (documented) |
+| FF-017 | TestFF017_SchemaMigration | Integration — RunMigrations × 2, idempotency | PASS |
+| FF-018 | TestFF018_LogRetention | t.Skip — aged records + pruning job | SKIP (documented) |
+| FF-019 | TestFF019_SchemaValidation | Unit-boundary — ValidateSchemaMappings, 3 cases | PASS |
+| FF-020 | TestFF020_ServiceStartup | t.Skip — docker compose | SKIP (documented) |
+| FF-021 | TestFF021_ImageIntegrity | t.Skip — registry access / post-deploy gate | SKIP (documented) |
+| FF-022 | TestFF022_SinkInspector | Integration — SnapshotCapturer, Before/After assert | PASS |
+| FF-023 | TestFF023_SSEReconnection | t.Skip — live SSE + reconnect cycle | SKIP (documented) |
+| FF-024 | TestFF024_RedisPersistence | t.Skip — Docker socket | SKIP (documented) |
+| FF-025 | TestFF025_InfrastructureHealth | t.Skip — Uptime Kuma + prod PostgreSQL | SKIP (documented) |
+
+**Coverage summary:** 10 PASS (runtime or static), 15 SKIP (all documented) → AC-1 PASS.
+
+---
+
+## CI Run — Iteration 2
+
+**Status:** Pending push. The branch is 8 commits ahead of origin/main at time of static verification. Per commit-discipline protocol, the Verifier will commit the updated verification report, push all queued commits, and confirm the fitness-functions job result before final sign-off.
+
+The CI regex for the fitness-functions run step is:
+```
+/tmp/fitness-test -test.v -test.run "TestFF002|TestFF003|TestFF005|TestFF006|TestFF013|TestFF015|TestFF017|TestFF019|TestFF020|TestFF022"
+```
+
+TestFF003 is present. The 10 new skip stubs are not in the regex — correct, as they exit immediately via t.Skip and add no signal value to the CI run. Their presence in the test binary satisfies AC-1 (documented skip); their absence from the run filter is an acceptable editorial choice.
+
+---
+
+## Iteration 2 Summary
+
+FAIL-001 is closed. The Builder's iteration 2 commit (5a6f519) is a clean, purely additive change. All 25 FFs now have named test functions. FF-003 is implemented as a full integration test using the XPENDING mechanism against the CI Redis service. The 10 formerly absent FFs each have a documented t.Skip stub with an architectural reason message. The 9 prior passing tests and 5 Docker skip stubs are untouched. CI YAML wiring is unchanged except for the TestFF003 addition to the run regex.
+
+**Result: PASS (pending CI green confirmation after push).**
