@@ -15,7 +15,9 @@
  * See: DEMO-003, ADR-007, TASK-032, TASK-033
  */
 
-import type { SinkSnapshot } from '@/types/domain'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import type { SinkSnapshot, SinkInspectorState, SSEEvent } from '@/types/domain'
+import { useSSE } from './useSSE'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -98,8 +100,91 @@ export interface UseSinkInspectorReturn {
  *   - After sink:before-snapshot: beforeSnapshot is non-null, afterSnapshot is null.
  *   - After sink:after-result: afterSnapshot is non-null, isWaitingForSinkPhase is false.
  */
-// Stub — see TASK-032 (scaffold: process/scaffolder/cycle-4-scaffold.md)
-export function useSinkInspector(): UseSinkInspectorReturn {
-  // TODO: implement — wire options: UseSinkInspectorOptions when TASK-032 is implemented
-  throw new Error('Not implemented')
+export function useSinkInspector({ taskId }: UseSinkInspectorOptions): UseSinkInspectorReturn {
+  const [beforeSnapshot, setBeforeSnapshot] = useState<SinkSnapshot | null>(null)
+  const [afterSnapshot, setAfterSnapshot] = useState<SinkSnapshot | null>(null)
+  const [rolledBack, setRolledBack] = useState(false)
+  const [isWaitingForSinkPhase, setIsWaitingForSinkPhase] = useState(false)
+  const [accessError, setAccessError] = useState<string | null>(null)
+  const [writeError, setWriteError] = useState<string | null>(null)
+
+  // Reset all snapshot state when the taskId changes.
+  const prevTaskIdRef = useRef<string | null>(null)
+  useEffect(() => {
+    if (prevTaskIdRef.current !== taskId) {
+      prevTaskIdRef.current = taskId
+      setBeforeSnapshot(null)
+      setAfterSnapshot(null)
+      setRolledBack(false)
+      setWriteError(null)
+      setAccessError(null)
+      // Start waiting for sink phase only when a task is selected.
+      setIsWaitingForSinkPhase(taskId !== null)
+    }
+  }, [taskId])
+
+  // Handle incoming SSE events for sink snapshots.
+  const handleSinkEvent = useCallback((event: SSEEvent<SinkInspectorState>) => {
+    const payload = event.payload
+
+    if (event.type === 'sink:error' || event.type === 'access:denied') {
+      setAccessError('Access denied: you do not have permission to inspect sink events for this task.')
+      setIsWaitingForSinkPhase(false)
+      return
+    }
+
+    if (event.type === 'sink:before-snapshot') {
+      // Before snapshot received: populate left panel, clear right panel.
+      setBeforeSnapshot(payload.before)
+      setAfterSnapshot(null)
+      setRolledBack(false)
+      setWriteError(null)
+      setIsWaitingForSinkPhase(false)
+      return
+    }
+
+    if (event.type === 'sink:after-result') {
+      // After result received: populate right panel and set rollback/error flags.
+      setAfterSnapshot(payload.after)
+      setRolledBack(payload.rolledBack)
+      // Normalize empty string to null — the backend sends "" on success.
+      setWriteError(payload.writeError || null)
+      setIsWaitingForSinkPhase(false)
+      // Preserve beforeSnapshot from the after event if we missed the before event.
+      if (beforeSnapshot === null && payload.before !== null) {
+        setBeforeSnapshot(payload.before)
+      }
+      return
+    }
+  }, [beforeSnapshot])
+
+  // SSE connection: active only when a taskId is provided.
+  const sseEnabled = taskId !== null
+  const sseUrl = taskId !== null
+    ? `/events/sink/${taskId}`
+    : '/events/sink/__idle__' // inert placeholder — sseEnabled is false when taskId is null
+
+  const { status: rawSseStatus } = useSSE<SinkInspectorState>({
+    url: sseUrl,
+    onEvent: handleSinkEvent,
+    enabled: sseEnabled,
+  })
+
+  // Map SSE connection status: 'closed' from useSSE maps to 'idle' for callers
+  // when no task is selected; 'error' is a separate state in our surface.
+  const sseStatus: UseSinkInspectorReturn['sseStatus'] = taskId === null
+    ? 'idle'
+    : rawSseStatus === 'closed'
+      ? 'idle'
+      : rawSseStatus
+
+  return {
+    beforeSnapshot,
+    afterSnapshot,
+    rolledBack,
+    isWaitingForSinkPhase,
+    sseStatus,
+    accessError,
+    writeError,
+  }
 }
