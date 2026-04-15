@@ -2,7 +2,7 @@
 **Manifest version:** v1 | **Profile:** Critical
 **Current phase:** EXECUTION -- Cycle 4 in progress
 **Current cycle:** 4
-**Last updated:** 2026-04-15 (TASK-034 Verifier FAIL iteration 1: all 6 ACs pass in isolation but CI staticcheck SA4006 fails on api/handlers_chaos.go lines 200 and 278 — activityLog assignments in error early-return branches never consumed; OBS-032-1 CLOSED by RequireRole(Admin) middleware; Builder iteration 2 dispatched)
+**Last updated:** 2026-04-15 (TASK-034 Builder iteration 2 complete at commit 8bc0edf: dead activityLog assignments removed at handlers_chaos.go:200 and :278; staticcheck/build/test all clean locally; Verifier dispatched in run-existing-tests mode)
 
 ---
 
@@ -27,9 +27,9 @@ Security posture:
 
 ## Active Work
 
-**Agent in control:** Builder (dispatched 2026-04-15 for TASK-034 iteration 2 -- staticcheck SA4006 fix)
-**Current task:** TASK-034 -- Chaos Controller GUI (iteration 2)
-**Waiting for:** Builder to remove dead activityLog assignments in error early-return branches at api/handlers_chaos.go lines 200 and 278. Verifier iteration 1 confirmed all 6 ACs pass in isolation; sole blocker is CI staticcheck SA4006 (value assigned but never used) on these two lines. OBS-032-1 CLOSED (RequireRole(Admin) middleware confirmed). Iteration 2 scope: narrow staticcheck fix only; re-run Verifier after Builder returns.
+**Agent in control:** Verifier (dispatched 2026-04-15 for TASK-034 iteration 2 verification, run-existing-tests mode)
+**Current task:** TASK-034 -- Chaos Controller GUI (iteration 2 verification)
+**Waiting for:** Verifier to re-run the full 6-AC suite plus CI checks against commit 8bc0edf. Iteration 1 confirmed all 6 ACs pass; sole blocker was CI staticcheck SA4006 on api/handlers_chaos.go:200 and :278. Builder iteration 2 removed dead activityLog assignments; staticcheck/build/test clean locally. Verifier should confirm CI green (no SA4006) and all 6 ACs still pass.
 **TASK-032 status:** COMPLETE (Verifier PASS iteration 1, 2026-04-15; all 6 ACs, CI green run 24460040995, commit 922a949). 3 non-blocking observations carried (OBS-032-1 API-level admin enforcement, OBS-032-2 JSDOM, OBS-032-3 keyframes).
 **TASK-031 status:** COMPLETE (Verifier PASS iteration 1, 2026-04-15; all 4 ACs, CI green run 24458872430; commit e4d5d87).
 **TASK-030 status:** COMPLETE (Verifier PASS 2026-04-15, iteration 1).
@@ -123,13 +123,13 @@ Security posture:
 | TASK-033 | Sink Before/After snapshot capture | TASK-018, TASK-015 | P1 MM | COMPLETE (Verifier PASS, iteration 1, 2026-04-15; commit fb4b3d8; 6/6 ACs, CI green run 24457333420) |
 | TASK-031 | Mock-Postgres with seed data | TASK-007, TASK-018 | P1 MM | COMPLETE (Verifier PASS, iteration 1, 2026-04-15; all 4 ACs, CI green run 24458872430, commit e4d5d87) |
 | TASK-032 | Sink Inspector GUI | TASK-019, TASK-015, TASK-033, TASK-030 | P1 MM | COMPLETE (Verifier PASS, iteration 1, 2026-04-15; all 6 ACs, CI green run 24460040995, commit 922a949) |
-| TASK-034 | Chaos Controller GUI | TASK-019, TASK-020, TASK-021, TASK-009 | P1 HM | IN BUILD iteration 2 -- Verifier FAIL iteration 1 (6/6 ACs pass, CI staticcheck SA4006 on handlers_chaos.go lines 200 and 278); Builder dispatched 2026-04-15 for narrow staticcheck fix |
+| TASK-034 | Chaos Controller GUI | TASK-019, TASK-020, TASK-021, TASK-009 | P1 HM | IN VERIFY iteration 2 -- Builder iteration 2 complete at commit 8bc0edf (dead activityLog assignments removed at handlers_chaos.go:200 and :278; staticcheck/build/test clean locally); Verifier dispatched 2026-04-15 in run-existing-tests mode |
 | SEC-001 | Password change + mandatory first-login | TASK-003, TASK-017 | SECURITY | PENDING |
 | TASK-038 | Fitness function instrumentation | TASK-001, TASK-004, TASK-007, TASK-009, TASK-018 | P2 LM | PENDING |
 
 **Scaffolder:** COMPLETE (2026-04-09) -- committed as 66c4bf0. All 7 tasks scaffolded. Scaffold introduced four pre-existing CI regressions (REG-030-1/2/3/4) being remediated incrementally.
-**Builder:** TASK-030 COMPLETE. REG-030 CLOSED (iteration 2, commit e8b68cf). TASK-033 COMPLETE (commit e13e11c). TASK-031 COMPLETE (commit e4d5d87). TASK-032 COMPLETE (commit f3c9a95, 2026-04-15). TASK-034 iteration 1 at commit bfd22dd; iteration 2 dispatched 2026-04-15 for staticcheck SA4006 fix.
-**Verifier:** TASK-030 PASS (2026-04-15). REG-030 PASS iteration 2 (commit e8b68cf). TASK-033 PASS (2026-04-15, commit fb4b3d8, CI green run 24457333420, 6/6 ACs). TASK-031 PASS (2026-04-15, iteration 1, commit e4d5d87, CI green run 24458872430, 4/4 ACs). TASK-032 PASS (2026-04-15, iteration 1, commit 922a949, CI green run 24460040995, 6/6 ACs). TASK-034 FAIL iteration 1 (2026-04-15, commit bfd22dd; 6/6 ACs pass, CI staticcheck SA4006 on api/handlers_chaos.go:200 and :278; OBS-032-1 CLOSED via RequireRole(Admin) middleware).
+**Builder:** TASK-030 COMPLETE. REG-030 CLOSED (iteration 2, commit e8b68cf). TASK-033 COMPLETE (commit e13e11c). TASK-031 COMPLETE (commit e4d5d87). TASK-032 COMPLETE (commit f3c9a95, 2026-04-15). TASK-034 iteration 2 COMPLETE at commit 8bc0edf (dead activityLog assignments removed; staticcheck/build/test clean locally).
+**Verifier:** TASK-030 PASS (2026-04-15). REG-030 PASS iteration 2 (commit e8b68cf). TASK-033 PASS (2026-04-15, commit fb4b3d8, CI green run 24457333420, 6/6 ACs). TASK-031 PASS (2026-04-15, iteration 1, commit e4d5d87, CI green run 24458872430, 4/4 ACs). TASK-032 PASS (2026-04-15, iteration 1, commit 922a949, CI green run 24460040995, 6/6 ACs). TASK-034 FAIL iteration 1 (2026-04-15, commit bfd22dd). TASK-034 iteration 2 dispatched 2026-04-15 (commit 8bc0edf, run-existing-tests mode).
 
 ---
 
