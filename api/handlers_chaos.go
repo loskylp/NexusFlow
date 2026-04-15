@@ -197,10 +197,7 @@ func (h *ChaosHandler) KillWorker(w http.ResponseWriter, r *http.Request) {
 	output, dockerErr := h.runDockerCommand("kill", req.WorkerID)
 	if dockerErr != nil {
 		log.Printf("chaos.KillWorker: docker kill %q: %v (output: %s)", req.WorkerID, dockerErr, output)
-		activityLog = append(activityLog,
-			newActivity("error", fmt.Sprintf("Failed to kill container: %v (output: %s)", dockerErr, output)))
-		// Return 200 with error log so the GUI can display the failure inline.
-		// The action itself failed so we also return 500.
+		// activityLog is not sent on the error path; write the error directly.
 		writeError(w, http.StatusInternalServerError, "docker kill failed: "+dockerErr.Error())
 		return
 	}
@@ -275,8 +272,7 @@ func (h *ChaosHandler) DisconnectDatabase(w http.ResponseWriter, r *http.Request
 	if dockerErr != nil {
 		h.disconnectActive.Store(0) // release the guard on failure
 		log.Printf("chaos.DisconnectDatabase: docker stop %q: %v (output: %s)", postgresContainerName, dockerErr, output)
-		activityLog = append(activityLog,
-			newActivity("error", fmt.Sprintf("Failed to stop postgres container: %v", dockerErr)))
+		// activityLog is not sent on the error path; write the error directly.
 		writeError(w, http.StatusInternalServerError, "docker stop failed: "+dockerErr.Error())
 		return
 	}
