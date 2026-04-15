@@ -2,7 +2,7 @@
 **Manifest version:** v1 | **Profile:** Critical
 **Current phase:** EXECUTION -- Cycle 4 in progress
 **Current cycle:** 4
-**Last updated:** 2026-04-15 (TASK-033 Builder COMPLETE at commit e13e11c; Verifier dispatched)
+**Last updated:** 2026-04-15 (TASK-033 Verifier PASS at commit fb4b3d8, all 6 ACs, CI green run 24457333420; Builder dispatched for TASK-031)
 
 ---
 
@@ -27,12 +27,13 @@ Security posture:
 
 ## Active Work
 
-**Agent in control:** Verifier (dispatched 2026-04-15 for TASK-033 -- Sink Before/After snapshot capture)
-**Current task:** TASK-033 -- Sink Before/After snapshot capture
-**Waiting for:** Verifier to run acceptance + integration tests against Builder commit e13e11c. Builder report: SnapshotCapturer wired, 17 unit tests pass, all 6 ACs covered, redisClient wired as snapshot publisher in cmd/worker/main.go (nil-wiring check passed).
-**REG-030 status:** FULLY CLOSED (2026-04-15). Iteration 2 Verifier PASS at commit e8b68cf. CI green across Go + web. All four sub-regressions (REG-030-1/2/3/4) resolved.
+**Agent in control:** Builder (dispatched 2026-04-15 for TASK-031 -- Mock-Postgres with seed data)
+**Current task:** TASK-031 -- Mock-Postgres with seed data
+**Waiting for:** Builder to implement PostgreSQLSourceConnector + PostgreSQLSinkConnector bodies in worker/connector_postgres.go, configure demo-postgres container with 10K seed rows in docker-compose (demo profile), and wire RegisterPostgreSQLConnectors in cmd/worker/main.go when DEMO_POSTGRES_DSN is set.
+**REG-030 status:** FULLY CLOSED (2026-04-15). Iteration 2 Verifier PASS at commit e8b68cf.
 **TASK-030 status:** COMPLETE (Verifier PASS 2026-04-15, iteration 1).
-**Total project progress:** 31 of 31 v1.0.0 feature tasks COMPLETE. 1 of 7 Cycle 4 tasks verified PASS (TASK-030). TASK-033 in progress. Go-Live PENDING (requires Cycle 5 TASK-036).
+**TASK-033 status:** COMPLETE (Verifier PASS 2026-04-15, iteration 1, commit fb4b3d8, CI green run 24457333420, all 6 ACs).
+**Total project progress:** 31 of 31 v1.0.0 feature tasks COMPLETE. 2 of 7 Cycle 4 tasks verified PASS (TASK-030, TASK-033). TASK-031 in progress. Go-Live PENDING (requires Cycle 5 TASK-036).
 
 ---
 
@@ -117,16 +118,16 @@ Security posture:
 |---|---|---|---|---|
 | TASK-030 | MinIO Fake-S3 | TASK-007, TASK-018 | P1 MM | COMPLETE (Verifier PASS, iteration 1, 2026-04-15; 9 unit + 7 integration + 12 acceptance + 4 system tests) |
 | REG-030 | Cycle 4 scaffold CI regression fixes (all four sub-regressions resolved) | None | BLOCKER (CI green) | CLOSED (iteration 2 PASS, commit e8b68cf, 2026-04-15) |
-| TASK-033 | Sink Before/After snapshot capture | TASK-018, TASK-015 | P1 MM | IN VERIFICATION -- Builder COMPLETE at e13e11c (17 unit tests, 6/6 ACs, nil-wiring verified); Verifier dispatched 2026-04-15 |
-| TASK-031 | Mock-Postgres with seed data | TASK-007, TASK-018 | P1 MM | PENDING |
+| TASK-033 | Sink Before/After snapshot capture | TASK-018, TASK-015 | P1 MM | COMPLETE (Verifier PASS, iteration 1, 2026-04-15; commit fb4b3d8; 6/6 ACs, CI green run 24457333420) |
+| TASK-031 | Mock-Postgres with seed data | TASK-007, TASK-018 | P1 MM | IN PROGRESS -- Builder dispatched 2026-04-15 |
 | TASK-032 | Sink Inspector GUI | TASK-019, TASK-015, TASK-033, TASK-030 | P1 MM | PENDING |
 | TASK-034 | Chaos Controller GUI | TASK-019, TASK-020, TASK-021, TASK-009 | P1 HM | PENDING |
 | SEC-001 | Password change + mandatory first-login | TASK-003, TASK-017 | SECURITY | PENDING |
 | TASK-038 | Fitness function instrumentation | TASK-001, TASK-004, TASK-007, TASK-009, TASK-018 | P2 LM | PENDING |
 
 **Scaffolder:** COMPLETE (2026-04-09) -- committed as 66c4bf0. All 7 tasks scaffolded. Scaffold introduced four pre-existing CI regressions (REG-030-1/2/3/4) being remediated incrementally.
-**Builder:** TASK-030 COMPLETE (2026-04-15). REG-030 CLOSED (iteration 2, commit e8b68cf). TASK-033 COMPLETE (2026-04-15, commit e13e11c).
-**Verifier:** TASK-030 PASS (2026-04-15). REG-030 PASS iteration 2 (2026-04-15, commit e8b68cf, CI green). TASK-033 DISPATCHED 2026-04-15.
+**Builder:** TASK-030 COMPLETE. REG-030 CLOSED (iteration 2, commit e8b68cf). TASK-033 COMPLETE (commit e13e11c). TASK-031 DISPATCHED 2026-04-15.
+**Verifier:** TASK-030 PASS (2026-04-15). REG-030 PASS iteration 2 (commit e8b68cf). TASK-033 PASS (2026-04-15, commit fb4b3d8, CI green run 24457333420, 6/6 ACs).
 
 ---
 
