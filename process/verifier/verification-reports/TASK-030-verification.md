@@ -58,6 +58,35 @@ Full worker unit suite (`go test ./worker/... -v`) — all passing. No regressio
 
 2. **v7.0.91 (not latest)** — Confirmed necessary. v7.0.100 requires Go 1.25; project is Go 1.23. v7.0.91 is correct. No action required.
 
+## CI Regression Report
+
+**CI run:** 24439994606 | **Result:** FAILURE (2 jobs)
+
+TASK-030's own implementation (`worker/` package) passes all CI checks. The failures are pre-existing regressions introduced by the Cycle 4 scaffold (`66c4bf0`) — they are present on every commit since that scaffold was pushed, including commits with no TASK-030 changes.
+
+### REG-030-1: Go vet failure — `*stubUserRepo` missing `ChangePassword` method
+
+**File:** `api/handlers_auth_test.go:116`
+**Error:** `cannot use users (variable of type *stubUserRepo) as db.UserRepository value: *stubUserRepo does not implement db.UserRepository (missing method ChangePassword)`
+**Root cause:** Cycle 4 scaffold added `ChangePassword(ctx, userID, newHash)` to the `db.UserRepository` interface (`internal/db/user_repository.go`) as part of the SEC-001 / `ChangePassword` API stub. The existing `stubUserRepo` in `api/handlers_auth_test.go` was not updated.
+**Suggested fix:** Add a no-op `ChangePassword` method stub to `stubUserRepo` in `api/handlers_auth_test.go`.
+
+### REG-030-2: TypeScript typecheck failure — `mustChangePassword` missing from User mock fixtures
+
+**Files:** `src/components/ProtectedRoute.test.tsx`, `src/components/Sidebar.test.tsx`, `src/context/AuthContext.test.tsx`, `src/pages/LogStreamerPage.test.tsx`, `src/pages/LoginPage.test.tsx`, `src/pages/PipelineManagerPage.test.tsx`, `src/pages/TaskFeedPage.test.tsx`
+**Error:** `Property 'mustChangePassword' is missing in type '...' but required in type 'User'`
+**Root cause:** Cycle 4 scaffold added `mustChangePassword: boolean` to `web/src/types/domain.ts`'s `User` type (for the ChangePassword page stub). Existing test fixtures in all pre-existing test files use inline `User` objects that do not include this field.
+**Suggested fix:** Add `mustChangePassword: false` to all User mock objects in the affected test files.
+
+### REG-030-3: TypeScript typecheck failure — unused variables in scaffold stub pages
+
+**Files:** `src/hooks/useSinkInspector.ts`, `src/pages/ChangePasswordPage.tsx`, `src/pages/ChaosControllerPage.tsx`, `src/pages/SinkInspectorPage.tsx`
+**Error:** Multiple `TS6133`/`TS6196`/`TS6198` — declared but never used.
+**Root cause:** Cycle 4 scaffold created placeholder pages that destructure components/state but the component is not yet rendered in the JSX (pending TASK-032, TASK-034, SEC-001 implementation). The TypeScript compiler treats these as errors under `noUnusedLocals`.
+**Suggested fix:** Either remove the unused destructuring from the stubs, or use the `_` prefix convention to suppress unused variable warnings (`const [_SinkInspectorHeader, ...] = ...`). The cleanest fix is to remove the unused destructured names until they are actually wired into the JSX.
+
+**Scope:** REG-030-1, REG-030-2, REG-030-3 are all outside TASK-030 scope. The Builder for TASK-030 does not own `api/handlers_auth_test.go` or the web test fixtures. These regressions should be fixed by the respective task owners (SEC-001 / TASK-032 / TASK-034 scaffold fix) or by a dedicated regression-fix dispatch from the Orchestrator.
+
 ## Recommendation
 
-PASS TO NEXT STAGE
+TASK-030 PASS — all 4 acceptance criteria verified. Escalate pre-existing CI regressions (REG-030-1, REG-030-2, REG-030-3) to Orchestrator for Builder dispatch.
