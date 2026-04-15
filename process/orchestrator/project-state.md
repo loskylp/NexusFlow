@@ -2,13 +2,13 @@
 **Manifest version:** v1 | **Profile:** Critical
 **Current phase:** EXECUTION -- Cycle 4 in progress
 **Current cycle:** 4
-**Last updated:** 2026-04-15 (SEC-001 Builder COMPLETE at commit d29f17b, Verifier dispatched; 5 of 7 Cycle 4 tasks PASS, SEC-001 in Verifier)
+**Last updated:** 2026-04-15 (SEC-001 Verifier PASS at commit 6111d75; 6 of 7 Cycle 4 tasks COMPLETE; Builder dispatched for TASK-038)
 
 ---
 
 ## Where We Are
 
-**Cycle 4 execution in progress.** 5 of 7 tasks COMPLETE (TASK-030, TASK-033, TASK-031, TASK-032, TASK-034). SEC-001 Builder COMPLETE at commit d29f17b -- ChangePassword endpoint, middleware enforcement, session invalidation, mandatory first-login seed, sqlc regenerated, 691 web tests + Go tests all green, staticcheck clean. Verifier dispatched for SEC-001. TASK-038 (fitness function instrumentation) remains to close the cycle.
+**Cycle 4 execution in progress.** 6 of 7 tasks COMPLETE (TASK-030, TASK-033, TASK-031, TASK-032, TASK-034, SEC-001). SEC-001 Verifier PASS iteration 1 at commit 6111d75 (all 7 backend + 9 frontend ACs; CI green run 24466108551). TASK-038 (fitness function instrumentation) is the final task to close the cycle.
 
 **Cycle 4 execution order (sequential, dependency-respecting):**
 1. TASK-030 -- MinIO Fake-S3 (unblocks TASK-032)
@@ -20,24 +20,24 @@
 7. TASK-038 -- Fitness function instrumentation (best last, tests everything)
 
 Security posture:
-- **SEC-001 (default admin credentials):** Builder COMPLETE at commit d29f17b (2026-04-15). Verifier dispatched. Password change endpoint + UI + mandatory first-login change implemented.
+- **SEC-001 (default admin credentials):** FIXED and verified PASS (2026-04-15, commit 6111d75, CI run 24466108551). All 7 backend + 9 frontend ACs. Password change endpoint + UI + mandatory first-login change.
 - **SEC-002 (Redis no auth):** ACCEPTED RISK. Private cluster, single-org deployment.
 - **SEC-003 (no rate limiting on login):** FIXED and verified PASS (2026-04-08).
 - **MEDIUM findings (SEC-004 through SEC-007, SEC-014):** Accepted by Nexus at Demo Sign-off.
 
 ## Active Work
 
-**Agent in control:** Verifier (dispatched 2026-04-15 for SEC-001 verification at commit d29f17b)
-**Current task:** SEC-001 -- Password change endpoint + UI + mandatory first-login change
-**Waiting for:** Verifier to execute acceptance tests against commit d29f17b -- tests/acceptance/SEC-001-acceptance.sh (7 steps) and tests/acceptance/SEC-001-change-password-page.test.tsx frontend acceptance. Builder reported 691 web tests + Go tests all green, staticcheck clean.
-**SEC-001 Builder summary:** Implemented ChangePassword endpoint, middleware enforcement for mandatory first-login, session invalidation on password change, mandatory first-login seed flag, sqlc regenerated. All local tests and staticcheck green.
+**Agent in control:** Builder (dispatched 2026-04-15 for TASK-038 fitness function instrumentation)
+**Current task:** TASK-038 -- Fitness function instrumentation
+**Waiting for:** Builder to implement automated fitness function checks (FF-001 through FF-025) as CI test targets / monitoring scripts.
+**SEC-001 status:** COMPLETE (Verifier PASS iteration 1, 2026-04-15; all 7 backend + 9 frontend ACs, CI green run 24466108551, commit 6111d75).
 **TASK-034 status:** COMPLETE (Verifier PASS iteration 2, 2026-04-15; all 6 ACs, CI green run 24464513140, commit 8bc0edf).
 **TASK-032 status:** COMPLETE (Verifier PASS iteration 1, 2026-04-15; all 6 ACs, CI green run 24460040995, commit 922a949).
 **TASK-031 status:** COMPLETE (Verifier PASS iteration 1, 2026-04-15; all 4 ACs, CI green run 24458872430; commit e4d5d87).
 **TASK-030 status:** COMPLETE (Verifier PASS 2026-04-15, iteration 1).
 **TASK-033 status:** COMPLETE (Verifier PASS 2026-04-15, iteration 1, commit fb4b3d8, CI green run 24457333420, all 6 ACs).
 **REG-030 status:** FULLY CLOSED (2026-04-15). Iteration 2 Verifier PASS at commit e8b68cf.
-**Total project progress:** 31 of 31 v1.0.0 feature tasks COMPLETE. 5 of 7 Cycle 4 tasks verified PASS. SEC-001 in Verifier. TASK-038 PENDING. Go-Live PENDING (requires Cycle 5 TASK-036).
+**Total project progress:** 31 of 31 v1.0.0 feature tasks COMPLETE. 6 of 7 Cycle 4 tasks verified PASS. TASK-038 IN PROGRESS. Go-Live PENDING (requires Cycle 5 TASK-036).
 
 ---
 
@@ -126,12 +126,12 @@ Security posture:
 | TASK-031 | Mock-Postgres with seed data | TASK-007, TASK-018 | P1 MM | COMPLETE (Verifier PASS, iteration 1, 2026-04-15; all 4 ACs, CI green run 24458872430, commit e4d5d87) |
 | TASK-032 | Sink Inspector GUI | TASK-019, TASK-015, TASK-033, TASK-030 | P1 MM | COMPLETE (Verifier PASS, iteration 1, 2026-04-15; all 6 ACs, CI green run 24460040995, commit 922a949) |
 | TASK-034 | Chaos Controller GUI | TASK-019, TASK-020, TASK-021, TASK-009 | P1 HM | COMPLETE (Verifier PASS, iteration 2, 2026-04-15; all 6 ACs, CI green run 24464513140, commit 8bc0edf) |
-| SEC-001 | Password change + mandatory first-login | TASK-003, TASK-017 | SECURITY | IN VERIFICATION -- Builder COMPLETE at commit d29f17b, Verifier dispatched 2026-04-15 |
-| TASK-038 | Fitness function instrumentation | TASK-001, TASK-004, TASK-007, TASK-009, TASK-018 | P2 LM | PENDING |
+| SEC-001 | Password change + mandatory first-login | TASK-003, TASK-017 | SECURITY | COMPLETE (Verifier PASS, iteration 1, 2026-04-15; 7 backend + 9 frontend ACs, CI green run 24466108551, commit 6111d75) |
+| TASK-038 | Fitness function instrumentation | TASK-001, TASK-004, TASK-007, TASK-009, TASK-018 | P2 LM | IN PROGRESS -- Builder dispatched 2026-04-15 |
 
 **Scaffolder:** COMPLETE (2026-04-09) -- committed as 66c4bf0. All 7 tasks scaffolded. Scaffold introduced four pre-existing CI regressions (REG-030-1/2/3/4) remediated incrementally.
-**Builder:** TASK-030, REG-030, TASK-033, TASK-031, TASK-032, TASK-034 COMPLETE. SEC-001 COMPLETE at commit d29f17b (2026-04-15) -- ChangePassword endpoint, middleware enforcement, session invalidation, mandatory first-login seed, sqlc regenerated, 691 web tests + Go tests all green, staticcheck clean.
-**Verifier:** TASK-030/033/031/032 PASS iteration 1, TASK-034 PASS iteration 2 (commit 8bc0edf). SEC-001 dispatched 2026-04-15 at commit d29f17b.
+**Builder:** TASK-030, REG-030, TASK-033, TASK-031, TASK-032, TASK-034, SEC-001 COMPLETE. TASK-038 dispatched 2026-04-15 -- final Cycle 4 task.
+**Verifier:** TASK-030/033/031/032 PASS iteration 1, TASK-034 PASS iteration 2 (commit 8bc0edf), SEC-001 PASS iteration 1 (commit 6111d75, CI run 24466108551).
 
 ---
 
@@ -145,7 +145,7 @@ NONE -- Nexus approved Option A (original plan) for Cycle 4-5 sequencing. Method
 
 | Finding | Severity | Nexus Decision | Action |
 |---|---|---|---|
-| SEC-001: Default admin credentials (admin/admin) | HIGH | DEFERRED to Cycle 4 | Password change endpoint + UI + mandatory first-login change -- Builder COMPLETE at commit d29f17b, Verifier in progress |
+| SEC-001: Default admin credentials (admin/admin) | HIGH | FIXED | Password change + mandatory first-login implemented. Verifier PASS iteration 1 (2026-04-15, commit 6111d75, CI run 24466108551). 7 backend + 9 frontend ACs. |
 | SEC-002: Redis no authentication | HIGH | ACCEPTED RISK | Redis is in private cluster, test environment only. No action. |
 | SEC-003: No rate limiting on login | HIGH | FIXED | Rate limiting implemented and verified PASS (2026-04-08). 7/7 ACs, 13 acceptance + 7 unit tests. |
 | SEC-004 through SEC-007 | MEDIUM | ACCEPTED | Nexus accepted at Demo Sign-off (2026-04-09). |
