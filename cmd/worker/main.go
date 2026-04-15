@@ -106,6 +106,14 @@ func main() {
 		log.Fatalf("worker: MinIO connector registration failed: %v", err)
 	}
 
+	// Register PostgreSQL connectors when DEMO_POSTGRES_DSN is configured (TASK-031).
+	// In the demo Docker Compose profile, DEMO_POSTGRES_DSN points to the demo-postgres
+	// container pre-seeded with 10K rows. Workers without this env var skip registration
+	// and log a warning — the worker starts without PostgreSQL connector support.
+	if err := registerPostgresConnectors(connectorRegistry); err != nil {
+		log.Fatalf("worker: PostgreSQL connector registration failed: %v", err)
+	}
+
 	// Construct the chain trigger (TASK-014, ADR-003).
 	// WorkerChainEnqueuer creates and enqueues downstream tasks when a chained task completes.
 	// RedisQueue.SetNX provides the SET-NX idempotency guard per ADR-003.
@@ -216,6 +224,43 @@ func registerMinIOConnectors(reg *workerPkg.DefaultConnectorRegistry) error {
 
 	workerPkg.RegisterMinIOConnectors(reg, adapter)
 	log.Printf("worker: MinIO connectors registered (endpoint=%s ssl=%v)", host, useSSL)
+	return nil
+}
+
+// registerPostgresConnectors wires the PostgreSQL DataSource and Sink connectors into reg
+// using the DEMO_POSTGRES_DSN environment variable.
+//
+// When DEMO_POSTGRES_DSN is empty the function logs a warning and returns nil — the worker
+// starts without PostgreSQL connector support. This allows the worker to run in environments
+// where demo-postgres is not available (e.g. CI, non-demo deployments).
+//
+// The DSN is passed directly to pgx.ParseConfig; any malformed DSN results in a non-nil
+// error that causes the worker to exit with Fatalf.
+//
+// Nil-wiring guard: the function explicitly checks that the constructed pgBackend is
+// non-nil before calling RegisterPostgreSQLConnectors (satisfying the MEMORY note).
+//
+// See: DEMO-002, TASK-031
+func registerPostgresConnectors(reg *workerPkg.DefaultConnectorRegistry) error {
+	dsn := os.Getenv("DEMO_POSTGRES_DSN")
+	if dsn == "" {
+		log.Printf("worker: DEMO_POSTGRES_DSN not set — PostgreSQL connectors not registered")
+		return nil
+	}
+
+	adapter, err := workerPkg.NewPgxBackendAdapter(dsn)
+	if err != nil {
+		return fmt.Errorf("registerPostgresConnectors: %w", err)
+	}
+
+	// Nil-wiring guard: NewPgxBackendAdapter must return a non-nil adapter; panic here
+	// is a programming error (the adapter constructor silently returned nil).
+	if adapter == nil {
+		return fmt.Errorf("registerPostgresConnectors: NewPgxBackendAdapter returned nil — this is a bug")
+	}
+
+	workerPkg.RegisterPostgreSQLConnectors(reg, adapter)
+	log.Printf("worker: PostgreSQL connectors registered (dsn=%s)", dsn)
 	return nil
 }
 

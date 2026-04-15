@@ -54,6 +54,15 @@ services:
       - REDIS_URL=${REDIS_URL:-redis://redis:6379}
       - WORKER_TAGS=${WORKER_TAGS:-demo,etl}
       - ENV=development
+      # DEMO_POSTGRES_DSN is only meaningful under --profile demo (when demo-postgres
+      # is running). In non-demo stacks the variable is empty and the worker logs a
+      # warning but starts normally. See: DEMO-002, TASK-031
+      - DEMO_POSTGRES_DSN=${DEMO_POSTGRES_DSN:-}
+      # MINIO_ENDPOINT, MINIO_ROOT_USER, MINIO_ROOT_PASSWORD are only meaningful
+      # under --profile demo (when the MinIO container is running). See: TASK-030
+      - MINIO_ENDPOINT=${MINIO_ENDPOINT:-}
+      - MINIO_ROOT_USER=${MINIO_ROOT_USER:-minioadmin}
+      - MINIO_ROOT_PASSWORD=${MINIO_ROOT_PASSWORD:-minioadmin}
     depends_on:
       redis:
         condition: service_healthy
@@ -188,6 +197,10 @@ services:
         echo 'MinIO seed complete: demo-input seeded with 3 sample records, demo-output ready';
       "
 
+  # demo-postgres provides a pre-seeded PostgreSQL instance for the demo profile.
+  # The seed script mounts at /docker-entrypoint-initdb.d/ and runs exactly once on
+  # first container startup, inserting 10K deterministic rows into the sample_data table.
+  # See: DEMO-002, TASK-031
   demo-postgres:
     image: postgres:16-alpine
     restart: unless-stopped
@@ -197,12 +210,19 @@ services:
       - POSTGRES_PASSWORD=demo
     volumes:
       - demo-pg-data:/var/lib/postgresql/data
+      - ./deploy/demo-postgres:/docker-entrypoint-initdb.d:ro
     ports:
       - "5433:5432"
     networks:
       - internal
     profiles:
       - demo
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U demo -d demo"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
 
 volumes:
   redis-data:
