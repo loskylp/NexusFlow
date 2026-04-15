@@ -2,7 +2,7 @@
 **Manifest version:** v1 | **Profile:** Critical
 **Current phase:** EXECUTION -- Cycle 4 in progress
 **Current cycle:** 4
-**Last updated:** 2026-04-15 (TASK-031 Verifier PASS iteration 1, all 4 ACs, CI green run 24458872430; 3 of 7 Cycle 4 tasks COMPLETE; Builder dispatched for TASK-032 -- Sink Inspector GUI)
+**Last updated:** 2026-04-15 (TASK-032 Builder complete at commit f3c9a95; Sink Inspector GUI implemented, admin-only guard in place, 24+19+10 tests pass, full web suite 627 passed 0 failed; Verifier dispatched)
 
 ---
 
@@ -27,9 +27,10 @@ Security posture:
 
 ## Active Work
 
-**Agent in control:** Builder (dispatched 2026-04-15 for TASK-032 -- Sink Inspector GUI)
+**Agent in control:** Verifier (dispatched 2026-04-15 for TASK-032 -- Sink Inspector GUI; iteration 1 initial verification)
 **Current task:** TASK-032 -- Sink Inspector GUI
-**Waiting for:** Builder to implement Sink Inspector GUI against the Cycle 4 scaffold, consuming Before/After snapshots (TASK-033) and demo MinIO sink (TASK-030).
+**Waiting for:** Verifier to execute acceptance tests, exercise admin-only guard, run web test suite in CI, and produce Verification Report + Demo Script.
+**TASK-032 Builder output:** Complete at commit f3c9a95. SinkInspectorPage + useSinkInspector hook implemented; admin-only RequireRole guard; 24 page unit tests + 19 hook unit tests + 10 acceptance tests; full web suite 627 passed 0 failed. Handoff note at process/builder/handoff-notes/TASK-032-handoff.md.
 **TASK-031 status:** COMPLETE (Verifier PASS iteration 1, 2026-04-15; all 4 ACs, CI green run 24458872430; commit e4d5d87).
 **TASK-030 status:** COMPLETE (Verifier PASS 2026-04-15, iteration 1).
 **TASK-033 status:** COMPLETE (Verifier PASS 2026-04-15, iteration 1, commit fb4b3d8, CI green run 24457333420, all 6 ACs).
@@ -121,14 +122,14 @@ Security posture:
 | REG-030 | Cycle 4 scaffold CI regression fixes (all four sub-regressions resolved) | None | BLOCKER (CI green) | CLOSED (iteration 2 PASS, commit e8b68cf, 2026-04-15) |
 | TASK-033 | Sink Before/After snapshot capture | TASK-018, TASK-015 | P1 MM | COMPLETE (Verifier PASS, iteration 1, 2026-04-15; commit fb4b3d8; 6/6 ACs, CI green run 24457333420) |
 | TASK-031 | Mock-Postgres with seed data | TASK-007, TASK-018 | P1 MM | COMPLETE (Verifier PASS, iteration 1, 2026-04-15; all 4 ACs, CI green run 24458872430, commit e4d5d87) |
-| TASK-032 | Sink Inspector GUI | TASK-019, TASK-015, TASK-033, TASK-030 | P1 MM | IN PROGRESS -- Builder dispatched 2026-04-15 |
+| TASK-032 | Sink Inspector GUI | TASK-019, TASK-015, TASK-033, TASK-030 | P1 MM | IN PROGRESS -- Builder COMPLETE at commit f3c9a95 (24+19+10 tests pass; web suite 627/627); Verifier dispatched 2026-04-15 |
 | TASK-034 | Chaos Controller GUI | TASK-019, TASK-020, TASK-021, TASK-009 | P1 HM | PENDING |
 | SEC-001 | Password change + mandatory first-login | TASK-003, TASK-017 | SECURITY | PENDING |
 | TASK-038 | Fitness function instrumentation | TASK-001, TASK-004, TASK-007, TASK-009, TASK-018 | P2 LM | PENDING |
 
 **Scaffolder:** COMPLETE (2026-04-09) -- committed as 66c4bf0. All 7 tasks scaffolded. Scaffold introduced four pre-existing CI regressions (REG-030-1/2/3/4) being remediated incrementally.
-**Builder:** TASK-030 COMPLETE. REG-030 CLOSED (iteration 2, commit e8b68cf). TASK-033 COMPLETE (commit e13e11c). TASK-031 COMPLETE (commit e4d5d87). TASK-032 DISPATCHED 2026-04-15.
-**Verifier:** TASK-030 PASS (2026-04-15). REG-030 PASS iteration 2 (commit e8b68cf). TASK-033 PASS (2026-04-15, commit fb4b3d8, CI green run 24457333420, 6/6 ACs). TASK-031 PASS (2026-04-15, iteration 1, commit e4d5d87, CI green run 24458872430, 4/4 ACs).
+**Builder:** TASK-030 COMPLETE. REG-030 CLOSED (iteration 2, commit e8b68cf). TASK-033 COMPLETE (commit e13e11c). TASK-031 COMPLETE (commit e4d5d87). TASK-032 COMPLETE (commit f3c9a95, 2026-04-15).
+**Verifier:** TASK-030 PASS (2026-04-15). REG-030 PASS iteration 2 (commit e8b68cf). TASK-033 PASS (2026-04-15, commit fb4b3d8, CI green run 24457333420, 6/6 ACs). TASK-031 PASS (2026-04-15, iteration 1, commit e4d5d87, CI green run 24458872430, 4/4 ACs). TASK-032 DISPATCHED 2026-04-15 (iteration 1 initial verification).
 
 ---
 
