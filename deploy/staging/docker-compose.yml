@@ -38,6 +38,8 @@ services:
       - PENDING_SCAN_INTERVAL_SECONDS=${PENDING_SCAN_INTERVAL_SECONDS:-10}
       - LOG_HOT_RETENTION_HOURS=${LOG_HOT_RETENTION_HOURS:-72}
       - LOG_COLD_RETENTION_HOURS=${LOG_COLD_RETENTION_HOURS:-720}
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
     networks:
       - traefik
       - postgres
@@ -114,6 +116,10 @@ services:
       - ENV=staging
       - HEARTBEAT_INTERVAL_SECONDS=${HEARTBEAT_INTERVAL_SECONDS:-5}
       - HEARTBEAT_TIMEOUT_SECONDS=${HEARTBEAT_TIMEOUT_SECONDS:-15}
+      - DEMO_POSTGRES_DSN=${DEMO_POSTGRES_DSN:-}
+      - MINIO_ENDPOINT=${MINIO_ENDPOINT:-}
+      - MINIO_ROOT_USER=${MINIO_ROOT_USER:-minioadmin}
+      - MINIO_ROOT_PASSWORD=${MINIO_ROOT_PASSWORD:-minioadmin}
     networks:
       - postgres
       - internal
@@ -162,6 +168,68 @@ services:
       - "kuma.nexusflow-staging-web.http.parent_name=nexusflow-staging-group"
       - 'kuma.nexusflow-staging-web.http.tag_names=[{"name": "tag-nexusflow-frontend"}]'
 
+  minio:
+    image: minio/minio:latest
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      - MINIO_ROOT_USER=${MINIO_ROOT_USER:-minioadmin}
+      - MINIO_ROOT_PASSWORD=${MINIO_ROOT_PASSWORD:-minioadmin}
+    volumes:
+      - minio-data:/data
+    networks:
+      - internal
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://localhost:9000/minio/health/live || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    labels:
+      - "com.centurylinklabs.watchtower.enable=true"
+
+  minio-init:
+    image: minio/mc:latest
+    depends_on:
+      minio:
+        condition: service_healthy
+    environment:
+      - MINIO_ROOT_USER=${MINIO_ROOT_USER:-minioadmin}
+      - MINIO_ROOT_PASSWORD=${MINIO_ROOT_PASSWORD:-minioadmin}
+    networks:
+      - internal
+    entrypoint: >
+      /bin/sh -c "
+        mc alias set local http://minio:9000 $$MINIO_ROOT_USER $$MINIO_ROOT_PASSWORD;
+        mc mb --ignore-existing local/demo-input;
+        mc mb --ignore-existing local/demo-output;
+        echo '{\"id\":1,\"name\":\"alice\",\"value\":100}' | mc pipe local/demo-input/data/record-001.json;
+        echo '{\"id\":2,\"name\":\"bob\",\"value\":200}' | mc pipe local/demo-input/data/record-002.json;
+        echo '{\"id\":3,\"name\":\"carol\",\"value\":300}' | mc pipe local/demo-input/data/record-003.json;
+        echo 'MinIO seed complete: demo-input seeded with 3 sample records, demo-output ready';
+      "
+
+  demo-postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      - POSTGRES_DB=demo
+      - POSTGRES_USER=demo
+      - POSTGRES_PASSWORD=demo
+    volumes:
+      - demo-pg-data:/var/lib/postgresql/data
+      - ./demo-postgres-seed:/docker-entrypoint-initdb.d:ro
+    networks:
+      - internal
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U demo -d demo"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    labels:
+      - "com.centurylinklabs.watchtower.enable=true"
+
   redis:
     # Service-managed Redis — not shared infrastructure on nxlabs.cc (ADR-005).
     # AOF + RDB hybrid persistence ensures data survives container restarts (ADR-001, FF-024).
@@ -200,6 +268,8 @@ services:
 volumes:
   # Persists Redis data across container restarts (ADR-001, FF-024).
   redis-data:
+  minio-data:
+  demo-pg-data:
 
 networks:
   # External network managed by nxlabs.cc Traefik — provides HTTPS ingress.
